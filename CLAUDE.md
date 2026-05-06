@@ -17,7 +17,6 @@ A long-term roadmap to drop Twikoo entirely and ship a custom comment system liv
 │   └── workflows/
 │       ├── ci.yml              # PR validation: flake check + type/format/lint/spell
 │       └── deploy.yml          # Push-to-main → wrangler deploy
-├── migrations/                 # drizzle-kit generate output (applied via pnpm db:migrate)
 ├── scripts/
 │   └── bundle-trim.mjs         # postinstall: empty out Node-only modules to fit 1 MiB bundle
 ├── src/
@@ -73,12 +72,10 @@ For local secrets, create `.dev.vars` (gitignored) with one `KEY=value` per line
 pnpm wrangler login                                               # one-time OAuth
 pnpm wrangler d1 create twikoo                                    # capture database_id → wrangler.toml + drizzle.config.ts
 pnpm wrangler r2 bucket create twikoo
-pnpm db:migrate                                                   # apply migrations/ to remote D1 (needs CLOUDFLARE_D1_TOKEN)
+pnpm db:push                                                      # sync schema.ts to remote D1 (needs CLOUDFLARE_D1_TOKEN)
 pnpm wrangler secret put SMTP_PASS                                # repeat per secret
 pnpm deploy
 ```
-
-For brownfield D1 (tables already exist), baseline the Drizzle migration journal once with `pnpm db:pull -- --init` before any further `pnpm db:migrate`. Otherwise `migrate` will try to re-run the bootstrap and fail.
 
 ### CI deploy
 
@@ -101,12 +98,10 @@ Pushes to `main` trigger `.github/workflows/deploy.yml`. Required repo secrets:
 
 - Use `// ── Section Name ──` for section dividers in code (box-drawing character `─`, U+2500). No padding to a fixed column — the trailing `──` is two characters, same as the leading.
 
-### Schema and migrations
+### Schema
 
-- `src/db/schema.ts` is the single source of truth for the D1 schema. `wrangler d1 execute --file=...` SQL files are not authoritative and must not be hand-edited to drift from `schema.ts`.
-- After any schema edit, run `pnpm db:generate` to produce a new file under `migrations/`. Commit both the schema change and the generated migration in the same commit — they're a logical unit, and reviewers should see the SQL Drizzle will run.
-- Reach for the raw `sql` tagged template only when the query builder can't express the shape cleanly (e.g., admin search fanning `LIKE ?` across many text columns). Inside the tag, interpolate column references via `${schema.table.column}` so identifiers stay schema-aware; the raw query is still type-checked at the boundary by Drizzle.
-- For brownfield baselining, see the "Manual deploy" section above.
+- `src/db/schema.ts` is the single source of truth. After any schema edit, `pnpm db:push` diffs against live D1 and applies the delta directly. Git history of `schema.ts` is the audit trail; the project intentionally skips committed `migrations/` files.
+- Reach for the raw `sql` tagged template only when the query builder can't express the shape cleanly (e.g., admin search fanning `LIKE ?` across many text columns). Inside the tag, interpolate column references via `${schema.table.column}` so identifiers stay schema-aware.
 
 ### Local-only paths
 
