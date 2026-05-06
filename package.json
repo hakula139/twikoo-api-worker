@@ -1,0 +1,30 @@
+{
+  "name": "twikoo-api-worker",
+  "description": "Cloudflare Workers backend for the Twikoo comment system, backed by D1 and R2.",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "main": "src/worker.ts",
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy --minify",
+    "check": "tsc --noEmit",
+    "format": "prettier --check .",
+    "lint": "markdownlint-cli2 \"**/*.md\"",
+    "spellcheck": "cspell --no-progress --no-must-find-files",
+    "postinstall": "node scripts/bundle-trim.mjs"
+  },
+  "dependencies": {
+    "twikoo-func": "^1.6.44",
+    "xss": "^1.0.15"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^4.20260101.0",
+    "@types/node": "^22.10.0",
+    "typescript": "^5.9.3",
+    "wrangler": "^4.54.0"
+  },
+  "overrides": {
+    "axios": "git+https://github.com/wuzhengmao/axios-cf-worker.git#v0.x-cf"
+  }
+}

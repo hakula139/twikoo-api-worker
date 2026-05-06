@@ -1,0 +1,24 @@
+# Dependencies
+/node_modules/
+
+# Nix
+.direnv/
+.pre-commit-config.yaml
+result
+result-*
+
+# Wrangler
+.wrangler/
+.dev.vars
+
+# OS files
+.DS_Store
+
+# Environment
+.env
+.env.local
+
+# Claude Code
+.claude/agent-memory-local/
+.claude/plans/
+.claude/settings.local.json

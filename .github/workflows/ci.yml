@@ -1,0 +1,56 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  flake-check:
+    name: Nix Flake Check
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Setup Nix
+        uses: ./.github/actions/setup-nix
+        with:
+          cachix_name: hakula
+          cachix_skip_push: 'true'
+
+      - name: Run flake check
+        run: nix flake check --no-build
+
+  check:
+    name: Worker Check
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Setup Nix
+        uses: ./.github/actions/setup-nix
+        with:
+          cachix_name: hakula
+          cachix_skip_push: 'true'
+
+      - name: Install dependencies
+        run: nix develop -c pnpm install --frozen-lockfile
+
+      - name: Type check
+        run: nix develop -c pnpm check
+
+      - name: Format
+        run: nix develop -c pnpm format
+
+      - name: Lint Markdown
+        run: nix develop -c pnpm lint
+
+      - name: Spell check
+        run: nix develop -c pnpm spellcheck

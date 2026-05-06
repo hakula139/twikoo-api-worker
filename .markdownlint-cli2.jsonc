@@ -1,0 +1,43 @@
+{
+  "config": {
+    "default": true,
+
+    // Heading style: atx
+    "MD003": { "style": "atx" },
+
+    // Unordered list style: dash
+    "MD004": { "style": "dash" },
+
+    // Unordered list indent: 2 spaces
+    "MD007": { "indent": 2 },
+
+    // Disable line length (we keep prose un-wrapped per project convention)
+    "MD013": false,
+
+    // Heading trailing punctuation: only flag .,;:
+    "MD026": { "punctuation": ".,;:" },
+
+    // Ordered list style: incremental (1. 2. 3.)
+    "MD029": { "style": "ordered" },
+
+    // Allow inline HTML in docs
+    "MD033": false,
+
+    // Disable bare URL check
+    "MD034": false,
+
+    // Code block style: fenced
+    "MD046": { "style": "fenced" },
+
+    // Code fence style: backtick
+    "MD048": { "style": "backtick" },
+
+    // Emphasis style: underscore for italic
+    "MD049": { "style": "underscore" },
+
+    // Strong style: asterisk for bold
+    "MD050": { "style": "asterisk" },
+  },
+
+  "ignores": ["node_modules/**", ".wrangler/**"],
+}

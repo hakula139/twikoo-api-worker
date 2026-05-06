@@ -1,0 +1,40 @@
+#:schema node_modules/wrangler/config-schema.json
+name = "twikoo-api-worker"
+main = "src/worker.ts"
+compatibility_date = "2025-07-29"
+compatibility_flags = ["nodejs_compat"]
+
+routes = [{ pattern = "twikoo-api.hakula.xyz", custom_domain = true }]
+
+[[d1_databases]]
+binding = "DB"
+database_name = "twikoo"
+# Set after `wrangler d1 create twikoo`. The ID is not a secret on its own
+# (access still requires Cloudflare account credentials), but treat it as
+# operational config — no need to share it outside this repo.
+database_id = "00000000-0000-0000-0000-000000000000"
+
+[[r2_buckets]]
+binding = "R2"
+bucket_name = "twikoo"
+
+[vars]
+# Public URL prefix for objects uploaded to the R2 bucket above.
+# Set after configuring the R2 custom domain.
+R2_PUBLIC_URL = "https://twikoo-r2.hakula.xyz"
+
+# Set via `wrangler secret put`:
+# AKISMET_KEY        - Akismet API key (spam check)
+# TURNSTILE_SECRET   - Cloudflare Turnstile secret (captcha)
+# SENDER_EMAIL       - notification sender address (verified at provider)
+# SMTP_USER          - mail provider account name (any non-empty string for SendGrid)
+# SMTP_PASS          - mail provider API key
+
+[observability.logs]
+enabled = true
+
+[placement]
+mode = "smart"
+
+[dev]
+port = 8787
