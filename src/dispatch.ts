@@ -80,8 +80,7 @@ export const dispatch = async (
       return jsonResponse({ code: error.code, message: error.message }, headers);
     }
     logger.error('Unhandled handler error:', error);
-    const message = error instanceof Error ? error.message : 'Internal error.';
-    return jsonResponse({ code: ResponseCode.FAIL, message }, headers);
+    return jsonResponse({ code: ResponseCode.FAIL, message: 'Internal error.' }, headers);
   }
 
   return jsonResponse({ code: ResponseCode.SUCCESS, ...result }, headers);
