@@ -208,10 +208,10 @@ LIMIT ?4
       .run();
   }
 
-  // Dynamic-field UPDATE. The cache key sorts the field list so callers
-  // passing the same fields in different orders share one prepared statement.
+  // Dynamic-field UPDATE. Cache key mirrors the field order so the cached
+  // SQL placeholders line up with the caller's `values` array.
   async update(id: string, fields: readonly string[], values: readonly unknown[]): Promise<void> {
-    const key = `update:${[...fields].sort().join(',')}`;
+    const key = `update:${fields.join(',')}`;
     const sql = UPDATE_TEMPLATE.replace('{{FIELDS}}', fields.map((f) => `${f} = ?`).join(', '));
 
     await this.stmt(key, sql)
