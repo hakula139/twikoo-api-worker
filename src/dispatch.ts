@@ -9,11 +9,11 @@ import { extractGeo } from './lib/geo';
 import { corsHeaders, jsonResponse } from './lib/http';
 import { logger } from './twikoo';
 
-interface RequestBody {
-  event?: string;
-  accessToken?: string;
-  [key: string]: unknown;
-}
+const isPlainObject = (value: unknown): value is Record<string, unknown> =>
+  value !== null && typeof value === 'object' && !Array.isArray(value);
+
+const stringField = (body: Record<string, unknown>, key: string): string =>
+  typeof body[key] === 'string' ? body[key] : '';
 
 export const dispatch = async (
   request: Request,
@@ -24,9 +24,16 @@ export const dispatch = async (
   const origin = request.headers.get('Origin');
   const db = new DB(env.DB);
 
-  let body: RequestBody;
+  let body: Record<string, unknown>;
   try {
-    body = (await request.json<RequestBody>()) ?? {};
+    const parsed = await request.json<unknown>();
+    if (!isPlainObject(parsed)) {
+      return jsonResponse(
+        { code: ResponseCode.FAIL, message: 'Request body must be a JSON object.' },
+        corsHeaders(origin),
+      );
+    }
+    body = parsed;
   } catch {
     return jsonResponse(
       { code: ResponseCode.FAIL, message: 'Body is not valid JSON.' },
@@ -38,8 +45,9 @@ export const dispatch = async (
   const config: TwikooConfig = configRaw ? (JSON.parse(configRaw) as TwikooConfig) : {};
 
   const headers = corsHeaders(origin, config);
-  const event = body.event ?? '';
-  const uid = body.accessToken ?? request.headers.get('x-twikoo-recaptcha-v3') ?? '';
+  const event = stringField(body, 'event');
+  const accessToken = stringField(body, 'accessToken');
+  const uid = accessToken || request.headers.get('x-twikoo-recaptcha-v3') || '';
   const { ip, region } = extractGeo(request);
 
   const requestCtx: RequestCtx = {
@@ -62,13 +70,9 @@ export const dispatch = async (
     );
   }
 
-  const { event: _event, accessToken: _accessToken, ...payload } = body;
-  void _event;
-  void _accessToken;
-
   let result: Partial<TwikooResponse>;
   try {
-    result = await handler(payload, requestCtx);
+    result = await handler(body, requestCtx);
   } catch (error) {
     if (error instanceof TwikooError) {
       return jsonResponse({ code: error.code, message: error.message }, headers);
