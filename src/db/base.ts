@@ -1,7 +1,7 @@
 import type { D1Database, D1PreparedStatement } from '@cloudflare/workers-types';
 
-// Caches prepared statements inside the instance to amortise the per-statement
-// parse cost across calls within (and across) a single isolate.
+// Caches prepared statements per instance to amortise the parse cost across
+// the multiple queries a single request typically issues.
 export abstract class DBBase {
   private readonly stmts = new Map<string, D1PreparedStatement>();
 

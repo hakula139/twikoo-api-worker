@@ -1,6 +1,5 @@
 import { DBBase } from './base';
 
-// Shape of a row in the `comment` table — matches schema.sql columns 1:1.
 // `ups` / `downs` are JSON-stringified arrays of voter UIDs.
 export interface StoredComment {
   _id: string;
@@ -193,9 +192,7 @@ LIMIT ?4
     await this.stmt('delete', 'DELETE FROM comment WHERE _id = ?1').bind(id).run();
   }
 
-  // A vote always rewrites both arrays — flipping up → down (or vice versa)
-  // must remove the user from the opposite array, not just append to the new
-  // one.
+  // Caller passes the full ups / downs JSON; this method does not merge.
   async updateVotes(id: string, upsJson: string, downsJson: string): Promise<void> {
     await this.stmt('updateVotes', 'UPDATE comment SET ups = ?2, downs = ?3 WHERE _id = ?1')
       .bind(id, upsJson, downsJson)
