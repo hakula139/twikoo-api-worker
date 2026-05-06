@@ -4,7 +4,7 @@ main = "src/worker.ts"
 compatibility_date = "2025-07-29"
 compatibility_flags = ["nodejs_compat"]
 
-routes = [{ pattern = "twikoo-api.hakula.xyz", custom_domain = true }]
+routes = [{ pattern = "twikoo.hakula.xyz", custom_domain = true }]
 
 [[d1_databases]]
 binding = "DB"
@@ -12,7 +12,7 @@ database_name = "twikoo"
 # Set after `wrangler d1 create twikoo`. The ID is not a secret on its own
 # (access still requires Cloudflare account credentials), but treat it as
 # operational config — no need to share it outside this repo.
-database_id = "00000000-0000-0000-0000-000000000000"
+database_id = "09fa1c1b-2f3e-4af8-bd3b-8f3b808c94c4"
 
 [[r2_buckets]]
 binding = "R2"

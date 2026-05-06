@@ -49,7 +49,7 @@ jobs:
       - name: Format
         run: nix develop -c pnpm format
 
-      - name: Lint Markdown
+      - name: Lint
         run: nix develop -c pnpm lint
 
       - name: Spell check

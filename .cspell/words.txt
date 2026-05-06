@@ -8,13 +8,16 @@ disqus
 hakula
 mailchannels
 nixfmt
+nixos
 nixpkgs
 nodemailer
 numtide
 pagefind
+pkgs
 pnpm
 sendgrid
 statix
+tcomment
 tencentcloud
 turnstile
 twikoo

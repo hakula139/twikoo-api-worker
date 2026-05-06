@@ -78,11 +78,11 @@ In [`twikoo-js`](https://github.com/twikoojs/twikoo) (or via [IgnIt](https://git
 
 ```js
 twikoo.init({
-  envId: 'https://twikoo-api.hakula.xyz',
+  envId: 'https://twikoo.hakula.xyz',
   el: '#tcomment',
 });
 ```
 
 ## License
 
-MIT — see [LICENSE](LICENSE). Originally inspired by [`twikoojs/twikoo-cloudflare`](https://github.com/twikoojs/twikoo-cloudflare) (MIT). Business logic comes from upstream [`twikoo-func`](https://github.com/twikoojs/twikoo) (MIT).
+Copyright (c) 2026 [Hakula](https://hakula.xyz). Licensed under the [MIT License](LICENSE).

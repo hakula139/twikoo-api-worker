@@ -11,6 +11,9 @@
     // Unordered list indent: 2 spaces
     "MD007": { "indent": 2 },
 
+    // Allow hard tabs in code blocks
+    "MD010": { "code_blocks": false },
+
     // Disable line length (we keep prose un-wrapped per project convention)
     "MD013": false,
 
@@ -26,6 +29,9 @@
     // Disable bare URL check
     "MD034": false,
 
+    // Disable first-line heading (titles aren't always H1)
+    "MD041": false,
+
     // Code block style: fenced
     "MD046": { "style": "fenced" },
 
@@ -39,5 +45,5 @@
     "MD050": { "style": "asterisk" },
   },
 
-  "ignores": ["node_modules/**", ".wrangler/**"],
+  "ignores": ["node_modules/", ".direnv/", ".wrangler/", ".claude/"],
 }
