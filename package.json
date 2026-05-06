@@ -8,6 +8,9 @@
   "packageManager": "pnpm@10.30.3",
   "scripts": {
     "check": "tsc --noEmit",
+    "db:generate": "drizzle-kit generate",
+    "db:migrate": "drizzle-kit migrate",
+    "db:pull": "drizzle-kit pull",
     "deploy": "wrangler deploy --minify",
     "dev": "wrangler dev",
     "format": "prettier --check .",
@@ -18,6 +21,7 @@
     "spellcheck": "cspell --no-progress \"**/*\""
   },
   "dependencies": {
+    "drizzle-orm": "^0.45.2",
     "twikoo-func": "^1.7.9",
     "xss": "^1.0.15"
   },
@@ -25,6 +29,7 @@
     "@cloudflare/workers-types": "^4.20260101.0",
     "@types/node": "^22.10.0",
     "cspell": "^10.0.0",
+    "drizzle-kit": "^0.31.10",
     "eslint": "^9.0.0",
     "markdownlint-cli2": "^0.22.0",
     "prettier": "^3.8.1",
