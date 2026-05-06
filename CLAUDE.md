@@ -89,6 +89,10 @@ Pushes to `main` trigger `.github/workflows/deploy.yml`. Required repo secrets:
 - Imports: type imports first, then value imports, grouped by source.
 - Sparse comments — only when _why_ is non-obvious (hidden constraint, V8 quirk, upstream contract).
 
+### Section Dividers
+
+- Use `// ── Section Name ──` for section dividers in code (box-drawing character `─`, U+2500). No padding to a fixed column — the trailing `──` is two characters, same as the leading.
+
 ### Local-only paths
 
 Never reference gitignored paths (`.claude/`, `.dev.vars`, `.env*`, etc.) from anything that gets committed: source files, code comments, commit messages, PR descriptions, README, or other docs. They don't exist for other contributors or CI, and the references rot. This file (`CLAUDE.md`) is the exception — it documents local planning state for the assistant.
