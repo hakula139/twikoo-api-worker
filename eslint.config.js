@@ -1,3 +1,4 @@
+import { defineConfig } from 'eslint/config';
 import tseslint from 'typescript-eslint';
 
 const sharedRules = {
@@ -7,10 +8,10 @@ const sharedRules = {
   'prefer-const': 'error',
 };
 
-export default tseslint.config(
+export default defineConfig([
   {
     files: ['**/*.{ts,tsx}'],
-    extends: [...tseslint.configs.recommendedTypeChecked],
+    extends: [tseslint.configs.recommendedTypeChecked],
     languageOptions: {
       parserOptions: {
         projectService: true,
@@ -28,10 +29,10 @@ export default tseslint.config(
   },
   {
     files: ['**/*.{js,mjs,cjs}'],
-    extends: [...tseslint.configs.recommended],
+    extends: [tseslint.configs.recommended],
     rules: sharedRules,
   },
   {
     ignores: ['.claude/', '.direnv/', '.wrangler/', 'node_modules/'],
   },
-);
+]);
