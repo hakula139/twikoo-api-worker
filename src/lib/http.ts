@@ -1,5 +1,7 @@
 import type { TwikooConfig, TwikooResponse } from '../types';
 
+import { logger } from '../twikoo';
+
 const ALLOWED_HEADERS =
   'X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version';
 
@@ -31,6 +33,7 @@ export const corsHeaders = (
   }
   const allowed = config ? matchAllowedOrigin(origin, config) : origin;
   if (!allowed) {
+    logger.warn(`CORS rejected origin: ${origin}`);
     return {};
   }
   return {
