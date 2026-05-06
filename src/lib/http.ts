@@ -39,6 +39,7 @@ export const corsHeaders = (
     'Access-Control-Allow-Methods': 'GET, POST',
     'Access-Control-Allow-Headers': ALLOWED_HEADERS,
     'Access-Control-Max-Age': '600',
+    'Vary': 'Origin',
   };
 };
 
