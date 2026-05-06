@@ -5,23 +5,31 @@
   "private": true,
   "type": "module",
   "main": "src/worker.ts",
+  "packageManager": "pnpm@10.30.3",
   "scripts": {
-    "dev": "wrangler dev",
-    "deploy": "wrangler deploy --minify",
     "check": "tsc --noEmit",
+    "deploy": "wrangler deploy --minify",
+    "dev": "wrangler dev",
     "format": "prettier --check .",
-    "lint": "markdownlint-cli2 \"**/*.md\"",
-    "spellcheck": "cspell --no-progress --no-must-find-files",
-    "postinstall": "node scripts/bundle-trim.mjs"
+    "lint": "pnpm lint:md && pnpm lint:js",
+    "lint:js": "eslint .",
+    "lint:md": "markdownlint-cli2 \"**/*.md\"",
+    "postinstall": "node scripts/bundle-trim.mjs",
+    "spellcheck": "cspell --no-progress \"**/*\""
   },
   "dependencies": {
-    "twikoo-func": "^1.6.44",
+    "twikoo-func": "^1.7.9",
     "xss": "^1.0.15"
   },
   "devDependencies": {
     "@cloudflare/workers-types": "^4.20260101.0",
     "@types/node": "^22.10.0",
+    "cspell": "^10.0.0",
+    "eslint": "^9.0.0",
+    "markdownlint-cli2": "^0.22.0",
+    "prettier": "^3.8.1",
     "typescript": "^5.9.3",
+    "typescript-eslint": "^8.0.0",
     "wrangler": "^4.54.0"
   },
   "overrides": {
