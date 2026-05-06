@@ -17,12 +17,14 @@ CREATE TABLE IF NOT EXISTS comment (
   isSpam INTEGER NOT NULL,
   created INTEGER NOT NULL,
   updated INTEGER NOT NULL,
-  like TEXT NOT NULL,
+  ups TEXT NOT NULL DEFAULT '[]',
+  downs TEXT NOT NULL DEFAULT '[]',
   top INTEGER NOT NULL,
   avatar TEXT NOT NULL,
   PRIMARY KEY (url, created DESC)
 );
 
+CREATE UNIQUE INDEX IF NOT EXISTS idx_comment_id ON comment (_id);
 CREATE INDEX IF NOT EXISTS idx_comment_created ON comment (created DESC);
 CREATE INDEX IF NOT EXISTS idx_comment_ip_created ON comment (ip, created DESC);
 

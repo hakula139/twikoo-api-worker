@@ -1,7 +1,7 @@
 import type { D1Database, D1PreparedStatement, D1Result } from '@cloudflare/workers-types';
 
 // Shape of a row in the `comment` table — matches schema.sql columns 1:1.
-// `like` is a JSON-stringified array of UIDs; handlers parse before use.
+// `ups` / `downs` are JSON-stringified arrays of voter UIDs.
 export interface StoredComment {
   _id: string;
   uid: string;
@@ -21,7 +21,8 @@ export interface StoredComment {
   isSpam: number;
   created: number;
   updated: number;
-  like: string;
+  ups: string;
+  downs: string;
   top: number;
   avatar: string;
 }
@@ -35,9 +36,14 @@ export interface CounterRow {
 }
 
 const SAVE_COMMENT_SQL = `
-INSERT INTO comment VALUES (
+INSERT INTO comment (
+  _id, uid, nick, mail, mailMd5, link, ua, ip, ipRegion, master,
+  url, href, comment, pid, rid, isSpam, created, updated, ups, downs,
+  top, avatar
+) VALUES (
   ?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10,
-  ?11, ?12, ?13, ?14, ?15, ?16, ?17, ?18, ?19, ?20, ?21
+  ?11, ?12, ?13, ?14, ?15, ?16, ?17, ?18, ?19, ?20,
+  ?21, ?22
 )
 `.trim();
 
@@ -212,7 +218,8 @@ LIMIT ?4
         c.isSpam,
         c.created,
         c.updated,
-        c.like,
+        c.ups,
+        c.downs,
         c.top,
         c.avatar,
       )
@@ -223,9 +230,12 @@ LIMIT ?4
     await this.stmt('deleteComment', 'DELETE FROM comment WHERE _id = ?1').bind(id).run();
   }
 
-  async updateLike(id: string, likeJson: string): Promise<void> {
-    await this.stmt('updateLike', 'UPDATE comment SET like = ?2 WHERE _id = ?1')
-      .bind(id, likeJson)
+  // A vote always rewrites both arrays — flipping up → down (or vice versa)
+  // must remove the user from the opposite array, not just append to the new
+  // one.
+  async updateVotes(id: string, upsJson: string, downsJson: string): Promise<void> {
+    await this.stmt('updateVotes', 'UPDATE comment SET ups = ?2, downs = ?3 WHERE _id = ?1')
+      .bind(id, upsJson, downsJson)
       .run();
   }
 
@@ -235,14 +245,14 @@ LIMIT ?4
       .run();
   }
 
-  // Dynamic-field UPDATE. Keyed by the (sorted) field list so each shape is
-  // prepared once and reused.
+  // Dynamic-field UPDATE. The cache key sorts the field list so callers
+  // passing the same fields in different orders share one prepared statement.
   async setCommentFields(
     id: string,
     fields: readonly string[],
     values: readonly unknown[],
   ): Promise<void> {
-    const key = `setComment:${fields.join(',')}`;
+    const key = `setComment:${[...fields].sort().join(',')}`;
     const sql = SET_COMMENT_TEMPLATE.replace(
       '{{FIELDS}}',
       fields.map((f) => `${f} = ?`).join(', '),
