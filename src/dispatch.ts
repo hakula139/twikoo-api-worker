@@ -42,7 +42,7 @@ export const dispatch = async (
     );
   }
 
-  const configRaw = await db.readConfig();
+  const configRaw = await db.config.read();
   const config: TwikooConfig = configRaw ? (JSON.parse(configRaw) as TwikooConfig) : {};
   const headers = corsHeaders(origin, config);
 
