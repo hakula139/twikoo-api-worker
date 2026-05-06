@@ -14,7 +14,10 @@ export const extractGeo = (request: Request): RequestGeo => {
   // variant, so the assertion is safe.
   const cf = request.cf as IncomingRequestCfProperties | undefined;
   const ip = request.headers.get('CF-Connecting-IP') ?? '';
-  const region = `${cf?.country ?? ''}|0|${cf?.region ?? ''}|${cf?.city ?? ''}|`;
+  const country = cf?.country ?? '';
+  const cfRegion = cf?.region ?? '';
+  const city = cf?.city ?? '';
+  const region = country || cfRegion || city ? `${country}|0|${cfRegion}|${city}|` : '';
   return { ip, region };
 };
 
