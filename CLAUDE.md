@@ -17,13 +17,19 @@ A long-term roadmap to drop Twikoo entirely and ship a custom comment system liv
 │   └── workflows/
 │       ├── ci.yml              # PR validation: flake check + type/format/lint/spell
 │       └── deploy.yml          # Push-to-main → wrangler deploy
+├── migrations/                 # drizzle-kit generate output (applied via pnpm db:migrate)
 ├── scripts/
 │   └── bundle-trim.mjs         # postinstall: empty out Node-only modules to fit 1 MiB bundle
 ├── src/
+│   ├── db/                     # Drizzle schema + per-table query classes
+│   ├── handlers/               # one file per Twikoo event group + registry
+│   ├── lib/                    # cross-cutting utilities (auth, errors, geo, http)
 │   ├── worker.ts               # fetch entry: CORS, routing, event dispatch
+│   ├── dispatch.ts             # body parsing, ctx assembly, handler invocation
+│   ├── twikoo.ts               # twikoo-func wiring + V8-compatible shims
 │   └── types.ts                # Env interface + shared types
+├── drizzle.config.ts           # drizzle-kit config (d1-http driver)
 ├── flake.nix                   # Nix dev shell + git-hooks-nix pre-commit
-├── schema.sql                  # D1 schema (comment, config, counter)
 ├── wrangler.toml               # Worker config (D1 + R2 bindings, custom domain)
 ├── package.json
 ├── tsconfig.json
@@ -34,7 +40,7 @@ A long-term roadmap to drop Twikoo entirely and ship a custom comment system liv
 ## Stack
 
 - **Runtime**: Cloudflare Workers (V8 isolate) with `nodejs_compat` flag.
-- **Storage**: Cloudflare D1 (SQLite) for `comment` / `config` / `counter` tables; Cloudflare R2 for uploaded images.
+- **Storage**: Cloudflare D1 (SQLite) for `comment` / `config` / `counter` tables, accessed via Drizzle ORM (`drizzle-orm/d1`); Cloudflare R2 for uploaded images.
 - **Mail**: HTTP-based providers only (SendGrid / MailChannels / Resend). No SMTP — `nodemailer` is null'd at bundle time.
 - **Sanitization**: [`xss`](https://www.npmjs.com/package/xss) (replaces `DOMPurify` + `jsdom`).
 - **Spam**: Akismet HTTP API + frequency limiter; Cloudflare Turnstile for captcha.
@@ -65,12 +71,14 @@ For local secrets, create `.dev.vars` (gitignored) with one `KEY=value` per line
 
 ```bash
 pnpm wrangler login                                               # one-time OAuth
-pnpm wrangler d1 create twikoo                                    # capture database_id → wrangler.toml
+pnpm wrangler d1 create twikoo                                    # capture database_id → wrangler.toml + drizzle.config.ts
 pnpm wrangler r2 bucket create twikoo
-pnpm wrangler d1 execute twikoo --remote --file=./schema.sql
+pnpm db:migrate                                                   # apply migrations/ to remote D1 (needs CLOUDFLARE_D1_TOKEN)
 pnpm wrangler secret put SMTP_PASS                                # repeat per secret
 pnpm deploy
 ```
+
+For brownfield D1 (tables already exist), baseline the Drizzle migration journal once with `pnpm db:pull -- --init` before any further `pnpm db:migrate`. Otherwise `migrate` will try to re-run the bootstrap and fail.
 
 ### CI deploy
 
@@ -92,6 +100,13 @@ Pushes to `main` trigger `.github/workflows/deploy.yml`. Required repo secrets:
 ### Section Dividers
 
 - Use `// ── Section Name ──` for section dividers in code (box-drawing character `─`, U+2500). No padding to a fixed column — the trailing `──` is two characters, same as the leading.
+
+### Schema and migrations
+
+- `src/db/schema.ts` is the single source of truth for the D1 schema. `wrangler d1 execute --file=...` SQL files are not authoritative and must not be hand-edited to drift from `schema.ts`.
+- After any schema edit, run `pnpm db:generate` to produce a new file under `migrations/`. Commit both the schema change and the generated migration in the same commit — they're a logical unit, and reviewers should see the SQL Drizzle will run.
+- Reach for the raw `sql` tagged template only when the query builder can't express the shape cleanly (e.g., admin search fanning `LIKE ?` across many text columns). Inside the tag, interpolate column references via `${schema.table.column}` so identifiers stay schema-aware; the raw query is still type-checked at the boundary by Drizzle.
+- For brownfield baselining, see the "Manual deploy" section above.
 
 ### Local-only paths
 
