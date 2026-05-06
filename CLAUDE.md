@@ -2,7 +2,7 @@
 
 ## Project Overview
 
-twikoo-api-worker is a Cloudflare Workers backend for the [Twikoo](https://twikoo.js.org/en/intro.html) comment system, deployed to <https://twikoo-api.hakula.xyz>. It replaces the previous Vercel + MongoDB deployment ([hakula139/twikoo-vercel-api](https://github.com/hakula139/twikoo-vercel-api)) with Cloudflare D1 (SQLite) for comments and Cloudflare R2 for image uploads.
+twikoo-api-worker is a Cloudflare Workers backend for the [Twikoo](https://twikoo.js.org/en/intro.html) comment system, deployed to <https://twikoo.hakula.xyz>. It replaces the previous Vercel + MongoDB deployment ([hakula139/twikoo-vercel-api](https://github.com/hakula139/twikoo-vercel-api)) — which still serves the legacy `twikoo-api.hakula.xyz` URL during cutover — with Cloudflare D1 (SQLite) for comments and Cloudflare R2 for image uploads.
 
 The worker is a thin TypeScript dispatcher that delegates business logic to the upstream `twikoo-func` npm package, with V8-isolate-compatible shims for parts of `twikoo-func` that assume Node.js (mail via HTTP providers instead of SMTP, `xss` instead of `DOMPurify` + `jsdom`, etc.).
 
@@ -87,7 +87,11 @@ Pushes to `main` trigger `.github/workflows/deploy.yml`. Required repo secrets:
 - `Env` is hand-written in `src/types.ts`. Optional secrets (`?`) so the smoke-test path runs without them; handlers that need a secret must validate.
 - File naming: kebab-case (`mail.ts`, not `mailService.ts`).
 - Imports: type imports first, then value imports, grouped by source.
-- Sparse comments — only when *why* is non-obvious (hidden constraint, V8 quirk, upstream contract).
+- Sparse comments — only when _why_ is non-obvious (hidden constraint, V8 quirk, upstream contract).
+
+### Local-only paths
+
+Never reference gitignored paths (`.claude/`, `.dev.vars`, `.env*`, etc.) from anything that gets committed: source files, code comments, commit messages, PR descriptions, README, or other docs. They don't exist for other contributors or CI, and the references rot. This file (`CLAUDE.md`) is the exception — it documents local planning state for the assistant.
 
 ### Bundle constraints
 
