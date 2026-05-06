@@ -1,6 +1,6 @@
 import type { Handler } from '../types';
 
-import { isAdmin } from '../auth';
+import { isAdmin } from '../lib/auth';
 import { VERSION, getConfig as getConfigFn } from '../twikoo';
 
 export const getConfig: Handler = async (_payload, ctx) => {

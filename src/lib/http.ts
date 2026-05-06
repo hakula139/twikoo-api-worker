@@ -1,4 +1,4 @@
-import type { TwikooConfig, TwikooResponse } from './types';
+import type { TwikooConfig, TwikooResponse } from '../types';
 
 const ALLOWED_HEADERS =
   'X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version';

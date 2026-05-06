@@ -3,8 +3,8 @@ import type { ExecutionContext, ExportedHandler } from '@cloudflare/workers-type
 import type { Env } from './types';
 
 import { dispatch } from './dispatch';
-import { ResponseCode } from './errors';
-import { corsHeaders, jsonResponse } from './http';
+import { ResponseCode } from './lib/errors';
+import { corsHeaders, jsonResponse } from './lib/http';
 import { VERSION, logger } from './twikoo';
 
 export default {

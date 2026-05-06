@@ -3,12 +3,12 @@ import type { ExecutionContext } from '@cloudflare/workers-types';
 import type { Env, Handler, RequestCtx, TwikooConfig, TwikooResponse } from './types';
 
 import { DB } from './db';
-import { ResponseCode, TwikooError } from './errors';
-import { extractGeo } from './geo';
 import { counterGet } from './handlers/counter';
 import { getConfig } from './handlers/config';
 import { getFuncVersion } from './handlers/meta';
-import { corsHeaders, jsonResponse } from './http';
+import { ResponseCode, TwikooError } from './lib/errors';
+import { extractGeo } from './lib/geo';
+import { corsHeaders, jsonResponse } from './lib/http';
 import { logger } from './twikoo';
 
 export const handlers: Record<string, Handler> = {
