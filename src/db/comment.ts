@@ -1,5 +1,9 @@
 import { DBBase } from './base';
 
+// SQLite has no boolean type; 0/1 columns ride on INTEGER. `Bit` is a
+// compile-time refinement so `isSpam: 7` fails before it reaches the DB.
+export type Bit = 0 | 1;
+
 // `ups` / `downs` are JSON-stringified arrays of voter UIDs.
 export interface StoredComment {
   _id: string;
@@ -11,18 +15,18 @@ export interface StoredComment {
   ua: string;
   ip: string;
   ipRegion: string;
-  master: number;
+  master: Bit;
   url: string;
   href: string;
   comment: string;
   pid: string;
   rid: string;
-  isSpam: number;
+  isSpam: Bit;
   created: number;
   updated: number;
   ups: string;
   downs: string;
-  top: number;
+  top: Bit;
   avatar: string;
 }
 
@@ -56,7 +60,7 @@ export class CommentDB extends DBBase {
       .first<StoredComment>();
   }
 
-  async count(url: string, hideSpam: number, uid: string): Promise<number> {
+  async count(url: string, hideSpam: Bit, uid: string): Promise<number> {
     return (
       (await this.stmt(
         'count',
@@ -69,10 +73,10 @@ export class CommentDB extends DBBase {
 
   async list(
     url: string,
-    hideSpam: number,
+    hideSpam: Bit,
     uid: string,
     before: number,
-    top: number,
+    top: Bit,
     limit: number,
   ): Promise<StoredComment[]> {
     const { results } = await this.stmt(
@@ -89,12 +93,7 @@ LIMIT ?6
     return results;
   }
 
-  async replies(
-    url: string,
-    hideSpam: number,
-    uid: string,
-    rids: string[],
-  ): Promise<StoredComment[]> {
+  async replies(url: string, hideSpam: Bit, uid: string, rids: string[]): Promise<StoredComment[]> {
     if (rids.length === 0) {
       return [];
     }
@@ -199,7 +198,7 @@ LIMIT ?4
       .run();
   }
 
-  async updateSpam(id: string, isSpam: number, updated: number): Promise<void> {
+  async updateSpam(id: string, isSpam: Bit, updated: number): Promise<void> {
     await this.stmt('updateSpam', 'UPDATE comment SET isSpam = ?2, updated = ?3 WHERE _id = ?1')
       .bind(id, isSpam, updated)
       .run();
@@ -218,7 +217,7 @@ LIMIT ?4
 
   // ── Admin views & export ────────────────────────────────────────────────
 
-  async countForAdmin(spamFilter: number, keyword: string): Promise<number> {
+  async countForAdmin(spamFilter: Bit, keyword: string): Promise<number> {
     return (
       (await this.stmt(
         'countForAdmin',
@@ -235,7 +234,7 @@ WHERE isSpam != ?1
   }
 
   async listForAdmin(
-    spamFilter: number,
+    spamFilter: Bit,
     keyword: string,
     limit: number,
     offset: number,
