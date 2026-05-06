@@ -1,4 +1,6 @@
-import type { TwikooConfig, TwikooResponse } from './types';
+import type { TwikooConfig, TwikooResponse } from '../types';
+
+import { logger } from '../twikoo';
 
 const ALLOWED_HEADERS =
   'X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version';
@@ -29,12 +31,18 @@ export const corsHeaders = (
   if (!origin) {
     return {};
   }
+  const allowed = config ? matchAllowedOrigin(origin, config) : origin;
+  if (!allowed) {
+    logger.warn(`CORS rejected origin: ${origin}`);
+    return {};
+  }
   return {
     'Access-Control-Allow-Credentials': 'true',
-    'Access-Control-Allow-Origin': config ? matchAllowedOrigin(origin, config) : origin,
-    'Access-Control-Allow-Methods': 'POST',
+    'Access-Control-Allow-Origin': allowed,
+    'Access-Control-Allow-Methods': 'GET, POST',
     'Access-Control-Allow-Headers': ALLOWED_HEADERS,
     'Access-Control-Max-Age': '600',
+    'Vary': 'Origin',
   };
 };
 

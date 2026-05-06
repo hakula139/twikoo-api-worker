@@ -3,51 +3,53 @@ import type { ExecutionContext } from '@cloudflare/workers-types';
 import type { Env, Handler, RequestCtx, TwikooConfig, TwikooResponse } from './types';
 
 import { DB } from './db';
-import { ResponseCode, TwikooError } from './errors';
-import { extractGeo } from './geo';
-import { counterGet } from './handlers/counter';
-import { getConfig } from './handlers/config';
-import { getFuncVersion } from './handlers/meta';
-import { corsHeaders, jsonResponse } from './http';
+import { handlers as defaultHandlers } from './handlers';
+import { ResponseCode, TwikooError } from './lib/errors';
+import { extractGeo } from './lib/geo';
+import { corsHeaders, jsonResponse } from './lib/http';
 import { logger } from './twikoo';
 
-export const handlers: Record<string, Handler> = {
-  COUNTER_GET: counterGet,
-  GET_CONFIG: getConfig,
-  GET_FUNC_VERSION: getFuncVersion,
-};
+const isPlainObject = (value: unknown): value is Record<string, unknown> =>
+  value !== null && typeof value === 'object' && !Array.isArray(value);
 
-interface RequestBody {
-  event?: string;
-  accessToken?: string;
-  [key: string]: unknown;
-}
+const stringField = (body: Record<string, unknown>, key: string): string =>
+  typeof body[key] === 'string' ? body[key] : '';
 
 export const dispatch = async (
   request: Request,
   env: Env,
   ctx: ExecutionContext,
-  registry: Record<string, Handler> = handlers,
+  registry: Record<string, Handler> = defaultHandlers,
 ): Promise<Response> => {
   const origin = request.headers.get('Origin');
   const db = new DB(env.DB);
 
-  let body: RequestBody;
+  let body: Record<string, unknown>;
   try {
-    body = (await request.json<RequestBody>()) ?? {};
-  } catch {
+    const parsed = await request.json<unknown>();
+    if (!isPlainObject(parsed)) {
+      return jsonResponse(
+        { code: ResponseCode.FAIL, message: 'Request body must be a JSON object.' },
+        corsHeaders(origin),
+      );
+    }
+
+    body = parsed;
+  } catch (error) {
+    logger.error('Request body parse failed:', error);
     return jsonResponse(
       { code: ResponseCode.FAIL, message: 'Body is not valid JSON.' },
       corsHeaders(origin),
     );
   }
 
-  const configRaw = await db.readConfig();
+  const configRaw = await db.config.read();
   const config: TwikooConfig = configRaw ? (JSON.parse(configRaw) as TwikooConfig) : {};
-
   const headers = corsHeaders(origin, config);
-  const event = body.event ?? '';
-  const uid = body.accessToken ?? request.headers.get('x-twikoo-recaptcha-v3') ?? '';
+
+  const event = stringField(body, 'event');
+  const accessToken = stringField(body, 'accessToken');
+  const uid = accessToken || request.headers.get('x-twikoo-recaptcha-v3') || '';
   const { ip, region } = extractGeo(request);
 
   const requestCtx: RequestCtx = {
@@ -70,20 +72,15 @@ export const dispatch = async (
     );
   }
 
-  const { event: _event, accessToken: _accessToken, ...payload } = body;
-  void _event;
-  void _accessToken;
-
   let result: Partial<TwikooResponse>;
   try {
-    result = await handler(payload, requestCtx);
+    result = await handler(body, requestCtx);
   } catch (error) {
     if (error instanceof TwikooError) {
       return jsonResponse({ code: error.code, message: error.message }, headers);
     }
     logger.error('Unhandled handler error:', error);
-    const message = error instanceof Error ? error.message : 'Internal error.';
-    return jsonResponse({ code: ResponseCode.FAIL, message }, headers);
+    return jsonResponse({ code: ResponseCode.FAIL, message: 'Internal error.' }, headers);
   }
 
   return jsonResponse({ code: ResponseCode.SUCCESS, ...result }, headers);

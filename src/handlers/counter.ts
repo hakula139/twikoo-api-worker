@@ -6,6 +6,6 @@ export const counterGet: Handler = async (payload, ctx) => {
   validate(payload, ['url']);
   const url = payload.url as string;
   const title = (payload.title as string | undefined) ?? '';
-  await ctx.db.incrementCounter(url, title, Date.now());
-  return { time: await ctx.db.counterTime(url) };
+  await ctx.db.counter.incr(url, title, Date.now());
+  return { time: await ctx.db.counter.time(url) };
 };
