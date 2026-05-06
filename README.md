@@ -31,11 +31,13 @@ Without Nix, install Node.js 24 and pnpm yourself.
 ```bash
 pnpm wrangler login
 pnpm wrangler d1 create twikoo
-# Copy database_id from the output into wrangler.toml.
-pnpm wrangler d1 execute twikoo --remote --file=./schema.sql
+# Copy database_id from the output into wrangler.toml and drizzle.config.ts.
+pnpm db:push                   # sync schema.ts to remote D1 (needs CLOUDFLARE_D1_TOKEN)
 pnpm wrangler r2 bucket create twikoo
 # Set custom R2 public URL via Cloudflare dashboard, then update R2_PUBLIC_URL in wrangler.toml.
 ```
+
+Schema is defined in [`src/db/schema.ts`](src/db/schema.ts). `pnpm db:push` diffs the schema against remote D1 and applies the delta directly — no migration files in the repo.
 
 Secrets (set as needed):
 
@@ -55,8 +57,9 @@ For local dev secrets, create `.dev.vars` (gitignored) with `KEY=value` per line
 pnpm dev                     # wrangler dev on port 8787
 pnpm check                   # type-check
 pnpm format                  # prettier --check .
-pnpm lint                    # markdownlint *.md
+pnpm lint                    # markdownlint + eslint
 pnpm spellcheck              # cspell
+pnpm db:push                 # sync schema.ts changes to remote D1
 ```
 
 ## Deployment

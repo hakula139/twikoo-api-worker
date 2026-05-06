@@ -1,17 +1,13 @@
 import type { IncomingRequestCfProperties } from '@cloudflare/workers-types';
 
-// Format mirrors `ip2region` (country|0|province|city|isp), which is what
-// `twikoo-func` expects when computing display regions. Cloudflare doesn't
-// expose ISP data through `request.cf`, so the trailing slot stays empty.
+// `region` mirrors ip2region's `country|0|province|city|isp` shape so
+// twikoo-func's display logic can consume it; Cloudflare has no ISP data.
 export interface RequestGeo {
   ip: string;
   region: string;
 }
 
 export const extractGeo = (request: Request): RequestGeo => {
-  // The augmented `request.cf` is the union `IncomingRequestCfProperties |
-  // RequestInitCfProperties`; inside a fetch handler it's always the incoming
-  // variant, so the assertion is safe.
   const cf = request.cf as IncomingRequestCfProperties | undefined;
   const ip = request.headers.get('CF-Connecting-IP') ?? '';
   const country = cf?.country ?? '';
@@ -21,8 +17,7 @@ export const extractGeo = (request: Request): RequestGeo => {
   return { ip, region };
 };
 
-// Beautify `country|0|province|city|isp` for display. Empty slots collapse to
-// avoid renders like "China||Beijing||" — we want "China · Beijing".
+// "China||Beijing||" → "China · Beijing"
 export const formatIpRegion = (region: string): string => {
   return region
     .split('|')

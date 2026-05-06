@@ -7,8 +7,7 @@ export interface Env {
   R2: R2Bucket;
   R2_PUBLIC_URL: string;
 
-  // Secrets — set via `wrangler secret put`. Optional in TS so the smoke-test
-  // path runs without them; handlers that need a secret must validate.
+  // Secrets are optional so the smoke-test path runs without them; consumers must validate.
   AKISMET_KEY?: string;
   SENDER_EMAIL?: string;
   SMTP_PASS?: string;
@@ -16,9 +15,7 @@ export interface Env {
   TURNSTILE_SECRET?: string;
 }
 
-// Twikoo's config table holds a single row whose `value` column is a
-// JSON-stringified blob. Declared fields are the ones we read directly;
-// twikoo-func may set additional ones, so the index signature stays open.
+// Single-row blob in the `config` table. Open index signature: twikoo-func may set extras.
 export interface TwikooConfig {
   ADMIN_PASS?: string;
   BLOGGER_EMAIL?: string;
@@ -34,8 +31,6 @@ export interface TwikooConfig {
   [key: string]: unknown;
 }
 
-// Per-request context, computed once in `worker.ts` and threaded through every
-// handler. Keeps handlers pure — no global state, no cross-request leakage.
 export interface RequestCtx {
   env: Env;
   request: Request;
@@ -48,8 +43,7 @@ export interface RequestCtx {
   db: DB;
 }
 
-// Twikoo's wire-protocol envelope. Some events emit ad-hoc top-level fields
-// (`count`, `more`, `time`, `log`, `id`), so the index signature stays open.
+// Open index signature: events emit ad-hoc top-level fields (count, more, time, log, id).
 export interface TwikooResponse {
   code: number;
   message?: string;
@@ -59,8 +53,7 @@ export interface TwikooResponse {
   [key: string]: unknown;
 }
 
-// Handler signature. The dispatcher parses the request body, builds the ctx,
-// and invokes the handler. Returning `{}` is treated as success (code 0).
+// Returning `{}` is treated as SUCCESS.
 export type Handler = (
   payload: Record<string, unknown>,
   ctx: RequestCtx,

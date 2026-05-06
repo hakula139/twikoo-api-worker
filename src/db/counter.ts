@@ -1,33 +1,35 @@
-import type { D1Result } from '@cloudflare/workers-types';
+import type { DrizzleD1Database } from 'drizzle-orm/d1';
 
-import { DBBase } from './base';
+import { eq, sql } from 'drizzle-orm';
 
-export interface CounterRow {
-  url: string;
-  title: string;
-  time: number;
-  created: number;
-  updated: number;
-}
+import { type Counter, counter } from './schema';
 
-export class CounterDB extends DBBase {
-  async incr(url: string, title: string, ts: number): Promise<D1Result> {
-    return this.stmt(
-      'incrementCounter',
-      `
-INSERT INTO counter VALUES (?1, ?2, 1, ?3, ?3)
-ON CONFLICT (url) DO UPDATE SET time = time + 1, title = ?2, updated = ?3
-`.trim(),
-    )
-      .bind(url, title, ts)
-      .run();
+export type { Counter } from './schema';
+
+export class CounterDB {
+  constructor(private readonly db: DrizzleD1Database) {}
+
+  async incr(url: string, title: string, ts: number): Promise<void> {
+    await this.db
+      .insert(counter)
+      .values({ url, title, time: 1, created: ts, updated: ts })
+      .onConflictDoUpdate({
+        target: counter.url,
+        set: { time: sql`${counter.time} + 1`, title, updated: ts },
+      });
   }
 
   async time(url: string): Promise<number> {
-    return (
-      (await this.stmt('counterTime', 'SELECT time FROM counter WHERE url = ?1')
-        .bind(url)
-        .first<number>('time')) ?? 0
-    );
+    const [row] = await this.db
+      .select({ time: counter.time })
+      .from(counter)
+      .where(eq(counter.url, url))
+      .limit(1);
+    return row?.time ?? 0;
+  }
+
+  async byUrl(url: string): Promise<Counter | undefined> {
+    const [row] = await this.db.select().from(counter).where(eq(counter.url, url)).limit(1);
+    return row;
   }
 }
