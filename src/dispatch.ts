@@ -33,6 +33,7 @@ export const dispatch = async (
         corsHeaders(origin),
       );
     }
+
     body = parsed;
   } catch {
     return jsonResponse(
@@ -43,8 +44,8 @@ export const dispatch = async (
 
   const configRaw = await db.readConfig();
   const config: TwikooConfig = configRaw ? (JSON.parse(configRaw) as TwikooConfig) : {};
-
   const headers = corsHeaders(origin, config);
+
   const event = stringField(body, 'event');
   const accessToken = stringField(body, 'accessToken');
   const uid = accessToken || request.headers.get('x-twikoo-recaptcha-v3') || '';

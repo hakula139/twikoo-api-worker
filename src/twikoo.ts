@@ -42,7 +42,7 @@ setCustomLibs({
 
 export const VERSION: string = twikooFuncPkg.version;
 
-// `getMd5()`/`getSha256()` are factories — cache once for stable references.
+// `getMd5()` / `getSha256()` are factories — cache once for stable references.
 export const md5 = getMd5();
 export const sha256 = getSha256();
 
