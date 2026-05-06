@@ -35,7 +35,8 @@ export const dispatch = async (
     }
 
     body = parsed;
-  } catch {
+  } catch (error) {
+    logger.error('Request body parse failed:', error);
     return jsonResponse(
       { code: ResponseCode.FAIL, message: 'Body is not valid JSON.' },
       corsHeaders(origin),
