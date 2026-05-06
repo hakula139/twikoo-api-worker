@@ -52,7 +52,7 @@ UPDATE comment SET {{FIELDS}} WHERE _id = ?
 `.trim();
 
 export class CommentDB extends DBBase {
-  // ── Reads ───────────────────────────────────────────────────────────────
+  // ── Reads ──
 
   async byId(id: string): Promise<StoredComment | null> {
     return this.stmt('byId', 'SELECT * FROM comment WHERE _id = ?1')
@@ -156,7 +156,7 @@ LIMIT ?4
     );
   }
 
-  // ── Writes ──────────────────────────────────────────────────────────────
+  // ── Writes ──
 
   async save(c: StoredComment): Promise<void> {
     await this.stmt('save', SAVE_SQL)
@@ -215,7 +215,7 @@ LIMIT ?4
       .run();
   }
 
-  // ── Admin views & export ────────────────────────────────────────────────
+  // ── Admin views & export ──
 
   async countForAdmin(spamFilter: Bit, keyword: string): Promise<number> {
     return (
