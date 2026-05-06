@@ -3,19 +3,11 @@ import type { ExecutionContext } from '@cloudflare/workers-types';
 import type { Env, Handler, RequestCtx, TwikooConfig, TwikooResponse } from './types';
 
 import { DB } from './db';
-import { counterGet } from './handlers/counter';
-import { getConfig } from './handlers/config';
-import { getFuncVersion } from './handlers/meta';
+import { handlers as defaultHandlers } from './handlers';
 import { ResponseCode, TwikooError } from './lib/errors';
 import { extractGeo } from './lib/geo';
 import { corsHeaders, jsonResponse } from './lib/http';
 import { logger } from './twikoo';
-
-export const handlers: Record<string, Handler> = {
-  COUNTER_GET: counterGet,
-  GET_CONFIG: getConfig,
-  GET_FUNC_VERSION: getFuncVersion,
-};
 
 interface RequestBody {
   event?: string;
@@ -27,7 +19,7 @@ export const dispatch = async (
   request: Request,
   env: Env,
   ctx: ExecutionContext,
-  registry: Record<string, Handler> = handlers,
+  registry: Record<string, Handler> = defaultHandlers,
 ): Promise<Response> => {
   const origin = request.headers.get('Origin');
   const db = new DB(env.DB);
