@@ -1,20 +1,59 @@
-// Workers free-tier bundles are capped at 1 MiB. `twikoo-func` pulls in three
-// Node-only modules that the runtime can't execute anyway (`jsdom`,
-// `tencentcloud-sdk-nodejs`, `nodemailer`); we replace their entry points with
-// empty files so esbuild tree-shakes them out at deploy time. Custom shims
-// (xss for sanitization, fetch-based mail providers) live in `src/`.
+// Workers free-tier bundles cap at 1 MiB. `twikoo-func` pulls in three
+// Node-only modules the runtime can't execute; null out their entry points so
+// esbuild tree-shakes the rest. The lookup walks pnpm's `.pnpm/` hoist layout.
 
-import { existsSync, writeFileSync } from 'node:fs';
+import { existsSync, globSync, readFileSync, writeFileSync } from 'node:fs';
+import { dirname, join } from 'node:path';
 
-const TARGETS = [
-  'node_modules/jsdom/lib/api.js',
-  'node_modules/tencentcloud-sdk-nodejs/tencentcloud/index.js',
-  'node_modules/nodemailer/lib/nodemailer.js',
-];
+const PACKAGES = ['jsdom', 'nodemailer', 'tencentcloud-sdk-nodejs'];
 
-for (const target of TARGETS) {
-  if (existsSync(target)) {
-    writeFileSync(target, '');
-    console.log(`  trimmed ${target}`);
+const entryPathsFromPkg = (pkgJson) => {
+  const entries = new Set();
+  if (typeof pkgJson.main === 'string') {
+    entries.add(pkgJson.main);
+  }
+  if (typeof pkgJson.module === 'string') {
+    entries.add(pkgJson.module);
+  }
+  const exp = pkgJson.exports;
+  if (exp && typeof exp === 'object') {
+    for (const v of Object.values(exp)) {
+      if (typeof v === 'string') {
+        entries.add(v);
+      } else if (v && typeof v === 'object') {
+        for (const inner of Object.values(v)) {
+          if (typeof inner === 'string') {
+            entries.add(inner);
+          }
+        }
+      }
+    }
+  }
+  return [...entries];
+};
+
+for (const pkg of PACKAGES) {
+  const pkgJsonPaths = [
+    ...globSync(`node_modules/${pkg}/package.json`),
+    ...globSync(`node_modules/.pnpm/*/node_modules/${pkg}/package.json`),
+  ];
+  if (pkgJsonPaths.length === 0) {
+    continue;
+  }
+
+  for (const pkgJsonPath of pkgJsonPaths) {
+    const pkgDir = dirname(pkgJsonPath);
+    const pkgJson = JSON.parse(readFileSync(pkgJsonPath, 'utf-8'));
+    if (pkgJson.name !== pkg) {
+      continue;
+    }
+
+    for (const entry of entryPathsFromPkg(pkgJson)) {
+      const target = join(pkgDir, entry);
+      if (existsSync(target) && target.endsWith('.js')) {
+        writeFileSync(target, '');
+        console.log(`  trimmed ${target}`);
+      }
+    }
   }
 }
