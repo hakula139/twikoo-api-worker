@@ -64,7 +64,7 @@ For local secrets, create `.dev.vars` (gitignored) with one `KEY=value` per line
 ### Manual deploy
 
 ```bash
-pnpm wrangler login          # one-time OAuth
+pnpm wrangler login                                               # one-time OAuth
 pnpm wrangler d1 create twikoo                                    # capture database_id → wrangler.toml
 pnpm wrangler r2 bucket create twikoo
 pnpm wrangler d1 execute twikoo --remote --file=./schema.sql
@@ -119,6 +119,36 @@ Driven by [git-hooks-nix](https://github.com/cachix/git-hooks.nix), wired in `fl
 ### Spell checking
 
 - Config in `cspell.json`. Add project-specific words to `.cspell/words.txt` (one word per line, sorted alphabetically).
+
+## Verification
+
+Run after implementation and before review:
+
+```bash
+pnpm check                   # tsc --noEmit
+pnpm lint                    # markdownlint + eslint
+pnpm format                  # prettier --check
+pnpm spellcheck              # cspell
+nix flake check              # Nix-side hooks (optional locally; CI runs the Node-side equivalents)
+```
+
+`pnpm dev` is the smoke test for runtime behavior — wrangler dev hits the live D1 / R2 bindings unless `--local` is passed. Bundle size (1 MiB free-tier cap) is verified at deploy time by `pnpm wrangler deploy --dry-run`.
+
+## Code Review
+
+After verification passes, run a parallel review with multiple subagents — typically a `reviewer` subagent and a `codex-worker` subagent for an independent second opinion, and lens-specific subagents from `pr-review-toolkit` (`code-reviewer`, `comment-analyzer`, `silent-failure-hunter`, `type-design-analyzer`) when the change touches their domain. The `/pr-review-toolkit:review-pr` slash command orchestrates the toolkit fan-out. Focus on:
+
+- Correctness and edge cases — especially CORS, request body shape, and D1 binding boundaries.
+- Adherence to project conventions (this file).
+- Conciseness — prefer the simplest idiomatic solution.
+- DRY — flag duplicate logic across handlers and DB classes; look for extraction opportunities.
+- Cross-file consistency — parallel handlers / DB methods should use the same structure, naming, ordering, and error-handling shape.
+- Comment hygiene — verbose multi-line blocks that should be one-liners, missing WHY comments where non-obvious (V8 quirks, upstream `twikoo-func` contracts, bundle-trim assumptions).
+- Visibility — `export` only what consumers need; keep helpers module-private.
+- Idiomatic TypeScript — discriminated unions, `readonly`, exhaustive `switch`, narrow types over `any` / `unknown` casts, async / await over raw Promises.
+- Existing packages — flag hand-written logic that `twikoo-func`, `xss`, or a Cloudflare-native API already handles.
+- Bundle impact — new dependencies must fit under 1 MiB after `bundle-trim.mjs`; flag Node-only packages that need trimming.
+- Secrets — any new config goes through `wrangler secret put`, never `wrangler.toml` or source.
 
 ## Upstream relationship
 
