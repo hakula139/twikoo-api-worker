@@ -7,9 +7,7 @@ const ALLOWED_HEADERS =
 
 const LOCALHOST_REGEX = /^https?:\/\/(localhost|127\.0\.0\.1|0\.0\.0\.0)(:\d{1,5})?$/;
 
-// Match `origin` against `config.CORS_ALLOW_ORIGIN` (comma-separated list).
-// Returns the origin if allowed, or '' to deny. Localhost variants are always
-// allowed; an empty/unset allowlist is treated as permissive (upstream parity).
+// Empty / unset allowlist is permissive — upstream parity. Localhost is exempt.
 const matchAllowedOrigin = (origin: string, config: TwikooConfig): string => {
   if (LOCALHOST_REGEX.test(origin)) {
     return origin;

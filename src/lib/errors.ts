@@ -1,6 +1,4 @@
-// Twikoo wire-protocol response codes. Numerical values are part of the
-// frontend contract — the embedded `twikoo` widget switches on these — so
-// they must match the upstream `twikoo-func` constants verbatim.
+// Frontend contract: values must match upstream twikoo-func constants verbatim.
 export const ResponseCode = {
   SUCCESS: 0,
   NO_PARAM: 100,
@@ -21,9 +19,7 @@ export const ResponseCode = {
 
 export type ResponseCodeName = keyof typeof ResponseCode;
 
-// Throw inside any handler to short-circuit with a non-SUCCESS response.
-// `worker.ts` catches at the top level and maps to a Twikoo JSON envelope.
-// Any non-TwikooError thrown is logged and reported as FAIL.
+// Throw inside a handler to short-circuit with a curated non-SUCCESS response.
 export class TwikooError extends Error {
   readonly code: number;
 

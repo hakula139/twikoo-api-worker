@@ -173,10 +173,7 @@ export class CommentDB {
     return this.db.select().from(comment);
   }
 
-  // Admin search fans `LIKE ?` across seven text columns. The query builder
-  // would either produce verbose `or(like(...), like(...), ...)` chains or
-  // bind the keyword seven times; raw `sql` keeps both the SQL and the bind
-  // count flat.
+  // Single bind across seven LIKE columns; builder chains would re-bind.
   private adminKeywordFilter(keyword: string) {
     return sql`(${comment.nick} LIKE ${keyword}
       OR ${comment.mail} LIKE ${keyword}
