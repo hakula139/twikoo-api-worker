@@ -1,9 +1,9 @@
 import type { ExecutionContext } from '@cloudflare/workers-types';
 
-import type { Env, Handler, RequestCtx, TwikooConfig, TwikooResponse } from './types';
+import type { Env, RequestCtx, TwikooConfig, TwikooResponse } from './types';
 
 import { DB } from './db';
-import { handlers as defaultHandlers } from './handlers';
+import { handlers } from './handlers';
 import { ResponseCode, TwikooError } from './lib/errors';
 import { extractGeo } from './lib/geo';
 import { corsHeaders, jsonResponse } from './lib/http';
@@ -19,7 +19,6 @@ export const dispatch = async (
   request: Request,
   env: Env,
   ctx: ExecutionContext,
-  registry: Record<string, Handler> = defaultHandlers,
 ): Promise<Response> => {
   const origin = request.headers.get('Origin');
   const db = new DB(env.DB);
@@ -64,7 +63,7 @@ export const dispatch = async (
     waitUntil: ctx.waitUntil.bind(ctx),
   };
 
-  const handler = registry[event];
+  const handler = handlers[event];
   if (!handler) {
     return jsonResponse(
       { code: ResponseCode.EVENT_NOT_EXIST, message: `Event "${event}" is not supported.` },
