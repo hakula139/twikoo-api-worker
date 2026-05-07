@@ -1,6 +1,8 @@
 import type { DrizzleD1Database } from 'drizzle-orm/d1';
 
-import { and, count, desc, eq, gt, inArray, lt, ne, or, sql } from 'drizzle-orm';
+import type { SQL } from 'drizzle-orm';
+
+import { and, count, desc, eq, gt, inArray, lt, or, sql } from 'drizzle-orm';
 
 import { type Bit, type Comment, type NewComment, comment } from './schema';
 
@@ -145,24 +147,16 @@ export class CommentDB {
 
   // ── Admin views & export ──
 
-  async countForAdmin(spamFilter: Bit, keyword: string): Promise<number> {
-    const [row] = await this.db
-      .select({ count: count() })
-      .from(comment)
-      .where(and(ne(comment.isSpam, spamFilter), this.adminKeywordFilter(keyword)));
+  async countForAdmin(filter: AdminFilter): Promise<number> {
+    const [row] = await this.db.select({ count: count() }).from(comment).where(adminWhere(filter));
     return row?.count ?? 0;
   }
 
-  async listForAdmin(
-    spamFilter: Bit,
-    keyword: string,
-    limit: number,
-    offset: number,
-  ): Promise<Comment[]> {
+  async listForAdmin(filter: AdminFilter, limit: number, offset: number): Promise<Comment[]> {
     return this.db
       .select()
       .from(comment)
-      .where(and(ne(comment.isSpam, spamFilter), this.adminKeywordFilter(keyword)))
+      .where(adminWhere(filter))
       .orderBy(desc(comment.created))
       .limit(limit)
       .offset(offset);
@@ -171,15 +165,25 @@ export class CommentDB {
   async exportAll(): Promise<Comment[]> {
     return this.db.select().from(comment);
   }
-
-  // Single bind across seven LIKE columns; builder chains would re-bind.
-  private adminKeywordFilter(keyword: string) {
-    return sql`(${comment.nick} LIKE ${keyword}
-      OR ${comment.mail} LIKE ${keyword}
-      OR ${comment.link} LIKE ${keyword}
-      OR ${comment.ip} LIKE ${keyword}
-      OR ${comment.comment} LIKE ${keyword}
-      OR ${comment.url} LIKE ${keyword}
-      OR ${comment.href} LIKE ${keyword})`;
-  }
 }
+
+export interface AdminFilter {
+  isSpam?: Bit;
+  // Already wrapped in `%foo%` if a substring match is desired.
+  keyword?: string;
+}
+
+const adminWhere = (filter: AdminFilter): SQL | undefined =>
+  and(
+    filter.isSpam !== undefined ? eq(comment.isSpam, filter.isSpam) : undefined,
+    filter.keyword ? adminKeywordFilter(filter.keyword) : undefined,
+  );
+
+// Single bind across seven LIKE columns; builder chains would re-bind.
+const adminKeywordFilter = (keyword: string): SQL => sql`(${comment.nick} LIKE ${keyword}
+  OR ${comment.mail} LIKE ${keyword}
+  OR ${comment.link} LIKE ${keyword}
+  OR ${comment.ip} LIKE ${keyword}
+  OR ${comment.comment} LIKE ${keyword}
+  OR ${comment.url} LIKE ${keyword}
+  OR ${comment.href} LIKE ${keyword})`;
