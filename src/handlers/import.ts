@@ -92,10 +92,8 @@ const runImport = async (
   }
 };
 
-// Upstream's `commentImportDisqus` was written against `xml2js` output: every
-// element is an array, attributes live under `$`, text is the array element.
-// `fast-xml-parser` natively returns scalars for single elements, so we wrap
-// non-`$` keys in arrays after parsing.
+// commentImportDisqus expects xml2js shape (every elem an array, attrs under
+// `$`); fast-xml-parser returns scalars, so re-wrap below.
 const xmlParser = new XMLParser({
   ignoreAttributes: false,
   attributeNamePrefix: '',
@@ -142,9 +140,7 @@ const toJsonArray = (v: unknown): string => {
   return '[]';
 };
 
-// Upstream sources produce heterogeneous shapes — some omit fields entirely,
-// some carry MongoDB-style booleans, our own export carries D1's 0/1 + JSON
-// strings. Coerce everything into NewComment with safe defaults.
+// Coerce heterogeneous upstream shapes into NewComment with safe defaults.
 const normalizeRow = (raw: ImportedRow): NewComment => {
   const now = Date.now();
   return {

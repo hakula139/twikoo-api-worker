@@ -1,9 +1,7 @@
 import type { RequestCtx, TwikooConfig } from '../types';
 
-// (env binding → admin-config field) for every integration secret. Wrangler
-// secret takes precedence; admin-config field is the fallback. Captcha is the
-// only mismatch — env follows the wrangler convention, config matches the
-// admin UI key (read by upstream too).
+// env binding → admin-config field. Wrangler secret wins over admin config.
+// Turnstile is the lone naming mismatch (env vs upstream's admin UI key).
 const SECRET_PAIRS = {
   AKISMET_KEY: 'AKISMET_KEY',
   QQ_API_KEY: 'QQ_API_KEY',
@@ -24,9 +22,8 @@ export const secret = (ctx: RequestCtx, key: SecretEnvKey): string | undefined =
   return typeof fromConfig === 'string' ? fromConfig : undefined;
 };
 
-// Returns a config snapshot with env values shadowing the corresponding admin-
-// config keys. Use when handing config to upstream code (twikoo-func/utils/notify,
-// /spam) that reads keys directly — handlers can't intercept those reads.
+// Hand to upstream code (notify, spam) that reads config keys directly — env
+// values shadow admin-config keys.
 export const configWithSecrets = (ctx: RequestCtx): TwikooConfig => {
   const merged: TwikooConfig = { ...ctx.config };
   for (const [envKey, configKey] of Object.entries(SECRET_PAIRS) as Array<[SecretEnvKey, string]>) {

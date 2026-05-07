@@ -27,6 +27,7 @@ import {
   validate,
 } from '../twikoo';
 
+// Year 3270 — sentinel "no `before` cursor" so the `<` comparison always passes.
 const MAX_TIMESTAMP_MILLIS = 41025312000000;
 const MAX_QUERY_LIMIT = 500;
 const NON_NEWEST_LIMIT = 100;
@@ -68,11 +69,8 @@ export const commentGet: Handler<'COMMENT_GET'> = async (payload, ctx) => {
 
   const total = await ctx.db.comment.count(url, showAll, ctx.uid);
 
-  // The widget always sends `before = min(rendered.created)` as the load-more
-  // cursor, which is only valid for `newest` (created desc). For `oldest` and
-  // `popular`, fetch a generous cap in one shot and report `more = false` so the
-  // widget hides its load-more button. Beyond NON_NEWEST_LIMIT on those tabs,
-  // users can switch back to `newest` to keep paging.
+  // The widget's `before` cursor (min rendered created) is only meaningful for
+  // `newest`; `oldest` / `popular` fetch up to NON_NEWEST_LIMIT in one shot.
   const isNewest = sort === 'newest';
   let probed: Comment[];
   let more = false;
@@ -108,9 +106,8 @@ export const commentGet: Handler<'COMMENT_GET'> = async (payload, ctx) => {
   );
   const all = [...heads, ...replies];
 
-  // twikoo-func's parseComment internally calls fn.getIpRegion when SHOW_REGION is
-  // truthy, which tries to require @imaegoo/node-ip2region — a Node-only binary
-  // lookup we can't ship on Workers. Force it off here, then patch ipRegion below.
+  // Force SHOW_REGION off so parseComment skips its Node-only ip2region
+  // lookup; we patch ipRegion from the stored value below.
   const configForParse = { ...ctx.config, SHOW_REGION: 'false' };
   const parsed = parseComment(all.map(decodeVotes), ctx.uid, configForParse) as ParsedComment[];
 
@@ -386,9 +383,8 @@ export const commentGetForAdmin: Handler<'COMMENT_GET_FOR_ADMIN'> = async (paylo
     ctx.db.comment.listForAdmin(filter, per, per * (page - 1)),
   ]);
 
-  // Upstream's parseCommentForAdmin runs getIpRegion({detail: true}), which
-  // pulls a Node-only binary lookup we can't ship. Re-format the stored region
-  // string instead — already populated at submit time from the request `cf`.
+  // Skip upstream parseCommentForAdmin (Node-only ip2region lookup); reformat
+  // the stored region populated at submit time from request.cf.
   const data = rows.map((c) => ({
     ...c,
     ipRegion: c.ipRegion ? formatIpRegion(c.ipRegion) : '',

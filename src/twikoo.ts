@@ -1,5 +1,4 @@
-// Single boundary against twikoo-func. `setCustomLibs` runs at module load,
-// before any helper is invoked.
+// Single boundary against twikoo-func; setCustomLibs runs at module load.
 
 import {
   addQQMailSuffix,
@@ -42,12 +41,11 @@ setCustomLibs({
 
 export const VERSION: string = twikooFuncPkg.version;
 
-// `getMd5()` / `getSha256()` are factories — cache once for stable references.
+// getMd5() / getSha256() are factories — cache once for stable references.
 export const md5 = getMd5();
 export const sha256 = getSha256();
 
-// Upstream helpers return `{code, ...payload}`; dispatch wraps with `code: 0`,
-// so handlers must strip the inner field to avoid double-wrapping.
+// Strip the inner `code` so dispatch's outer `code: 0` doesn't double-wrap.
 export const stripCode = <T extends { code: number }>(result: T): Omit<T, 'code'> => {
   const { code: _code, ...rest } = result;
   return rest;

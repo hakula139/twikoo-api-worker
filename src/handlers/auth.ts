@@ -27,12 +27,9 @@ export const setPassword: Handler<'SET_PASSWORD'> = async (payload, ctx) => {
   return {};
 };
 
-// Verify the password. The widget's HTTP-mode flow auto-saves the password it
-// sent as `twikoo-access-token` in localStorage when the response has `code:0`
-// and no `ticket`. Returning `ticket` would route the widget through its tcb
-// (Tencent CloudBase) signIn path, which crashes when `envId` is a plain URL
-// because the tcb client is never initialized. `lib/auth.isAdmin` then
-// recovers the role from subsequent `accessToken` headers.
+// Don't return `ticket`: it would route the widget through tcb signIn, which
+// crashes when envId is a plain URL. lib/auth.isAdmin recovers the admin role
+// from later accessToken headers.
 export const login: Handler<'LOGIN'> = async (payload, ctx) => {
   validate(payload, ['password']);
 
