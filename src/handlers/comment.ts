@@ -60,7 +60,8 @@ export const commentGet: Handler = async (payload, ctx) => {
   validate(payload, ['url']);
 
   const url = payload.url as string;
-  const before = (payload.before as number | undefined) ?? MAX_TIMESTAMP_MILLIS;
+  const beforeRaw = Number(payload.before);
+  const before = Number.isFinite(beforeRaw) && beforeRaw > 0 ? beforeRaw : MAX_TIMESTAMP_MILLIS;
   const showAll = isAdmin(ctx.uid, ctx.config);
   const pageSize = Number(ctx.config.COMMENT_PAGE_SIZE) || 8;
   const rawSort = typeof payload.sort === 'string' ? payload.sort : '';

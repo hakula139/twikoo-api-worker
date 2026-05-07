@@ -19,11 +19,13 @@ export const ResponseCode = {
 
 export type ResponseCodeName = keyof typeof ResponseCode;
 
+export type ResponseCodeValue = (typeof ResponseCode)[ResponseCodeName];
+
 // Throw inside a handler to short-circuit with a curated non-SUCCESS response.
 export class TwikooError extends Error {
-  readonly code: number;
+  readonly code: ResponseCodeValue;
 
-  constructor(code: number, message: string) {
+  constructor(code: ResponseCodeValue, message: string) {
     super(message);
     this.code = code;
     this.name = 'TwikooError';
