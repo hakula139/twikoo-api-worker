@@ -32,7 +32,7 @@ Without Nix, install Node.js 24 and pnpm yourself.
 pnpm wrangler login
 pnpm wrangler d1 create twikoo
 # Copy database_id from the output into wrangler.toml and drizzle.config.ts.
-pnpm db:push                   # sync schema.ts to remote D1 (needs CLOUDFLARE_D1_TOKEN)
+pnpm db:push                  # sync schema.ts to remote D1 (needs CLOUDFLARE_D1_TOKEN)
 pnpm wrangler r2 bucket create twikoo
 # Set custom R2 public URL via Cloudflare dashboard, then update R2_PUBLIC_URL in wrangler.toml.
 ```
@@ -77,7 +77,7 @@ pnpm deploy
 
 ## Frontend integration
 
-In [`twikoo-js`](https://github.com/twikoojs/twikoo) (or via [IgnIt](https://github.com/hakula139/IgnIt)'s comments partial):
+In [`twikoo-js`](https://github.com/twikoojs/twikoo):
 
 ```js
 twikoo.init({
