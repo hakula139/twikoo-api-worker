@@ -323,6 +323,8 @@ const buildComment = async (
 };
 
 const postSubmit = async (saved: Comment, ctx: RequestCtx): Promise<void> => {
+  // Mutate `saved` in place so sendNotice sees fresh isSpam — upstream
+  // suppresses spam notifications when NOTIFY_SPAM='false'.
   try {
     const akismetKey = secret(ctx, 'AKISMET_KEY') ?? '';
     if (akismetKey && akismetKey !== 'MANUAL_REVIEW') {
@@ -340,19 +342,24 @@ const postSubmit = async (saved: Comment, ctx: RequestCtx): Promise<void> => {
         content: saved.comment,
       });
       if (isSpam) {
+        saved.isSpam = 1;
         await ctx.db.comment.updateSpam(saved._id, 1, Date.now());
       }
     }
+  } catch (error) {
+    logger.error('Akismet check failed for', saved._id, error);
+  }
 
+  try {
     // sendNotice expects the upstream comment shape; our row is structurally
-    // compatible (same field names). It looks up the parent for reply mails.
+    // compatible. It looks up the parent for reply mails.
     const getParentComment = async (curr: unknown): Promise<unknown> => {
       const parentId = (curr as { pid?: string }).pid;
       return parentId ? ctx.db.comment.byId(parentId) : undefined;
     };
     await sendNotice(saved, configWithSecrets(ctx), getParentComment);
   } catch (error) {
-    logger.error('Post-submit failed:', error);
+    logger.error('sendNotice failed for', saved._id, error);
   }
 };
 
