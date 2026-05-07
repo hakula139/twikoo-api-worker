@@ -1,9 +1,9 @@
-// TypeScript port of `twikoo-func/utils/image.js`. Upstream uses Node `fs` +
-// `axios` + `form-data`; Workers replaces them with Web `Blob` / `FormData` /
-// `fetch`. S3 SigV4 signing goes through Web Crypto instead of Node `crypto`.
+// Port of twikoo-func/utils/image.js to Web APIs (Blob / FormData / fetch /
+// Web Crypto for S3 SigV4); upstream uses Node fs / axios / form-data.
 
 import type { TwikooConfig } from '../types';
 
+import { logger } from '../twikoo';
 import { ResponseCode, TwikooError } from './errors';
 
 export interface UploadResult {
@@ -34,6 +34,13 @@ const decodePhoto = (dataUrl: string): DecodedPhoto => {
 const isUrl = (s: string): boolean => /^https?:\/\//.test(s);
 
 const stripTrailingSlash = (s: string): string => s.replace(/\/$/, '');
+
+// Strip path separators and parent-dir traversal so a hostile fileName can't
+// climb out of the configured prefix or collide with a different tenant.
+const safeBaseName = (name: string): string => {
+  const base = name.replace(/.*[\\/]/, '').replace(/\.{2,}/g, '.');
+  return base || 'upload';
+};
 
 const stringConfig = (config: TwikooConfig, key: string): string | undefined => {
   const v = config[key];
@@ -74,8 +81,10 @@ const checkNsfw = async (photo: string, config: TwikooConfig): Promise<NsfwResul
         };
       }
     }
-  } catch {
-    // Match upstream: NSFW failures log and fall through (don't block upload).
+  } catch (error) {
+    // Best-effort: NSFW failures fall through (don't block upload), but log so
+    // a misconfigured / down provider is visible.
+    logger.warn('NSFW pre-check failed:', error);
   }
   return { rejected: false, message: '' };
 };
@@ -300,10 +309,9 @@ const uploadToS3 = async (
 
   const { mimeType, bytes } = decodePhoto(photo);
   const region = stringConfig(config, 'S3_REGION') ?? 'us-east-1';
-  const prefix = stringConfig(config, 'S3_PATH_PREFIX')
-    ? `${stripTrailingSlash(stringConfig(config, 'S3_PATH_PREFIX')!)}/`
-    : '';
-  const key = `${prefix}${Date.now()}-${fileName}`;
+  const prefixRaw = stringConfig(config, 'S3_PATH_PREFIX');
+  const prefix = prefixRaw ? `${stripTrailingSlash(prefixRaw)}/` : '';
+  const key = `${prefix}${Date.now()}-${safeBaseName(fileName)}`;
 
   const customEndpoint = stringConfig(config, 'S3_ENDPOINT');
   const endpoint = customEndpoint
