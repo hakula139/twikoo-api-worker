@@ -32,8 +32,8 @@ export const handlers: Record<string, Handler> = {
   GET_FUNC_VERSION: getFuncVersion,
   GET_PASSWORD_STATUS: getPasswordStatus,
   GET_RECENT_COMMENTS: getRecentComments,
-  IMAGE_UPLOAD: imageUpload,
   LOGIN: login,
   SET_CONFIG: setConfig,
   SET_PASSWORD: setPassword,
+  UPLOAD_IMAGE: imageUpload,
 };
