@@ -27,7 +27,6 @@ import {
   jsonParse,
 } from 'twikoo-func/utils/import';
 import { getMd5, getSha256, setCustomLibs } from 'twikoo-func/utils/lib';
-import { uploadImage } from 'twikoo-func/utils/image';
 import logger from 'twikoo-func/utils/logger';
 import { emailTest, sendNotice } from 'twikoo-func/utils/notify';
 import { postCheckSpam } from 'twikoo-func/utils/spam';
@@ -79,6 +78,5 @@ export {
   postCheckSpam,
   preCheckSpam,
   sendNotice,
-  uploadImage,
   validate,
 };
