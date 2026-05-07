@@ -5,6 +5,7 @@ import { checkAkismet } from '../lib/akismet';
 import { isAdmin, requireAdmin } from '../lib/auth';
 import { ResponseCode, TwikooError } from '../lib/errors';
 import { formatIpRegion } from '../lib/geo';
+import { newCommentId } from '../lib/id';
 import { configWithSecrets, secret } from '../lib/secret';
 import { verifyTurnstile } from '../lib/turnstile';
 import { sanitizeHtml } from '../shims/sanitize';
@@ -261,8 +262,6 @@ const enforceTurnstile = async (
     );
   }
 };
-
-const newCommentId = (): string => crypto.randomUUID().replace(/-/g, '');
 
 const buildComment = async (
   payload: Record<string, unknown>,

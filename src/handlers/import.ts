@@ -5,6 +5,7 @@ import { XMLParser } from 'fast-xml-parser';
 
 import { requireAdmin } from '../lib/auth';
 import { ResponseCode, TwikooError } from '../lib/errors';
+import { newCommentId } from '../lib/id';
 import {
   commentImportArtalk,
   commentImportArtalk2,
@@ -141,8 +142,6 @@ const toJsonArray = (v: unknown): string => {
   }
   return '[]';
 };
-
-const newCommentId = (): string => crypto.randomUUID().replace(/-/g, '');
 
 // Upstream sources produce heterogeneous shapes — some omit fields entirely,
 // some carry MongoDB-style booleans, our own export carries D1's 0/1 + JSON
