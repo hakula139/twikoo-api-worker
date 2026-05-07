@@ -2,6 +2,7 @@ import type { Comment } from '../db';
 import type { Handler } from '../types';
 
 import { isAdmin } from '../lib/auth';
+import { ResponseCode, TwikooError } from '../lib/errors';
 import { formatIpRegion } from '../lib/geo';
 import { getAvatar, getMailMd5, getUrlsQuery, parseComment, validate } from '../twikoo';
 
@@ -11,6 +12,8 @@ const RECENT_DEFAULT_PAGE_SIZE = 10;
 const RECENT_MAX_PAGE_SIZE = 100;
 
 const stripHtml = (html: string): string => html.replace(/<[^>]*>/g, '');
+
+const parseUidArray = (raw: string): string[] => (raw ? (JSON.parse(raw) as string[]) : []);
 
 interface ParsedComment {
   id: string;
@@ -23,8 +26,8 @@ type DecodedComment = Omit<Comment, 'ups' | 'downs'> & { ups: string[]; downs: s
 
 const decodeVotes = (row: Comment): DecodedComment => ({
   ...row,
-  ups: row.ups ? (JSON.parse(row.ups) as string[]) : [],
-  downs: row.downs ? (JSON.parse(row.downs) as string[]) : [],
+  ups: parseUidArray(row.ups),
+  downs: parseUidArray(row.downs),
 });
 
 export const commentGet: Handler = async (payload, ctx) => {
@@ -120,4 +123,44 @@ export const getRecentComments: Handler = async (payload, ctx) => {
   }));
 
   return { data };
+};
+
+type LikeType = 'up' | 'down';
+
+const isLikeType = (s: string): s is LikeType => s === 'up' || s === 'down';
+
+// Toggle: a fresh `up` clears any prior `down` (and vice versa); voting the
+// same direction twice retracts the vote. Mirrors twikoo-func's `like()`.
+const toggleVote = (
+  ups: string[],
+  downs: string[],
+  uid: string,
+  type: LikeType,
+): { ups: string[]; downs: string[] } => {
+  const [target, opposite] = type === 'up' ? [ups, downs] : [downs, ups];
+  const targetNext = target.includes(uid) ? target.filter((u) => u !== uid) : [...target, uid];
+  const oppositeNext = target.includes(uid) ? opposite : opposite.filter((u) => u !== uid);
+  return type === 'up'
+    ? { ups: targetNext, downs: oppositeNext }
+    : { ups: oppositeNext, downs: targetNext };
+};
+
+export const commentLike: Handler = async (payload, ctx) => {
+  validate(payload, ['id']);
+
+  const id = payload.id as string;
+  const type = (payload.type as string | undefined) ?? 'up';
+  if (!isLikeType(type)) {
+    throw new TwikooError(ResponseCode.FAIL, `Invalid like type: ${type}`);
+  }
+
+  const row = await ctx.db.comment.byId(id);
+  if (!row) {
+    throw new TwikooError(ResponseCode.FAIL, 'Comment not found.');
+  }
+
+  const next = toggleVote(parseUidArray(row.ups), parseUidArray(row.downs), ctx.uid, type);
+  await ctx.db.comment.updateVotes(id, JSON.stringify(next.ups), JSON.stringify(next.downs));
+
+  return { updated: 1 };
 };

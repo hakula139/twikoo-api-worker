@@ -1,12 +1,13 @@
 import type { Handler } from '../types';
 
-import { commentGet, getCommentsCount, getRecentComments } from './comment';
+import { commentGet, commentLike, getCommentsCount, getRecentComments } from './comment';
 import { counterGet } from './counter';
 import { getConfig } from './config';
 import { getFuncVersion } from './meta';
 
 export const handlers: Record<string, Handler> = {
   COMMENT_GET: commentGet,
+  COMMENT_LIKE: commentLike,
   COUNTER_GET: counterGet,
   GET_COMMENTS_COUNT: getCommentsCount,
   GET_CONFIG: getConfig,
