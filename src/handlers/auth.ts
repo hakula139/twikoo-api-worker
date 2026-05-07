@@ -2,12 +2,16 @@ import type { Handler } from '../types';
 
 import { isAdmin } from '../lib/auth';
 import { ResponseCode, TwikooError } from '../lib/errors';
-import { VERSION, getPasswordStatus as getPasswordStatusFn, md5, validate } from '../twikoo';
+import {
+  VERSION,
+  getPasswordStatus as getPasswordStatusFn,
+  md5,
+  stripCode,
+  validate,
+} from '../twikoo';
 
-export const getPasswordStatus: Handler = async (_payload, ctx) => {
-  const { code: _code, ...rest } = await getPasswordStatusFn(ctx.config, VERSION);
-  return rest;
-};
+export const getPasswordStatus: Handler = async (_payload, ctx) =>
+  stripCode(await getPasswordStatusFn(ctx.config, VERSION));
 
 // Initial setup is open: any caller can set the password if none exists. Once
 // set, only the current admin can rotate it. Upstream's `credentials` keyfile

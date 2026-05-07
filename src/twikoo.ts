@@ -47,6 +47,13 @@ export const VERSION: string = twikooFuncPkg.version;
 export const md5 = getMd5();
 export const sha256 = getSha256();
 
+// Upstream helpers return `{code, ...payload}`; dispatch wraps with `code: 0`,
+// so handlers must strip the inner field to avoid double-wrapping.
+export const stripCode = <T extends { code: number }>(result: T): Omit<T, 'code'> => {
+  const { code: _code, ...rest } = result;
+  return rest;
+};
+
 export {
   addQQMailSuffix,
   commentImportArtalk,

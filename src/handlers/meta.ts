@@ -1,8 +1,5 @@
 import type { Handler } from '../types';
 
-import { VERSION, getFuncVersion as getFuncVersionFn } from '../twikoo';
+import { VERSION, getFuncVersion as getFuncVersionFn, stripCode } from '../twikoo';
 
-export const getFuncVersion: Handler = async () => {
-  const { code: _code, ...rest } = getFuncVersionFn({ VERSION });
-  return rest;
-};
+export const getFuncVersion: Handler = async () => stripCode(getFuncVersionFn({ VERSION }));
