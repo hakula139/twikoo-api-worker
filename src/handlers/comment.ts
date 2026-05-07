@@ -248,7 +248,10 @@ const enforceTurnstile = async (
   const turnstileSecret = secret(ctx, 'TURNSTILE_SECRET');
   const siteKey = ctx.config.TURNSTILE_SITE_KEY;
   if (!turnstileSecret || !siteKey) {
-    return;
+    // Fail closed: provider is configured but credentials are missing —
+    // silently skipping would let bots through with no signal.
+    logger.error('Turnstile is enabled but TURNSTILE_SECRET / TURNSTILE_SITE_KEY is unset.');
+    throw new TwikooError(ResponseCode.FAIL, '人机验证未配置完整，请联系管理员');
   }
   const token = (payload.turnstileToken as string | undefined) ?? '';
   if (!token) {
@@ -423,6 +426,11 @@ export const commentDeleteForUser: Handler = async (payload, ctx) => {
   validate(payload, ['id']);
 
   const id = payload.id as string;
+  if (!ctx.uid) {
+    // Anonymous comments have empty uid; an empty equality match would
+    // collapse all anon authors into one delete-able pool.
+    throw new TwikooError(ResponseCode.NEED_LOGIN, '请先登录');
+  }
   const row = await ctx.db.comment.byId(id);
   if (!row) {
     throw new TwikooError(ResponseCode.FAIL, '评论不存在');
