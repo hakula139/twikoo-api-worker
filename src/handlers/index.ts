@@ -16,6 +16,7 @@ import {
 import { getConfig, getConfigForAdmin, setConfig } from './config';
 import { counterGet } from './counter';
 import { imageUpload } from './image';
+import { commentImportForAdmin } from './import';
 import { emailTest } from './mail';
 import { getFuncVersion } from './meta';
 
@@ -25,6 +26,7 @@ export const handlers: Record<string, Handler> = {
   COMMENT_EXPORT_FOR_ADMIN: commentExportForAdmin,
   COMMENT_GET: commentGet,
   COMMENT_GET_FOR_ADMIN: commentGetForAdmin,
+  COMMENT_IMPORT_FOR_ADMIN: commentImportForAdmin,
   COMMENT_LIKE: commentLike,
   COMMENT_SET_FOR_ADMIN: commentSetForAdmin,
   COMMENT_SUBMIT: commentSubmit,
