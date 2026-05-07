@@ -1,6 +1,8 @@
 import type { DrizzleD1Database } from 'drizzle-orm/d1';
 
-import { type Config, config } from './schema';
+import type { Config } from './schema';
+
+import { config } from './schema';
 
 export type { Config } from './schema';
 

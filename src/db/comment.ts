@@ -2,9 +2,11 @@ import type { DrizzleD1Database } from 'drizzle-orm/d1';
 
 import type { SQL } from 'drizzle-orm';
 
+import type { Bit, Comment, NewComment } from './schema';
+
 import { and, asc, count, desc, eq, gt, inArray, lt, or, sql } from 'drizzle-orm';
 
-import { type Bit, type Comment, type NewComment, comment } from './schema';
+import { comment } from './schema';
 
 export type { Bit, Comment, NewComment } from './schema';
 
