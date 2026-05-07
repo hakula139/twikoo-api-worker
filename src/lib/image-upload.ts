@@ -376,11 +376,14 @@ const uploadToS3 = async (
   }
 
   const cdnUrl = stringConfig(config, 'S3_CDN_URL');
-  const fileUrl = cdnUrl
-    ? `${stripTrailingSlash(cdnUrl)}/${key}`
-    : customEndpoint
-      ? `${stripTrailingSlash(customEndpoint)}/${bucket}/${key}`
-      : `https://${bucket}.s3.${region}.amazonaws.com/${key}`;
+  let fileUrl: string;
+  if (cdnUrl) {
+    fileUrl = `${stripTrailingSlash(cdnUrl)}/${key}`;
+  } else if (customEndpoint) {
+    fileUrl = `${stripTrailingSlash(customEndpoint)}/${bucket}/${key}`;
+  } else {
+    fileUrl = `https://${bucket}.s3.${region}.amazonaws.com/${key}`;
+  }
   return { url: fileUrl };
 };
 
