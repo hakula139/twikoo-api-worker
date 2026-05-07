@@ -158,12 +158,28 @@ export class CommentDB {
     await this.db.delete(comment).where(eq(comment._id, id));
   }
 
-  // Caller passes the full ups / downs JSON; this method does not merge.
-  async updateVotes(id: string, upsJson: string, downsJson: string): Promise<void> {
-    await this.db
-      .update(comment)
-      .set({ ups: upsJson, downs: downsJson })
-      .where(eq(comment._id, id));
+  // Atomic toggle: a fresh `up` retracts any prior `down` (and vice versa);
+  // voting the same direction twice retracts that vote. Pure SQL because two
+  // concurrent voters racing through read-modify-write would lose each other.
+  // Returns false if no row matched.
+  async toggleVote(id: string, uid: string, type: 'up' | 'down'): Promise<boolean> {
+    const target = type === 'up' ? comment.ups : comment.downs;
+    const opposite = type === 'up' ? comment.downs : comment.ups;
+    const result = await this.db.run(sql`
+      UPDATE ${comment} SET
+        ${sql.raw(target.name)} = IIF(
+          EXISTS (SELECT 1 FROM json_each(${target}) WHERE value = ${uid}),
+          IFNULL((SELECT json_group_array(value) FROM json_each(${target}) WHERE value != ${uid}), '[]'),
+          json_insert(${target}, '$[#]', ${uid})
+        ),
+        ${sql.raw(opposite.name)} = IIF(
+          EXISTS (SELECT 1 FROM json_each(${target}) WHERE value = ${uid}),
+          ${opposite},
+          IFNULL((SELECT json_group_array(value) FROM json_each(${opposite}) WHERE value != ${uid}), '[]')
+        )
+      WHERE ${comment._id} = ${id}
+    `);
+    return result.meta.changes > 0;
   }
 
   async updateSpam(id: string, isSpam: Bit, updated: number): Promise<void> {

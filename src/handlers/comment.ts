@@ -180,22 +180,6 @@ type LikeType = 'up' | 'down';
 
 const isLikeType = (s: string): s is LikeType => s === 'up' || s === 'down';
 
-// Toggle: a fresh `up` clears any prior `down` (and vice versa); voting the
-// same direction twice retracts the vote. Mirrors twikoo-func's `like()`.
-const toggleVote = (
-  ups: string[],
-  downs: string[],
-  uid: string,
-  type: LikeType,
-): { ups: string[]; downs: string[] } => {
-  const [target, opposite] = type === 'up' ? [ups, downs] : [downs, ups];
-  const targetNext = target.includes(uid) ? target.filter((u) => u !== uid) : [...target, uid];
-  const oppositeNext = target.includes(uid) ? opposite : opposite.filter((u) => u !== uid);
-  return type === 'up'
-    ? { ups: targetNext, downs: oppositeNext }
-    : { ups: oppositeNext, downs: targetNext };
-};
-
 export const commentLike: Handler = async (payload, ctx) => {
   validate(payload, ['id']);
 
@@ -205,13 +189,10 @@ export const commentLike: Handler = async (payload, ctx) => {
     throw new TwikooError(ResponseCode.FAIL, `Invalid like type: ${type}`);
   }
 
-  const row = await ctx.db.comment.byId(id);
-  if (!row) {
+  const matched = await ctx.db.comment.toggleVote(id, ctx.uid, type);
+  if (!matched) {
     throw new TwikooError(ResponseCode.FAIL, 'Comment not found.');
   }
-
-  const next = toggleVote(parseUidArray(row.ups), parseUidArray(row.downs), ctx.uid, type);
-  await ctx.db.comment.updateVotes(id, JSON.stringify(next.ups), JSON.stringify(next.downs));
 
   return { updated: 1 };
 };
