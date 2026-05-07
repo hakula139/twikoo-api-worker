@@ -2,15 +2,29 @@ import type { DrizzleD1Database } from 'drizzle-orm/d1';
 
 import type { SQL } from 'drizzle-orm';
 
-import { and, count, desc, eq, gt, inArray, lt, or, sql } from 'drizzle-orm';
+import { and, asc, count, desc, eq, gt, inArray, lt, or, sql } from 'drizzle-orm';
 
 import { type Bit, type Comment, type NewComment, comment } from './schema';
 
 export type { Bit, Comment, NewComment } from './schema';
 
+export type CommentSort = 'newest' | 'oldest' | 'popular';
+
 // `showAll` lets admin views see every row; otherwise only non-spam OR own comments.
 const visibility = (showAll: boolean, uid: string) =>
   showAll ? undefined : or(eq(comment.isSpam, 0), eq(comment.uid, uid));
+
+// `ups` is stored as a JSON array of voter UIDs (not a count), so popular sort
+// goes through `json_array_length`. Tiebreak on `created desc` for stability.
+const orderClause = (sort: CommentSort): SQL[] => {
+  if (sort === 'oldest') {
+    return [asc(comment.created)];
+  }
+  if (sort === 'popular') {
+    return [sql`json_array_length(${comment.ups}) desc`, desc(comment.created)];
+  }
+  return [desc(comment.created)];
+};
 
 export class CommentDB {
   constructor(private readonly db: DrizzleD1Database) {}
@@ -37,6 +51,7 @@ export class CommentDB {
     before: number,
     top: Bit,
     limit: number,
+    sort: CommentSort = 'newest',
   ): Promise<Comment[]> {
     return this.db
       .select()
@@ -50,7 +65,7 @@ export class CommentDB {
           eq(comment.rid, ''),
         ),
       )
-      .orderBy(desc(comment.created))
+      .orderBy(...orderClause(sort))
       .limit(limit);
   }
 

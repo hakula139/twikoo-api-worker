@@ -1,4 +1,4 @@
-import type { AdminFilter, Bit, Comment, NewComment } from '../db';
+import type { AdminFilter, Bit, Comment, CommentSort, NewComment } from '../db';
 import type { Handler, RequestCtx } from '../types';
 
 import { checkAkismet } from '../lib/akismet';
@@ -49,6 +49,10 @@ const decodeVotes = (row: Comment): DecodedComment => ({
   downs: parseUidArray(row.downs),
 });
 
+const SORT_VALUES = ['newest', 'oldest', 'popular'] as const satisfies readonly CommentSort[];
+const isCommentSort = (s: string): s is CommentSort =>
+  (SORT_VALUES as readonly string[]).includes(s);
+
 export const commentGet: Handler = async (payload, ctx) => {
   validate(payload, ['url']);
 
@@ -56,9 +60,11 @@ export const commentGet: Handler = async (payload, ctx) => {
   const before = (payload.before as number | undefined) ?? MAX_TIMESTAMP_MILLIS;
   const showAll = isAdmin(ctx.uid, ctx.config);
   const pageSize = Number(ctx.config.COMMENT_PAGE_SIZE) || 8;
+  const rawSort = typeof payload.sort === 'string' ? payload.sort : '';
+  const sort: CommentSort = isCommentSort(rawSort) ? rawSort : 'newest';
 
   const total = await ctx.db.comment.count(url, showAll, ctx.uid);
-  const probed = await ctx.db.comment.list(url, showAll, ctx.uid, before, 0, pageSize + 1);
+  const probed = await ctx.db.comment.list(url, showAll, ctx.uid, before, 0, pageSize + 1, sort);
   const more = probed.length > pageSize;
   const main = more ? probed.slice(0, pageSize) : probed;
 
