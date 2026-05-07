@@ -55,6 +55,7 @@ export const commentImportForAdmin: Handler = async (payload, ctx) => {
     imported = await runImport(source, file, append);
   } catch (e) {
     append(`解析失败：${(e as Error).message}`);
+    throw new TwikooError(ResponseCode.FAIL, log.join('\n'));
   }
 
   if (imported && imported.length > 0) {

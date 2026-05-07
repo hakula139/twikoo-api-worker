@@ -399,12 +399,36 @@ export const commentGetForAdmin: Handler = async (payload, ctx) => {
   return { count, data };
 };
 
+// Admin can only mutate moderation/content fields; identity, vote arrays, and
+// timestamps stay immutable through this path.
+const ADMIN_MUTABLE_FIELDS = ['comment', 'isSpam', 'top'] as const;
+
+const pickAdminUpdate = (raw: Record<string, unknown>): Partial<NewComment> => {
+  const out: Partial<NewComment> = {};
+  for (const key of ADMIN_MUTABLE_FIELDS) {
+    if (!(key in raw)) {
+      continue;
+    }
+    const value = raw[key];
+    if (key === 'comment' && typeof value === 'string') {
+      out.comment = value;
+    } else if (key === 'isSpam' && (value === 0 || value === 1)) {
+      out.isSpam = value;
+    } else if (key === 'top' && (value === 0 || value === 1)) {
+      out.top = value;
+    } else {
+      throw new TwikooError(ResponseCode.FAIL, `Invalid value for ${key}`);
+    }
+  }
+  return out;
+};
+
 export const commentSetForAdmin: Handler = async (payload, ctx) => {
   requireAdmin(ctx);
   validate(payload, ['id', 'set']);
 
   const id = payload.id as string;
-  const set = payload.set as Partial<NewComment>;
+  const set = pickAdminUpdate(payload.set as Record<string, unknown>);
 
   await ctx.db.comment.update(id, { ...set, updated: Date.now() });
   return { updated: 1 };
