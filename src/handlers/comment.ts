@@ -1,10 +1,29 @@
-import type { Comment } from '../db';
-import type { Handler } from '../types';
+import type { Comment, NewComment } from '../db';
+import type { Handler, RequestCtx } from '../types';
 
+import { checkAkismet } from '../lib/akismet';
 import { isAdmin } from '../lib/auth';
 import { ResponseCode, TwikooError } from '../lib/errors';
 import { formatIpRegion } from '../lib/geo';
-import { getAvatar, getMailMd5, getUrlsQuery, parseComment, validate } from '../twikoo';
+import { verifyTurnstile } from '../lib/turnstile';
+import { sanitizeHtml } from '../shims/sanitize';
+import {
+  addQQMailSuffix,
+  equalsMail,
+  getAvatar,
+  getMailMd5,
+  getUrlsQuery,
+  getQQAvatar,
+  isQQ,
+  logger,
+  md5,
+  normalizeMail,
+  parseComment,
+  preCheckSpam,
+  sendNotice,
+  sha256,
+  validate,
+} from '../twikoo';
 
 const MAX_TIMESTAMP_MILLIS = 41025312000000;
 const MAX_QUERY_LIMIT = 500;
@@ -163,4 +182,158 @@ export const commentLike: Handler = async (payload, ctx) => {
   await ctx.db.comment.updateVotes(id, JSON.stringify(next.ups), JSON.stringify(next.downs));
 
   return { updated: 1 };
+};
+
+const FREQUENCY_WINDOW_MS = 10 * 60 * 1000;
+
+const enforceFrequencyLimit = async (ctx: RequestCtx): Promise<void> => {
+  const since = Date.now() - FREQUENCY_WINDOW_MS;
+
+  const perIp = parseInt(String(ctx.config.LIMIT_PER_MINUTE ?? ''), 10);
+  if (Number.isFinite(perIp) && perIp > 0) {
+    const count = await ctx.db.comment.countSinceByIp(since, ctx.ip);
+    if (count > perIp) {
+      throw new TwikooError(ResponseCode.FAIL, '发言频率过高');
+    }
+  }
+
+  const global = parseInt(String(ctx.config.LIMIT_PER_MINUTE_ALL ?? ''), 10);
+  if (Number.isFinite(global) && global > 0) {
+    const count = await ctx.db.comment.countSince(since);
+    if (count > global) {
+      throw new TwikooError(ResponseCode.FAIL, '评论太火爆啦 >_< 请稍后再试');
+    }
+  }
+};
+
+const enforceTurnstile = async (
+  payload: Record<string, unknown>,
+  ctx: RequestCtx,
+): Promise<void> => {
+  if (ctx.config.CAPTCHA_PROVIDER !== 'Turnstile') {
+    return;
+  }
+  const secret = ctx.env.TURNSTILE_SECRET ?? ctx.config.TURNSTILE_SECRET_KEY;
+  const siteKey = ctx.config.TURNSTILE_SITE_KEY;
+  if (!secret || !siteKey) {
+    return;
+  }
+  const token = (payload.turnstileToken as string | undefined) ?? '';
+  if (!token) {
+    throw new TwikooError(ResponseCode.CREDENTIALS_INVALID, '人机验证失败，请刷新页面重试');
+  }
+  const result = await verifyTurnstile({ secret, token, ip: ctx.ip });
+  if (!result.success) {
+    throw new TwikooError(
+      ResponseCode.CREDENTIALS_INVALID,
+      `人机验证失败：${result.errorCodes.join(', ')}`,
+    );
+  }
+};
+
+const newCommentId = (): string => crypto.randomUUID().replace(/-/g, '');
+
+const buildComment = async (
+  payload: Record<string, unknown>,
+  ctx: RequestCtx,
+  isAdminUser: boolean,
+): Promise<NewComment> => {
+  const isBlogger = equalsMail(
+    (payload.mail as string | undefined) ?? '',
+    ctx.config.BLOGGER_EMAIL ?? '',
+  );
+  if (isBlogger && !isAdminUser) {
+    throw new TwikooError(ResponseCode.NEED_LOGIN, '请先登录管理面板，再使用博主身份发送评论');
+  }
+
+  const timestamp = Date.now();
+  const hashMail = (mail: string): string => {
+    const normalized = normalizeMail(mail);
+    return ctx.config.GRAVATAR_CDN === 'cravatar.cn' ? md5(normalized) : sha256(normalized);
+  };
+
+  let mail = (payload.mail as string | undefined) ?? '';
+  let avatar = '';
+  if (mail && isQQ(mail)) {
+    mail = addQQMailSuffix(mail);
+    try {
+      avatar = await getQQAvatar(mail);
+    } catch (error) {
+      logger.warn('getQQAvatar failed; falling back to gravatar:', error);
+    }
+  }
+
+  return {
+    _id: newCommentId(),
+    uid: ctx.uid,
+    nick: (payload.nick as string | undefined) || '匿名',
+    mail,
+    mailMd5: mail ? hashMail(mail) : '',
+    link: (payload.link as string | undefined) ?? '',
+    ua: payload.ua as string,
+    ip: ctx.ip,
+    ipRegion: ctx.region,
+    master: isBlogger ? 1 : 0,
+    url: payload.url as string,
+    href: (payload.href as string | undefined) ?? '',
+    comment: sanitizeHtml(payload.comment as string),
+    pid: (payload.pid as string | undefined) || ((payload.rid as string | undefined) ?? ''),
+    rid: (payload.rid as string | undefined) ?? '',
+    isSpam: !isAdminUser && preCheckSpam(payload, ctx.config) ? 1 : 0,
+    created: timestamp,
+    updated: timestamp,
+    ups: '[]',
+    downs: '[]',
+    top: 0,
+    avatar,
+  };
+};
+
+const postSubmit = async (saved: Comment, ctx: RequestCtx): Promise<void> => {
+  try {
+    const akismetKey = ctx.env.AKISMET_KEY ?? (ctx.config.AKISMET_KEY as string | undefined) ?? '';
+    if (akismetKey && akismetKey !== 'MANUAL_REVIEW') {
+      const blog =
+        (ctx.config.SITE_URL as string | undefined) || `https://${new URL(ctx.request.url).host}`;
+      const isSpam = await checkAkismet({
+        apiKey: akismetKey,
+        blog,
+        userIp: saved.ip,
+        userAgent: saved.ua,
+        permalink: saved.href,
+        author: saved.nick,
+        authorEmail: saved.mail,
+        authorUrl: saved.link,
+        content: saved.comment,
+      });
+      if (isSpam) {
+        await ctx.db.comment.updateSpam(saved._id, 1, Date.now());
+      }
+    }
+
+    // sendNotice expects the upstream comment shape; our row is structurally
+    // compatible (same field names). It looks up the parent for reply mails.
+    const getParentComment = async (curr: unknown): Promise<unknown> => {
+      const parentId = (curr as { pid?: string }).pid;
+      return parentId ? ctx.db.comment.byId(parentId) : undefined;
+    };
+    await sendNotice(saved, ctx.config, getParentComment);
+  } catch (error) {
+    logger.error('Post-submit failed:', error);
+  }
+};
+
+export const commentSubmit: Handler = async (payload, ctx) => {
+  validate(payload, ['url', 'ua', 'comment']);
+
+  await enforceFrequencyLimit(ctx);
+  await enforceTurnstile(payload, ctx);
+
+  const isAdminUser = isAdmin(ctx.uid, ctx.config);
+  const newComment = await buildComment(payload, ctx, isAdminUser);
+
+  await ctx.db.comment.save(newComment);
+  ctx.waitUntil(postSubmit(newComment as Comment, ctx));
+
+  return { id: newComment._id };
 };

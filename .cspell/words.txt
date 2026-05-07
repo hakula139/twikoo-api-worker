@@ -2,6 +2,7 @@ akismet
 artalk
 cachix
 cloudflare
+cravatar
 deadnix
 direnv
 disqus
