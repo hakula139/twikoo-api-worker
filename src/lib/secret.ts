@@ -20,7 +20,8 @@ export const secret = (ctx: RequestCtx, key: SecretEnvKey): string | undefined =
   if (fromEnv) {
     return fromEnv;
   }
-  return ctx.config[SECRET_PAIRS[key]] as string | undefined;
+  const fromConfig = ctx.config[SECRET_PAIRS[key]];
+  return typeof fromConfig === 'string' ? fromConfig : undefined;
 };
 
 // Returns a config snapshot with env values shadowing the corresponding admin-

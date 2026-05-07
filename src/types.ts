@@ -75,8 +75,51 @@ export interface TwikooResponse {
   [key: string]: unknown;
 }
 
+// One key per supported `event` field on incoming requests; the value is the
+// trusted shape of that event's body. Required fields are non-optional here
+// and enforced at runtime by `validate()` inside each handler.
+export interface EventPayloads {
+  COMMENT_DELETE_FOR_ADMIN: { id: string };
+  COMMENT_DELETE_FOR_USER: { id: string };
+  COMMENT_EXPORT_FOR_ADMIN: { collection?: string };
+  COMMENT_GET: { url: string; before?: number; sort?: string };
+  COMMENT_GET_FOR_ADMIN: { per: number; page: number; type?: string; keyword?: string };
+  COMMENT_IMPORT_FOR_ADMIN: { source: string; file: string };
+  COMMENT_LIKE: { id: string; type?: string };
+  COMMENT_SET_FOR_ADMIN: { id: string; set: Record<string, unknown> };
+  COMMENT_SUBMIT: {
+    url: string;
+    ua: string;
+    comment: string;
+    nick?: string;
+    mail?: string;
+    link?: string;
+    href?: string;
+    pid?: string;
+    rid?: string;
+    turnstileToken?: string;
+  };
+  COUNTER_GET: { url: string; title?: string };
+  EMAIL_TEST: Record<string, unknown>;
+  GET_COMMENTS_COUNT: { urls: string[]; includeReply?: boolean };
+  GET_CONFIG: Record<string, never>;
+  GET_CONFIG_FOR_ADMIN: Record<string, never>;
+  GET_FUNC_VERSION: Record<string, never>;
+  GET_PASSWORD_STATUS: Record<string, never>;
+  GET_QQ_NICK: { qq: string };
+  GET_RECENT_COMMENTS: { urls?: string[]; includeReply?: boolean; pageSize?: number };
+  LOGIN: { password: string };
+  SET_CONFIG: { config: Record<string, unknown> };
+  SET_PASSWORD: { password: string };
+  UPLOAD_IMAGE: { photo: string; fileName: string };
+}
+
+export type EventName = keyof EventPayloads;
+
 // Returning `{}` is treated as SUCCESS.
-export type Handler = (
-  payload: Record<string, unknown>,
+export type Handler<E extends EventName = EventName> = (
+  payload: EventPayloads[E],
   ctx: RequestCtx,
 ) => Promise<Partial<TwikooResponse>>;
+
+export type Handlers = { [E in EventName]: Handler<E> };

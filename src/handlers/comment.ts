@@ -1,5 +1,5 @@
 import type { AdminFilter, Bit, Comment, CommentSort, NewComment } from '../db';
-import type { Handler, RequestCtx } from '../types';
+import type { EventPayloads, Handler, RequestCtx } from '../types';
 
 import { checkAkismet } from '../lib/akismet';
 import { isAdmin, requireAdmin } from '../lib/auth';
@@ -56,16 +56,15 @@ const SORT_VALUES = ['newest', 'oldest', 'popular'] as const satisfies readonly 
 const isCommentSort = (s: string): s is CommentSort =>
   (SORT_VALUES as readonly string[]).includes(s);
 
-export const commentGet: Handler = async (payload, ctx) => {
+export const commentGet: Handler<'COMMENT_GET'> = async (payload, ctx) => {
   validate(payload, ['url']);
 
-  const url = payload.url as string;
+  const url = payload.url;
   const beforeRaw = Number(payload.before);
   const before = Number.isFinite(beforeRaw) && beforeRaw > 0 ? beforeRaw : MAX_TIMESTAMP_MILLIS;
   const showAll = isAdmin(ctx.uid, ctx.config);
   const pageSize = Number(ctx.config.COMMENT_PAGE_SIZE) || 8;
-  const rawSort = typeof payload.sort === 'string' ? payload.sort : '';
-  const sort: CommentSort = isCommentSort(rawSort) ? rawSort : 'newest';
+  const sort: CommentSort = payload.sort && isCommentSort(payload.sort) ? payload.sort : 'newest';
 
   const total = await ctx.db.comment.count(url, showAll, ctx.uid);
 
@@ -135,10 +134,10 @@ export const commentGet: Handler = async (payload, ctx) => {
   return { data: parsed, more, count: total };
 };
 
-export const getCommentsCount: Handler = async (payload, ctx) => {
+export const getCommentsCount: Handler<'GET_COMMENTS_COUNT'> = async (payload, ctx) => {
   validate(payload, ['urls']);
 
-  const urls = (payload.urls as string[]).filter(Boolean);
+  const urls = payload.urls.filter(Boolean);
   const includeReply = !!payload.includeReply;
 
   const counts = await ctx.db.comment.countByUrls(getUrlsQuery(urls), includeReply);
@@ -152,8 +151,8 @@ export const getCommentsCount: Handler = async (payload, ctx) => {
   return { data };
 };
 
-export const getRecentComments: Handler = async (payload, ctx) => {
-  const urlsRaw = (payload.urls as string[] | undefined)?.filter(Boolean);
+export const getRecentComments: Handler<'GET_RECENT_COMMENTS'> = async (payload, ctx) => {
+  const urlsRaw = payload.urls?.filter(Boolean);
   const urls = urlsRaw?.length ? getUrlsQuery(urlsRaw) : undefined;
   const includeReply = !!payload.includeReply;
   const requested = Number(payload.pageSize) || RECENT_DEFAULT_PAGE_SIZE;
@@ -181,16 +180,15 @@ type LikeType = 'up' | 'down';
 
 const isLikeType = (s: string): s is LikeType => s === 'up' || s === 'down';
 
-export const commentLike: Handler = async (payload, ctx) => {
+export const commentLike: Handler<'COMMENT_LIKE'> = async (payload, ctx) => {
   validate(payload, ['id']);
 
-  const id = payload.id as string;
-  const type = (payload.type as string | undefined) ?? 'up';
+  const type = payload.type ?? 'up';
   if (!isLikeType(type)) {
     throw new TwikooError(ResponseCode.FAIL, `Invalid like type: ${type}`);
   }
 
-  const matched = await ctx.db.comment.toggleVote(id, ctx.uid, type);
+  const matched = await ctx.db.comment.toggleVote(payload.id, ctx.uid, type);
   if (!matched) {
     throw new TwikooError(ResponseCode.FAIL, 'Comment not found.');
   }
@@ -229,7 +227,7 @@ const enforceFrequencyLimit = async (ctx: RequestCtx): Promise<void> => {
 };
 
 const enforceTurnstile = async (
-  payload: Record<string, unknown>,
+  payload: EventPayloads['COMMENT_SUBMIT'],
   ctx: RequestCtx,
 ): Promise<void> => {
   if (ctx.config.CAPTCHA_PROVIDER !== 'Turnstile') {
@@ -243,7 +241,7 @@ const enforceTurnstile = async (
     logger.error('Turnstile is enabled but TURNSTILE_SECRET / TURNSTILE_SITE_KEY is unset.');
     throw new TwikooError(ResponseCode.FAIL, '人机验证未配置完整，请联系管理员');
   }
-  const token = (payload.turnstileToken as string | undefined) ?? '';
+  const token = payload.turnstileToken ?? '';
   if (!token) {
     throw new TwikooError(ResponseCode.CREDENTIALS_INVALID, '人机验证失败，请刷新页面重试');
   }
@@ -257,14 +255,11 @@ const enforceTurnstile = async (
 };
 
 const buildComment = async (
-  payload: Record<string, unknown>,
+  payload: EventPayloads['COMMENT_SUBMIT'],
   ctx: RequestCtx,
   isAdminUser: boolean,
 ): Promise<NewComment> => {
-  const isBlogger = equalsMail(
-    (payload.mail as string | undefined) ?? '',
-    ctx.config.BLOGGER_EMAIL ?? '',
-  );
+  const isBlogger = equalsMail(payload.mail ?? '', ctx.config.BLOGGER_EMAIL ?? '');
   if (isBlogger && !isAdminUser) {
     throw new TwikooError(ResponseCode.NEED_LOGIN, '请先登录管理面板，再使用博主身份发送评论');
   }
@@ -275,7 +270,7 @@ const buildComment = async (
     return ctx.config.GRAVATAR_CDN === 'cravatar.cn' ? md5(normalized) : sha256(normalized);
   };
 
-  let mail = (payload.mail as string | undefined) ?? '';
+  let mail = payload.mail ?? '';
   let avatar = '';
   if (mail && isQQ(mail)) {
     mail = addQQMailSuffix(mail);
@@ -289,19 +284,19 @@ const buildComment = async (
   return {
     _id: newCommentId(),
     uid: ctx.uid,
-    nick: (payload.nick as string | undefined) || '匿名',
+    nick: payload.nick || '匿名',
     mail,
     mailMd5: mail ? hashMail(mail) : '',
-    link: (payload.link as string | undefined) ?? '',
-    ua: payload.ua as string,
+    link: payload.link ?? '',
+    ua: payload.ua,
     ip: ctx.ip,
     ipRegion: ctx.region,
     master: isBlogger ? 1 : 0,
-    url: payload.url as string,
-    href: (payload.href as string | undefined) ?? '',
-    comment: sanitizeHtml(payload.comment as string),
-    pid: (payload.pid as string | undefined) || ((payload.rid as string | undefined) ?? ''),
-    rid: (payload.rid as string | undefined) ?? '',
+    url: payload.url,
+    href: payload.href ?? '',
+    comment: sanitizeHtml(payload.comment),
+    pid: payload.pid || (payload.rid ?? ''),
+    rid: payload.rid ?? '',
     isSpam: !isAdminUser && preCheckSpam(payload, ctx.config) ? 1 : 0,
     created: timestamp,
     updated: timestamp,
@@ -318,8 +313,7 @@ const postSubmit = async (saved: Comment, ctx: RequestCtx): Promise<void> => {
   try {
     const akismetKey = secret(ctx, 'AKISMET_KEY') ?? '';
     if (akismetKey && akismetKey !== 'MANUAL_REVIEW') {
-      const blog =
-        (ctx.config.SITE_URL as string | undefined) || `https://${new URL(ctx.request.url).host}`;
+      const blog = ctx.config.SITE_URL || `https://${new URL(ctx.request.url).host}`;
       const isSpam = await checkAkismet({
         apiKey: akismetKey,
         blog,
@@ -353,7 +347,7 @@ const postSubmit = async (saved: Comment, ctx: RequestCtx): Promise<void> => {
   }
 };
 
-export const commentSubmit: Handler = async (payload, ctx) => {
+export const commentSubmit: Handler<'COMMENT_SUBMIT'> = async (payload, ctx) => {
   validate(payload, ['url', 'ua', 'comment']);
 
   await enforceFrequencyLimit(ctx);
@@ -368,15 +362,15 @@ export const commentSubmit: Handler = async (payload, ctx) => {
   return { id: newComment._id };
 };
 
-const buildAdminFilter = (payload: Record<string, unknown>): AdminFilter => {
-  const type = payload.type as string | undefined;
-  const isSpam: Bit | undefined = type === 'HIDDEN' ? 1 : type === 'VISIBLE' ? 0 : undefined;
-  const rawKeyword = (payload.keyword as string | undefined)?.trim();
+const buildAdminFilter = (payload: EventPayloads['COMMENT_GET_FOR_ADMIN']): AdminFilter => {
+  const isSpam: Bit | undefined =
+    payload.type === 'HIDDEN' ? 1 : payload.type === 'VISIBLE' ? 0 : undefined;
+  const rawKeyword = payload.keyword?.trim();
   const keyword = rawKeyword ? `%${rawKeyword}%` : undefined;
   return { isSpam, keyword };
 };
 
-export const commentGetForAdmin: Handler = async (payload, ctx) => {
+export const commentGetForAdmin: Handler<'COMMENT_GET_FOR_ADMIN'> = async (payload, ctx) => {
   requireAdmin(ctx);
   validate(payload, ['per', 'page']);
 
@@ -424,29 +418,28 @@ const pickAdminUpdate = (raw: Record<string, unknown>): Partial<NewComment> => {
   return out;
 };
 
-export const commentSetForAdmin: Handler = async (payload, ctx) => {
+export const commentSetForAdmin: Handler<'COMMENT_SET_FOR_ADMIN'> = async (payload, ctx) => {
   requireAdmin(ctx);
   validate(payload, ['id', 'set']);
 
-  const id = payload.id as string;
-  const set = pickAdminUpdate(payload.set as Record<string, unknown>);
+  const set = pickAdminUpdate(payload.set);
 
-  await ctx.db.comment.update(id, { ...set, updated: Date.now() });
+  await ctx.db.comment.update(payload.id, { ...set, updated: Date.now() });
   return { updated: 1 };
 };
 
-export const commentDeleteForAdmin: Handler = async (payload, ctx) => {
+export const commentDeleteForAdmin: Handler<'COMMENT_DELETE_FOR_ADMIN'> = async (payload, ctx) => {
   requireAdmin(ctx);
   validate(payload, ['id']);
 
-  await ctx.db.comment.delete(payload.id as string);
+  await ctx.db.comment.delete(payload.id);
   return { deleted: 1 };
 };
 
-export const commentDeleteForUser: Handler = async (payload, ctx) => {
+export const commentDeleteForUser: Handler<'COMMENT_DELETE_FOR_USER'> = async (payload, ctx) => {
   validate(payload, ['id']);
 
-  const id = payload.id as string;
+  const id = payload.id;
   if (!ctx.uid) {
     // Anonymous comments have empty uid; an empty equality match would
     // collapse all anon authors into one delete-able pool.
@@ -473,10 +466,10 @@ const EXPORT_COLLECTIONS = [
 const isExportCollection = (s: string): s is ExportCollection =>
   (EXPORT_COLLECTIONS as readonly string[]).includes(s);
 
-export const commentExportForAdmin: Handler = async (payload, ctx) => {
+export const commentExportForAdmin: Handler<'COMMENT_EXPORT_FOR_ADMIN'> = async (payload, ctx) => {
   requireAdmin(ctx);
 
-  const raw = (payload.collection as string | undefined) ?? 'comment';
+  const raw = payload.collection ?? 'comment';
   if (!isExportCollection(raw)) {
     throw new TwikooError(ResponseCode.FAIL, `Unsupported collection: ${raw}`);
   }

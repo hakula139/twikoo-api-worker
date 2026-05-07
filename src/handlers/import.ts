@@ -33,26 +33,24 @@ const isImportSource = (s: string): s is ImportSource =>
 // strict NewComment schema; treat them as Records and normalize per row.
 type ImportedRow = Record<string, unknown>;
 
-export const commentImportForAdmin: Handler = async (payload, ctx) => {
+export const commentImportForAdmin: Handler<'COMMENT_IMPORT_FOR_ADMIN'> = async (payload, ctx) => {
   requireAdmin(ctx);
   validate(payload, ['source', 'file']);
 
-  const source = payload.source as string;
-  if (!isImportSource(source)) {
-    throw new TwikooError(ResponseCode.FAIL, `Unsupported source: ${source}`);
+  if (!isImportSource(payload.source)) {
+    throw new TwikooError(ResponseCode.FAIL, `Unsupported source: ${payload.source}`);
   }
 
-  const file = payload.file as string;
   const log: string[] = [];
   const append = (msg: string): void => {
     log.push(`${new Date().toISOString()} ${msg}`);
   };
 
-  append(`开始导入 ${source}`);
+  append(`开始导入 ${payload.source}`);
 
   let imported: ImportedRow[] | undefined;
   try {
-    imported = await runImport(source, file, append);
+    imported = await runImport(payload.source, payload.file, append);
   } catch (e) {
     append(`解析失败：${(e as Error).message}`);
     throw new TwikooError(ResponseCode.FAIL, log.join('\n'));

@@ -10,10 +10,10 @@ interface QqNickResponse {
   data?: { nick?: string };
 }
 
-export const getQqNick: Handler = async (payload, ctx) => {
+export const getQqNick: Handler<'GET_QQ_NICK'> = async (payload, ctx) => {
   validate(payload, ['qq']);
 
-  const qq = (payload.qq as string).replace(/@qq\.com$/i, '');
+  const qq = payload.qq.replace(/@qq\.com$/i, '');
   const apiKey = secret(ctx, 'QQ_API_KEY');
 
   const nick = await fetchQqNick(qq, apiKey);

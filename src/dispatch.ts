@@ -1,9 +1,16 @@
 import type { ExecutionContext } from '@cloudflare/workers-types';
 
-import type { Env, RequestCtx, TwikooConfig, TwikooResponse } from './types';
+import type {
+  Env,
+  EventName,
+  EventPayloads,
+  RequestCtx,
+  TwikooConfig,
+  TwikooResponse,
+} from './types';
 
 import { DB } from './db';
-import { handlers } from './handlers';
+import { handlers, isEventName } from './handlers';
 import { ResponseCode, TwikooError } from './lib/errors';
 import { extractGeo } from './lib/geo';
 import { corsHeaders, jsonResponse } from './lib/http';
@@ -63,13 +70,19 @@ export const dispatch = async (
     waitUntil: ctx.waitUntil.bind(ctx),
   };
 
-  const handler = handlers[event];
-  if (!handler) {
+  if (!isEventName(event)) {
     return jsonResponse(
       { code: ResponseCode.EVENT_NOT_EXIST, message: `Event "${event}" is not supported.` },
       headers,
     );
   }
+  // Trust the handler's `validate()` for required-field shape checks; this
+  // cast lets the typed registry call the handler with its specific payload
+  // without per-event runtime narrowing here.
+  const handler = handlers[event] as (
+    payload: EventPayloads[EventName],
+    ctx: RequestCtx,
+  ) => Promise<Partial<TwikooResponse>>;
 
   let result: Partial<TwikooResponse>;
   try {
