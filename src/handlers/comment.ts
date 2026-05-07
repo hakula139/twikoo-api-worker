@@ -8,7 +8,7 @@ import { formatIpRegion } from '../lib/geo';
 import { newCommentId } from '../lib/id';
 import { configWithSecrets, secret } from '../lib/secret';
 import { verifyTurnstile } from '../lib/turnstile';
-import { sanitizeHtml } from '../shims/sanitize';
+import { sanitizeHtml } from '../lib/sanitize';
 import {
   addQQMailSuffix,
   equalsMail,
