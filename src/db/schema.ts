@@ -1,11 +1,4 @@
-import {
-  index,
-  integer,
-  primaryKey,
-  sqliteTable,
-  text,
-  uniqueIndex,
-} from 'drizzle-orm/sqlite-core';
+import { index, integer, sqliteTable, text } from 'drizzle-orm/sqlite-core';
 
 // SQLite booleans ride on INTEGER; `Bit` narrows the surface to 0/1.
 export type Bit = 0 | 1;
@@ -14,7 +7,7 @@ export type Bit = 0 | 1;
 export const comment = sqliteTable(
   'comment',
   {
-    _id: text('_id').notNull(),
+    _id: text('_id').notNull().primaryKey(),
     uid: text('uid').notNull(),
     nick: text('nick').notNull(),
     mail: text('mail').notNull(),
@@ -38,8 +31,7 @@ export const comment = sqliteTable(
     avatar: text('avatar').notNull(),
   },
   (t) => [
-    primaryKey({ columns: [t.url, t.created] }),
-    uniqueIndex('idx_comment_id').on(t._id),
+    index('idx_comment_url_created').on(t.url, t.created),
     index('idx_comment_created').on(t.created),
     index('idx_comment_ip_created').on(t.ip, t.created),
   ],
