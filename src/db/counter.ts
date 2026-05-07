@@ -32,4 +32,8 @@ export class CounterDB {
     const [row] = await this.db.select().from(counter).where(eq(counter.url, url)).limit(1);
     return row;
   }
+
+  async exportAll(): Promise<Counter[]> {
+    return this.db.select().from(counter);
+  }
 }
