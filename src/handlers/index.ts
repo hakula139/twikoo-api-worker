@@ -1,16 +1,18 @@
 import type { Handler } from '../types';
 
-import { commentDeleteForAdmin, commentGetForAdmin, commentSetForAdmin } from './admin';
 import { getPasswordStatus, login, setPassword } from './auth';
 import {
+  commentDeleteForAdmin,
   commentGet,
+  commentGetForAdmin,
   commentLike,
+  commentSetForAdmin,
   commentSubmit,
   getCommentsCount,
   getRecentComments,
 } from './comment';
-import { counterGet } from './counter';
 import { getConfig } from './config';
+import { counterGet } from './counter';
 import { getFuncVersion } from './meta';
 
 export const handlers: Record<string, Handler> = {
