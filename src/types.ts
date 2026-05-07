@@ -9,6 +9,7 @@ export interface Env {
 
   // Secrets are optional so the smoke-test path runs without them; consumers must validate.
   AKISMET_KEY?: string;
+  QQ_API_KEY?: string;
   SENDER_EMAIL?: string;
   SMTP_PASS?: string;
   SMTP_USER?: string;
