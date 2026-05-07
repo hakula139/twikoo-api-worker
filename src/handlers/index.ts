@@ -1,5 +1,6 @@
 import type { Handler } from '../types';
 
+import { commentDeleteForAdmin, commentGetForAdmin, commentSetForAdmin } from './admin';
 import { getPasswordStatus, login, setPassword } from './auth';
 import {
   commentGet,
@@ -13,8 +14,11 @@ import { getConfig } from './config';
 import { getFuncVersion } from './meta';
 
 export const handlers: Record<string, Handler> = {
+  COMMENT_DELETE_FOR_ADMIN: commentDeleteForAdmin,
   COMMENT_GET: commentGet,
+  COMMENT_GET_FOR_ADMIN: commentGetForAdmin,
   COMMENT_LIKE: commentLike,
+  COMMENT_SET_FOR_ADMIN: commentSetForAdmin,
   COMMENT_SUBMIT: commentSubmit,
   COUNTER_GET: counterGet,
   GET_COMMENTS_COUNT: getCommentsCount,
