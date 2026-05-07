@@ -27,6 +27,7 @@ import {
 
 const MAX_TIMESTAMP_MILLIS = 41025312000000;
 const MAX_QUERY_LIMIT = 500;
+const NON_NEWEST_LIMIT = 100;
 const RECENT_DEFAULT_PAGE_SIZE = 10;
 const RECENT_MAX_PAGE_SIZE = 100;
 
@@ -64,8 +65,31 @@ export const commentGet: Handler = async (payload, ctx) => {
   const sort: CommentSort = isCommentSort(rawSort) ? rawSort : 'newest';
 
   const total = await ctx.db.comment.count(url, showAll, ctx.uid);
-  const probed = await ctx.db.comment.list(url, showAll, ctx.uid, before, 0, pageSize + 1, sort);
-  const more = probed.length > pageSize;
+
+  // The widget always sends `before = min(rendered.created)` as the load-more
+  // cursor, which is only valid for `newest` (created desc). For `oldest` and
+  // `popular`, fetch a generous cap in one shot and report `more = false` so the
+  // widget hides its load-more button. Beyond NON_NEWEST_LIMIT on those tabs,
+  // users can switch back to `newest` to keep paging.
+  const isNewest = sort === 'newest';
+  let probed: Comment[];
+  let more = false;
+  if (isNewest) {
+    probed = await ctx.db.comment.list(url, showAll, ctx.uid, before, 0, pageSize + 1, sort);
+    more = probed.length > pageSize;
+  } else if (!payload.before) {
+    probed = await ctx.db.comment.list(
+      url,
+      showAll,
+      ctx.uid,
+      MAX_TIMESTAMP_MILLIS,
+      0,
+      NON_NEWEST_LIMIT,
+      sort,
+    );
+  } else {
+    probed = [];
+  }
   const main = more ? probed.slice(0, pageSize) : probed;
 
   const top =
