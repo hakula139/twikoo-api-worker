@@ -18,11 +18,13 @@ export class ConfigDB {
     return row?.value ?? '';
   }
 
-  // Single-row table — clear + insert lets a fresh deploy with no config row
-  // also write successfully (a bare `update` would be a no-op on empty).
+  // Atomic upsert against the pinned id = 1 row; covers fresh deploys and
+  // the hot path with the same statement.
   async write(value: string): Promise<void> {
-    await this.db.delete(config);
-    await this.db.insert(config).values({ value });
+    await this.db
+      .insert(config)
+      .values({ id: 1, value })
+      .onConflictDoUpdate({ target: config.id, set: { value } });
   }
 
   async writePatch(patch: Record<string, unknown>): Promise<void> {

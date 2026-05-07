@@ -37,7 +37,9 @@ export const comment = sqliteTable(
   ],
 );
 
+// Singleton row pinned to id = 1 so writes can use INSERT ... ON CONFLICT.
 export const config = sqliteTable('config', {
+  id: integer('id').notNull().primaryKey().default(1),
   value: text('value').notNull().default(''),
 });
 
