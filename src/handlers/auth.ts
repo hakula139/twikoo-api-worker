@@ -24,9 +24,12 @@ export const setPassword: Handler = async (payload, ctx) => {
   return {};
 };
 
-// Verify the password and echo it back as `ticket`. The frontend stashes the
-// ticket as `accessToken` for subsequent admin calls; `lib/auth.isAdmin` then
-// recovers the role via `md5(uid) === ADMIN_PASS`. No CloudBase ticket needed.
+// Verify the password. The widget's HTTP-mode flow auto-saves the password it
+// sent as `twikoo-access-token` in localStorage when the response has `code:0`
+// and no `ticket`. Returning `ticket` would route the widget through its tcb
+// (Tencent CloudBase) signIn path, which crashes when `envId` is a plain URL
+// because the tcb client is never initialized. `lib/auth.isAdmin` then
+// recovers the role from subsequent `accessToken` headers.
 export const login: Handler = async (payload, ctx) => {
   validate(payload, ['password']);
 
@@ -37,5 +40,5 @@ export const login: Handler = async (payload, ctx) => {
   if (md5(password) !== ctx.config.ADMIN_PASS) {
     throw new TwikooError(ResponseCode.PASS_NOT_MATCH, '密码错误');
   }
-  return { ticket: password };
+  return {};
 };
