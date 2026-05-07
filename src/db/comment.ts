@@ -62,22 +62,28 @@ export class CommentDB {
       .where(and(eq(comment.url, url), visibility(showAll, uid), inArray(comment.rid, rids)));
   }
 
-  async countByUrl(url: string, includeReply: boolean): Promise<number> {
-    const [row] = await this.db
-      .select({ count: count() })
+  // Returns a `url → count` map; callers fan out url variants via `getUrlsQuery`
+  // and collapse the variant counts back per requested url.
+  async countByUrls(urls: string[], includeReply: boolean): Promise<Map<string, number>> {
+    if (urls.length === 0) {
+      return new Map();
+    }
+    const rows = await this.db
+      .select({ url: comment.url, count: count() })
       .from(comment)
       .where(
         and(
-          eq(comment.url, url),
+          inArray(comment.url, urls),
           eq(comment.isSpam, 0),
           includeReply ? undefined : eq(comment.rid, ''),
         ),
-      );
-    return row?.count ?? 0;
+      )
+      .groupBy(comment.url);
+    return new Map(rows.map((r) => [r.url, r.count]));
   }
 
-  async recentByUrl(
-    urlFilter: { all: boolean; url?: string },
+  async recent(
+    urls: string[] | undefined,
     includeReply: boolean,
     limit: number,
   ): Promise<Comment[]> {
@@ -86,11 +92,12 @@ export class CommentDB {
       .from(comment)
       .where(
         and(
-          urlFilter.all ? undefined : eq(comment.url, urlFilter.url ?? ''),
+          urls?.length ? inArray(comment.url, urls) : undefined,
           eq(comment.isSpam, 0),
           includeReply ? undefined : eq(comment.rid, ''),
         ),
       )
+      .orderBy(desc(comment.created))
       .limit(limit);
   }
 

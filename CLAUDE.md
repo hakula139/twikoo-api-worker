@@ -69,11 +69,11 @@ For local secrets, create `.dev.vars` (gitignored) with one `KEY=value` per line
 ### Manual deploy
 
 ```bash
-pnpm wrangler login                                               # one-time OAuth
-pnpm wrangler d1 create twikoo                                    # capture database_id → wrangler.toml + drizzle.config.ts
+pnpm wrangler login                        # one-time OAuth
+pnpm wrangler d1 create twikoo             # capture database_id → wrangler.toml + drizzle.config.ts
 pnpm wrangler r2 bucket create twikoo
-pnpm db:push                                                      # sync schema.ts to remote D1 (needs CLOUDFLARE_D1_TOKEN)
-pnpm wrangler secret put SMTP_PASS                                # repeat per secret
+pnpm db:push                               # sync schema.ts to remote D1 (needs CLOUDFLARE_D1_TOKEN)
+pnpm wrangler secret put SMTP_PASS         # repeat per secret
 pnpm deploy
 ```
 

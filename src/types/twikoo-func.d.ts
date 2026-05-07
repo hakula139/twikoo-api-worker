@@ -26,8 +26,12 @@ declare module 'twikoo-func/utils' {
   ): unknown[];
   export function normalizeMail(mail: string): string;
   export function equalsMail(a: string, b: string): boolean;
-  export function getMailMd5(mail: string): string;
-  export function getAvatar(mail: string, config: unknown): string;
+  export function getMailMd5(comment: { mail?: string; nick?: string; mailMd5?: string }): string;
+  export function getAvatar(
+    comment: { avatar?: string; mail?: string; nick?: string; mailMd5?: string },
+    config: unknown,
+  ): string;
+  export function getUrlsQuery(urls: readonly string[]): string[];
   export function isQQ(mail: string): boolean;
   export function addQQMailSuffix(mail: string): string;
   export function getQQAvatar(mail: string): Promise<string>;

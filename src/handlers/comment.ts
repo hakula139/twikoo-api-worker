@@ -3,10 +3,14 @@ import type { Handler } from '../types';
 
 import { isAdmin } from '../lib/auth';
 import { formatIpRegion } from '../lib/geo';
-import { parseComment, validate } from '../twikoo';
+import { getAvatar, getMailMd5, getUrlsQuery, parseComment, validate } from '../twikoo';
 
 const MAX_TIMESTAMP_MILLIS = 41025312000000;
 const MAX_QUERY_LIMIT = 500;
+const RECENT_DEFAULT_PAGE_SIZE = 10;
+const RECENT_MAX_PAGE_SIZE = 100;
+
+const stripHtml = (html: string): string => html.replace(/<[^>]*>/g, '');
 
 interface ParsedComment {
   id: string;
@@ -74,4 +78,46 @@ export const commentGet: Handler = async (payload, ctx) => {
   }
 
   return { data: parsed, more, count: total };
+};
+
+export const getCommentsCount: Handler = async (payload, ctx) => {
+  validate(payload, ['urls']);
+
+  const urls = (payload.urls as string[]).filter(Boolean);
+  const includeReply = !!payload.includeReply;
+
+  const counts = await ctx.db.comment.countByUrls(getUrlsQuery(urls), includeReply);
+
+  // Sum `/path` and `/path/` variants so callers see one count per requested URL.
+  const data = urls.map((url) => ({
+    url,
+    count: getUrlsQuery([url]).reduce((acc, v) => acc + (counts.get(v) ?? 0), 0),
+  }));
+
+  return { data };
+};
+
+export const getRecentComments: Handler = async (payload, ctx) => {
+  const urlsRaw = (payload.urls as string[] | undefined)?.filter(Boolean);
+  const urls = urlsRaw?.length ? getUrlsQuery(urlsRaw) : undefined;
+  const includeReply = !!payload.includeReply;
+  const requested = Number(payload.pageSize) || RECENT_DEFAULT_PAGE_SIZE;
+  const pageSize = Math.min(requested, RECENT_MAX_PAGE_SIZE);
+
+  const rows = await ctx.db.comment.recent(urls, includeReply, pageSize);
+
+  const data = rows.map((c) => ({
+    id: c._id,
+    url: c.url,
+    href: c.href,
+    nick: c.nick,
+    avatar: getAvatar(c, ctx.config),
+    mailMd5: getMailMd5(c),
+    link: c.link,
+    comment: c.comment,
+    commentText: stripHtml(c.comment),
+    created: c.created,
+  }));
+
+  return { data };
 };
