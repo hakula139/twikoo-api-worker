@@ -1,10 +1,12 @@
 // Port of twikoo-func/utils/image.js to Web APIs (Blob / FormData / fetch /
 // Web Crypto for S3 SigV4); upstream uses Node fs / axios / form-data.
 
-import type { TwikooConfig } from '../types';
+import type { Env, TwikooConfig } from '../types';
 
 import { logger } from '../twikoo';
 import { ResponseCode, TwikooError } from './errors';
+
+type R2Env = Pick<Env, 'R2' | 'R2_PUBLIC_URL'>;
 
 export interface UploadResult {
   url: string;
@@ -382,20 +384,37 @@ const uploadToS3 = async (
   return { url: fileUrl };
 };
 
-// ── Top-level dispatch (matches upstream's IMAGE_CDN routing) ──
+// ── Cloudflare R2 (native binding, no signing) ──
+
+const uploadToR2 = async (photo: string, fileName: string, env: R2Env): Promise<UploadResult> => {
+  if (!env.R2 || !env.R2_PUBLIC_URL) {
+    throw new Error('R2 binding 或 R2_PUBLIC_URL 未配置');
+  }
+  const { mimeType, bytes } = decodePhoto(photo);
+  const key = `${Date.now()}-${safeBaseName(fileName)}`;
+  await env.R2.put(key, bytes, { httpMetadata: { contentType: mimeType } });
+  return { url: `${stripTrailingSlash(env.R2_PUBLIC_URL)}/${key}` };
+};
+
+// ── Top-level dispatch (matches upstream's IMAGE_CDN routing, plus 'r2') ──
 
 export const uploadImage = async (
   photo: string,
   fileName: string,
   config: TwikooConfig,
+  env: R2Env,
 ): Promise<UploadResult> => {
   try {
     const imageService = stringConfig(config, 'IMAGE_CDN') ?? '';
 
-    // Upstream gate: S3 needs its own keys; everything else needs IMAGE_CDN_TOKEN.
+    // Each branch validates its own credentials/binding requirements.
     if (imageService === 's3') {
       if (!stringConfig(config, 'S3_BUCKET') || !stringConfig(config, 'S3_ACCESS_KEY_ID')) {
         throw new Error('未配置 S3 图床参数（S3_BUCKET、S3_ACCESS_KEY_ID、S3_SECRET_ACCESS_KEY）');
+      }
+    } else if (imageService === 'r2') {
+      if (!env.R2 || !env.R2_PUBLIC_URL) {
+        throw new Error('R2 binding 或 R2_PUBLIC_URL 未配置');
       }
     } else if (!imageService || !stringConfig(config, 'IMAGE_CDN_TOKEN')) {
       throw new Error('未配置图片上传服务');
@@ -441,6 +460,9 @@ export const uploadImage = async (
     }
     if (imageService === 's3') {
       return await uploadToS3(photo, fileName, config);
+    }
+    if (imageService === 'r2') {
+      return await uploadToR2(photo, fileName, env);
     }
     throw new Error('不支持的图片上传服务');
   } catch (e) {
