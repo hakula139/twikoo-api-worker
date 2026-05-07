@@ -1,16 +1,18 @@
 import type { Handler } from '../types';
 
-import { commentDeleteForAdmin, commentGetForAdmin, commentSetForAdmin } from './admin';
 import { getPasswordStatus, login, setPassword } from './auth';
 import {
+  commentDeleteForAdmin,
   commentGet,
+  commentGetForAdmin,
   commentLike,
+  commentSetForAdmin,
   commentSubmit,
   getCommentsCount,
   getRecentComments,
 } from './comment';
+import { getConfig, getConfigForAdmin, setConfig } from './config';
 import { counterGet } from './counter';
-import { getConfig } from './config';
 import { getFuncVersion } from './meta';
 
 export const handlers: Record<string, Handler> = {
@@ -23,9 +25,11 @@ export const handlers: Record<string, Handler> = {
   COUNTER_GET: counterGet,
   GET_COMMENTS_COUNT: getCommentsCount,
   GET_CONFIG: getConfig,
+  GET_CONFIG_FOR_ADMIN: getConfigForAdmin,
   GET_FUNC_VERSION: getFuncVersion,
   GET_PASSWORD_STATUS: getPasswordStatus,
   GET_RECENT_COMMENTS: getRecentComments,
   LOGIN: login,
+  SET_CONFIG: setConfig,
   SET_PASSWORD: setPassword,
 };
