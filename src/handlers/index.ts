@@ -13,6 +13,7 @@ import {
 } from './comment';
 import { getConfig, getConfigForAdmin, setConfig } from './config';
 import { counterGet } from './counter';
+import { emailTest } from './mail';
 import { getFuncVersion } from './meta';
 
 export const handlers: Record<string, Handler> = {
@@ -23,6 +24,7 @@ export const handlers: Record<string, Handler> = {
   COMMENT_SET_FOR_ADMIN: commentSetForAdmin,
   COMMENT_SUBMIT: commentSubmit,
   COUNTER_GET: counterGet,
+  EMAIL_TEST: emailTest,
   GET_COMMENTS_COUNT: getCommentsCount,
   GET_CONFIG: getConfig,
   GET_CONFIG_FOR_ADMIN: getConfigForAdmin,

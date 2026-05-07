@@ -33,52 +33,73 @@ type Service = (typeof SUPPORTED_SERVICES)[number];
 const isSupportedService = (s: string): s is Service =>
   (SUPPORTED_SERVICES as readonly string[]).includes(s);
 
-const sendViaSendgrid = (apiKey: string, msg: MailMessage): Promise<Response> =>
-  fetch('https://api.sendgrid.com/v3/mail/send', {
-    method: 'POST',
-    headers: {
+interface MailProvider {
+  url: string;
+  headers(apiKey: string): Record<string, string>;
+  body(msg: MailMessage): unknown;
+}
+
+const PROVIDERS: Record<Service, MailProvider> = {
+  sendgrid: {
+    url: 'https://api.sendgrid.com/v3/mail/send',
+    headers: (apiKey) => ({
       'Authorization': `Bearer ${apiKey}`,
       'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
+    }),
+    body: (msg) => ({
       personalizations: [{ to: [{ email: msg.to }] }],
       from: { email: msg.from },
       subject: msg.subject,
       content: [{ type: 'text/html', value: msg.html }],
     }),
-  });
-
-const sendViaMailchannels = (apiKey: string, msg: MailMessage): Promise<Response> =>
-  fetch('https://api.mailchannels.net/tx/v1/send', {
-    method: 'POST',
-    headers: {
+  },
+  mailchannels: {
+    url: 'https://api.mailchannels.net/tx/v1/send',
+    headers: (apiKey) => ({
       'X-Api-Key': apiKey,
       'Content-Type': 'application/json',
       'Accept': 'application/json',
-    },
-    body: JSON.stringify({
+    }),
+    body: (msg) => ({
       personalizations: [{ to: [{ email: msg.to }] }],
       from: { email: msg.from },
       subject: msg.subject,
       content: [{ type: 'text/html', value: msg.html }],
     }),
-  });
-
-const sendViaResend = (apiKey: string, msg: MailMessage): Promise<Response> =>
-  fetch('https://api.resend.com/emails', {
-    method: 'POST',
-    headers: {
+  },
+  resend: {
+    url: 'https://api.resend.com/emails',
+    headers: (apiKey) => ({
       'Authorization': `Bearer ${apiKey}`,
       'Content-Type': 'application/json',
       'Accept': 'application/json',
-    },
-    body: JSON.stringify({
+    }),
+    body: (msg) => ({
       from: msg.from,
       to: msg.to,
       subject: msg.subject,
       html: msg.html,
     }),
+  },
+};
+
+// Provider returns 2xx on accepted, 4xx/5xx on rejected. EMAIL_TEST relies on
+// failures throwing; otherwise the caller stores the failure Response as
+// "sent" and the misconfiguration goes unnoticed.
+const send = async (service: Service, apiKey: string, msg: MailMessage): Promise<Response> => {
+  const provider = PROVIDERS[service];
+  const response = await fetch(provider.url, {
+    method: 'POST',
+    headers: provider.headers(apiKey),
+    body: JSON.stringify(provider.body(msg)),
   });
+  if (!response.ok) {
+    const text = await response.text().catch(() => '');
+    const detail = text || response.statusText;
+    throw new Error(`${service} send failed: ${response.status} ${detail}`);
+  }
+  return response;
+};
 
 export const mailShim: NodemailerShim = {
   createTransport(rawConfig) {
@@ -98,17 +119,10 @@ export const mailShim: NodemailerShim = {
         return true;
       },
       async sendMail(msg) {
-        const apiKey = config.auth?.pass ?? '';
-        if (service === 'sendgrid') {
-          return sendViaSendgrid(apiKey, msg);
+        if (!isSupportedService(service)) {
+          throw new Error(`Unsupported mail service: ${config.service ?? '<unset>'}`);
         }
-        if (service === 'mailchannels') {
-          return sendViaMailchannels(apiKey, msg);
-        }
-        if (service === 'resend') {
-          return sendViaResend(apiKey, msg);
-        }
-        throw new Error(`Unsupported mail service: ${config.service ?? '<unset>'}`);
+        return send(service, config.auth?.pass ?? '', msg);
       },
     };
   },
