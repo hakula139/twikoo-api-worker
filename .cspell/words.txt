@@ -16,6 +16,7 @@ numtide
 pagefind
 pkgs
 pnpm
+remoteip
 sendgrid
 statix
 tcomment
