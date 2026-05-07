@@ -6,6 +6,10 @@ import { type Bit, type Comment, type NewComment, comment } from './schema';
 
 export type { Bit, Comment, NewComment } from './schema';
 
+// `showAll` lets admin views see every row; otherwise only non-spam OR own comments.
+const visibility = (showAll: boolean, uid: string) =>
+  showAll ? undefined : or(eq(comment.isSpam, 0), eq(comment.uid, uid));
+
 export class CommentDB {
   constructor(private readonly db: DrizzleD1Database) {}
 
@@ -16,23 +20,17 @@ export class CommentDB {
     return row;
   }
 
-  async count(url: string, hideSpam: Bit, uid: string): Promise<number> {
+  async count(url: string, showAll: boolean, uid: string): Promise<number> {
     const [row] = await this.db
       .select({ count: count() })
       .from(comment)
-      .where(
-        and(
-          eq(comment.url, url),
-          eq(comment.rid, ''),
-          or(ne(comment.isSpam, hideSpam), eq(comment.uid, uid)),
-        ),
-      );
+      .where(and(eq(comment.url, url), eq(comment.rid, ''), visibility(showAll, uid)));
     return row?.count ?? 0;
   }
 
   async list(
     url: string,
-    hideSpam: Bit,
+    showAll: boolean,
     uid: string,
     before: number,
     top: Bit,
@@ -44,7 +42,7 @@ export class CommentDB {
       .where(
         and(
           eq(comment.url, url),
-          or(ne(comment.isSpam, hideSpam), eq(comment.uid, uid)),
+          visibility(showAll, uid),
           lt(comment.created, before),
           eq(comment.top, top),
           eq(comment.rid, ''),
@@ -54,20 +52,14 @@ export class CommentDB {
       .limit(limit);
   }
 
-  async replies(url: string, hideSpam: Bit, uid: string, rids: string[]): Promise<Comment[]> {
+  async replies(url: string, showAll: boolean, uid: string, rids: string[]): Promise<Comment[]> {
     if (rids.length === 0) {
       return [];
     }
     return this.db
       .select()
       .from(comment)
-      .where(
-        and(
-          eq(comment.url, url),
-          or(ne(comment.isSpam, hideSpam), eq(comment.uid, uid)),
-          inArray(comment.rid, rids),
-        ),
-      );
+      .where(and(eq(comment.url, url), visibility(showAll, uid), inArray(comment.rid, rids)));
   }
 
   async countByUrl(url: string, includeReply: boolean): Promise<number> {

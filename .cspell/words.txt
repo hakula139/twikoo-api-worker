@@ -6,6 +6,7 @@ deadnix
 direnv
 disqus
 hakula
+imaegoo
 mailchannels
 nixfmt
 nixos
