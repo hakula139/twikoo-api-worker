@@ -2,6 +2,7 @@ import type { Handler } from '../types';
 
 import { requireAdmin } from '../lib/auth';
 import { ResponseCode, TwikooError } from '../lib/errors';
+import { configWithSecrets } from '../lib/secret';
 import { emailTest as emailTestFn } from '../twikoo';
 
 // Upstream `emailTest` resets the cached transporter, re-runs `initMailer`,
@@ -11,7 +12,7 @@ import { emailTest as emailTestFn } from '../twikoo';
 export const emailTest: Handler = async (payload, ctx) => {
   requireAdmin(ctx);
 
-  const result = (await emailTestFn(payload, ctx.config, true)) as {
+  const result = (await emailTestFn(payload, configWithSecrets(ctx), true)) as {
     result?: unknown;
     message?: string;
   };

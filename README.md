@@ -31,26 +31,26 @@ Without Nix, install Node.js 24 and pnpm yourself.
 ```bash
 pnpm wrangler login
 pnpm wrangler d1 create twikoo
-# Copy database_id from the output into wrangler.toml and drizzle.config.ts.
-pnpm db:push                  # sync schema.ts to remote D1 (needs CLOUDFLARE_D1_TOKEN)
 pnpm wrangler r2 bucket create twikoo
-# Set custom R2 public URL via Cloudflare dashboard, then update R2_PUBLIC_URL in wrangler.toml.
+pnpm db:push
 ```
 
-Schema is defined in [`src/db/schema.ts`](src/db/schema.ts). `pnpm db:push` diffs the schema against remote D1 and applies the delta directly — no migration files in the repo.
+After `wrangler d1 create twikoo`, copy the printed `database_id` into [`wrangler.toml`](wrangler.toml) and [`drizzle.config.ts`](drizzle.config.ts). After `wrangler r2 bucket create twikoo`, set the custom R2 public URL in the Cloudflare dashboard and update `R2_PUBLIC_URL` in `wrangler.toml`.
+
+`pnpm db:push` syncs [`src/db/schema.ts`](src/db/schema.ts) to remote D1 (needs `CLOUDFLARE_D1_TOKEN`), diffing against the live database and applying the delta directly — no migration files in the repo.
 
 Secrets (set as needed):
 
 ```bash
 pnpm wrangler secret put AKISMET_KEY
-pnpm wrangler secret put TURNSTILE_SECRET
+pnpm wrangler secret put QQ_API_KEY
 pnpm wrangler secret put SENDER_EMAIL
-pnpm wrangler secret put SMTP_USER
 pnpm wrangler secret put SMTP_PASS
-pnpm wrangler secret put QQ_API_KEY     # optional, for GET_QQ_NICK
+pnpm wrangler secret put SMTP_USER
+pnpm wrangler secret put TURNSTILE_SECRET
 ```
 
-`QQ_API_KEY` unlocks the v1.nsuuu.com nickname lookup used by `GET_QQ_NICK` (free path is rate-limited / key-gated; obtain one at <https://api.nsuuu.com>). The handler also falls back to the same key set in admin config (`QQ_API_KEY` field), so either path works — the secret takes precedence.
+`QQ_API_KEY` is optional — it unlocks the v1.nsuuu.com nickname lookup used by `GET_QQ_NICK` (free path is rate-limited / key-gated; obtain one at <https://api.nsuuu.com>). The handler also falls back to the same key set in admin config (`QQ_API_KEY` field), so either path works — the secret takes precedence.
 
 For local dev secrets, create `.dev.vars` (gitignored) with `KEY=value` per line.
 

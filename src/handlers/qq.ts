@@ -1,5 +1,6 @@
 import type { Handler } from '../types';
 
+import { secret } from '../lib/secret';
 import { logger, validate } from '../twikoo';
 
 const QQ_NICK_API = 'https://v1.nsuuu.com/api/qqname';
@@ -13,7 +14,7 @@ export const getQqNick: Handler = async (payload, ctx) => {
   validate(payload, ['qq']);
 
   const qq = (payload.qq as string).replace(/@qq\.com$/i, '');
-  const apiKey = ctx.env.QQ_API_KEY ?? (ctx.config.QQ_API_KEY as string | undefined);
+  const apiKey = secret(ctx, 'QQ_API_KEY');
 
   const nick = await fetchQqNick(qq, apiKey);
   return { nick };
