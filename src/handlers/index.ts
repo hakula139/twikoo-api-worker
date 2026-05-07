@@ -1,5 +1,6 @@
 import type { Handler } from '../types';
 
+import { getPasswordStatus, login, setPassword } from './auth';
 import {
   commentGet,
   commentLike,
@@ -19,5 +20,8 @@ export const handlers: Record<string, Handler> = {
   GET_COMMENTS_COUNT: getCommentsCount,
   GET_CONFIG: getConfig,
   GET_FUNC_VERSION: getFuncVersion,
+  GET_PASSWORD_STATUS: getPasswordStatus,
   GET_RECENT_COMMENTS: getRecentComments,
+  LOGIN: login,
+  SET_PASSWORD: setPassword,
 };
