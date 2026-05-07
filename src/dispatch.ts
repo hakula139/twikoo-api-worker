@@ -79,7 +79,11 @@ export const dispatch = async (
       return jsonResponse({ code: error.code, message: error.message }, headers);
     }
     logger.error('Unhandled handler error:', error);
-    return jsonResponse({ code: ResponseCode.FAIL, message: 'Internal error.' }, headers);
+    // twikoo-func's `validate` and similar helpers throw plain Errors with
+    // user-actionable messages (e.g. '评论内容过长'); preserve them so the
+    // widget can show the upstream copy instead of a generic 'Internal error.'
+    const message = error instanceof Error && error.message ? error.message : 'Internal error.';
+    return jsonResponse({ code: ResponseCode.FAIL, message }, headers);
   }
 
   return jsonResponse({ code: ResponseCode.SUCCESS, ...result }, headers);
