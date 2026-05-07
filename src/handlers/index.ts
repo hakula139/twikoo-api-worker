@@ -3,6 +3,8 @@ import type { Handler } from '../types';
 import { getPasswordStatus, login, setPassword } from './auth';
 import {
   commentDeleteForAdmin,
+  commentDeleteForUser,
+  commentExportForAdmin,
   commentGet,
   commentGetForAdmin,
   commentLike,
@@ -19,6 +21,8 @@ import { getFuncVersion } from './meta';
 
 export const handlers: Record<string, Handler> = {
   COMMENT_DELETE_FOR_ADMIN: commentDeleteForAdmin,
+  COMMENT_DELETE_FOR_USER: commentDeleteForUser,
+  COMMENT_EXPORT_FOR_ADMIN: commentExportForAdmin,
   COMMENT_GET: commentGet,
   COMMENT_GET_FOR_ADMIN: commentGetForAdmin,
   COMMENT_LIKE: commentLike,

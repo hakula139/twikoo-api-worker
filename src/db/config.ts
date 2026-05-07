@@ -1,9 +1,15 @@
 import type { DrizzleD1Database } from 'drizzle-orm/d1';
 
-import { config } from './schema';
+import { type Config, config } from './schema';
+
+export type { Config } from './schema';
 
 export class ConfigDB {
   constructor(private readonly db: DrizzleD1Database) {}
+
+  async exportAll(): Promise<Config[]> {
+    return this.db.select().from(config);
+  }
 
   async read(): Promise<string> {
     const [row] = await this.db.select({ value: config.value }).from(config).limit(1);

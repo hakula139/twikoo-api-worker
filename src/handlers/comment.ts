@@ -418,3 +418,51 @@ export const commentDeleteForAdmin: Handler = async (payload, ctx) => {
   await ctx.db.comment.delete(payload.id as string);
   return { deleted: 1 };
 };
+
+export const commentDeleteForUser: Handler = async (payload, ctx) => {
+  validate(payload, ['id']);
+
+  const id = payload.id as string;
+  const row = await ctx.db.comment.byId(id);
+  if (!row) {
+    throw new TwikooError(ResponseCode.FAIL, '评论不存在');
+  }
+  if (row.uid !== ctx.uid) {
+    throw new TwikooError(ResponseCode.FAIL, '只能删除自己的评论');
+  }
+
+  await ctx.db.comment.delete(id);
+  return { deleted: 1 };
+};
+
+type ExportCollection = 'comment' | 'counter' | 'config';
+const EXPORT_COLLECTIONS = [
+  'comment',
+  'counter',
+  'config',
+] as const satisfies readonly ExportCollection[];
+const isExportCollection = (s: string): s is ExportCollection =>
+  (EXPORT_COLLECTIONS as readonly string[]).includes(s);
+
+export const commentExportForAdmin: Handler = async (payload, ctx) => {
+  requireAdmin(ctx);
+
+  const raw = (payload.collection as string | undefined) ?? 'comment';
+  if (!isExportCollection(raw)) {
+    throw new TwikooError(ResponseCode.FAIL, `Unsupported collection: ${raw}`);
+  }
+
+  const data = await exportRows(raw, ctx);
+  return { data };
+};
+
+const exportRows = (collection: ExportCollection, ctx: RequestCtx): Promise<unknown[]> => {
+  switch (collection) {
+    case 'comment':
+      return ctx.db.comment.exportAll();
+    case 'counter':
+      return ctx.db.counter.exportAll();
+    case 'config':
+      return ctx.db.config.exportAll();
+  }
+};

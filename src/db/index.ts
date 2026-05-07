@@ -7,6 +7,7 @@ import { ConfigDB } from './config';
 import { CounterDB } from './counter';
 
 export type { AdminFilter, Bit, Comment, CommentSort, NewComment } from './comment';
+export type { Config } from './config';
 export type { Counter } from './counter';
 
 export class DB {
