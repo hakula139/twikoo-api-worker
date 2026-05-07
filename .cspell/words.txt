@@ -18,6 +18,7 @@ nixos
 nixpkgs
 nodemailer
 nsfw
+nsuuu
 numtide
 pagefind
 piclist
