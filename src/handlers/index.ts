@@ -19,6 +19,7 @@ import { imageUpload } from './image';
 import { commentImportForAdmin } from './import';
 import { emailTest } from './mail';
 import { getFuncVersion } from './meta';
+import { getQqNick } from './qq';
 
 export const handlers: Record<string, Handler> = {
   COMMENT_DELETE_FOR_ADMIN: commentDeleteForAdmin,
@@ -37,6 +38,7 @@ export const handlers: Record<string, Handler> = {
   GET_CONFIG_FOR_ADMIN: getConfigForAdmin,
   GET_FUNC_VERSION: getFuncVersion,
   GET_PASSWORD_STATUS: getPasswordStatus,
+  GET_QQ_NICK: getQqNick,
   GET_RECENT_COMMENTS: getRecentComments,
   LOGIN: login,
   SET_CONFIG: setConfig,
