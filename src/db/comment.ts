@@ -224,11 +224,15 @@ const adminWhere = (filter: AdminFilter): SQL | undefined =>
     filter.keyword ? adminKeywordFilter(filter.keyword) : undefined,
   );
 
-// Single bind across seven LIKE columns; builder chains would re-bind.
-const adminKeywordFilter = (keyword: string): SQL => sql`(${comment.nick} LIKE ${keyword}
-  OR ${comment.mail} LIKE ${keyword}
-  OR ${comment.link} LIKE ${keyword}
-  OR ${comment.ip} LIKE ${keyword}
-  OR ${comment.comment} LIKE ${keyword}
-  OR ${comment.url} LIKE ${keyword}
-  OR ${comment.href} LIKE ${keyword})`;
+// Single bind across seven LIKE columns; builder chains would re-bind. The
+// ESCAPE clause makes `_` `%` `\` literal — admins searching for `foo_bar`
+// or `50%` see exact matches instead of wildcard expansions.
+const adminKeywordFilter = (
+  keyword: string,
+): SQL => sql`(${comment.nick} LIKE ${keyword} ESCAPE '\\'
+  OR ${comment.mail} LIKE ${keyword} ESCAPE '\\'
+  OR ${comment.link} LIKE ${keyword} ESCAPE '\\'
+  OR ${comment.ip} LIKE ${keyword} ESCAPE '\\'
+  OR ${comment.comment} LIKE ${keyword} ESCAPE '\\'
+  OR ${comment.url} LIKE ${keyword} ESCAPE '\\'
+  OR ${comment.href} LIKE ${keyword} ESCAPE '\\')`;

@@ -362,11 +362,14 @@ export const commentSubmit: Handler<'COMMENT_SUBMIT'> = async (payload, ctx) => 
   return { id: newComment._id };
 };
 
+// Escape SQLite LIKE metacharacters; pairs with ESCAPE '\' in adminKeywordFilter.
+const escapeLikePattern = (s: string): string => s.replace(/[\\%_]/g, (c) => `\\${c}`);
+
 const buildAdminFilter = (payload: EventPayloads['COMMENT_GET_FOR_ADMIN']): AdminFilter => {
   const isSpam: Bit | undefined =
     payload.type === 'HIDDEN' ? 1 : payload.type === 'VISIBLE' ? 0 : undefined;
   const rawKeyword = payload.keyword?.trim();
-  const keyword = rawKeyword ? `%${rawKeyword}%` : undefined;
+  const keyword = rawKeyword ? `%${escapeLikePattern(rawKeyword)}%` : undefined;
   return { isSpam, keyword };
 };
 
