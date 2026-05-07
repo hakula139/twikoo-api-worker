@@ -5,6 +5,7 @@ import { checkAkismet } from '../lib/akismet';
 import { isAdmin, requireAdmin } from '../lib/auth';
 import { ResponseCode, TwikooError } from '../lib/errors';
 import { formatIpRegion } from '../lib/geo';
+import { configWithSecrets, secret } from '../lib/secret';
 import { verifyTurnstile } from '../lib/turnstile';
 import { sanitizeHtml } from '../shims/sanitize';
 import {
@@ -243,16 +244,16 @@ const enforceTurnstile = async (
   if (ctx.config.CAPTCHA_PROVIDER !== 'Turnstile') {
     return;
   }
-  const secret = ctx.env.TURNSTILE_SECRET ?? ctx.config.TURNSTILE_SECRET_KEY;
+  const turnstileSecret = secret(ctx, 'TURNSTILE_SECRET');
   const siteKey = ctx.config.TURNSTILE_SITE_KEY;
-  if (!secret || !siteKey) {
+  if (!turnstileSecret || !siteKey) {
     return;
   }
   const token = (payload.turnstileToken as string | undefined) ?? '';
   if (!token) {
     throw new TwikooError(ResponseCode.CREDENTIALS_INVALID, '人机验证失败，请刷新页面重试');
   }
-  const result = await verifyTurnstile({ secret, token, ip: ctx.ip });
+  const result = await verifyTurnstile({ secret: turnstileSecret, token, ip: ctx.ip });
   if (!result.success) {
     throw new TwikooError(
       ResponseCode.CREDENTIALS_INVALID,
@@ -321,7 +322,7 @@ const buildComment = async (
 
 const postSubmit = async (saved: Comment, ctx: RequestCtx): Promise<void> => {
   try {
-    const akismetKey = ctx.env.AKISMET_KEY ?? (ctx.config.AKISMET_KEY as string | undefined) ?? '';
+    const akismetKey = secret(ctx, 'AKISMET_KEY') ?? '';
     if (akismetKey && akismetKey !== 'MANUAL_REVIEW') {
       const blog =
         (ctx.config.SITE_URL as string | undefined) || `https://${new URL(ctx.request.url).host}`;
@@ -347,7 +348,7 @@ const postSubmit = async (saved: Comment, ctx: RequestCtx): Promise<void> => {
       const parentId = (curr as { pid?: string }).pid;
       return parentId ? ctx.db.comment.byId(parentId) : undefined;
     };
-    await sendNotice(saved, ctx.config, getParentComment);
+    await sendNotice(saved, configWithSecrets(ctx), getParentComment);
   } catch (error) {
     logger.error('Post-submit failed:', error);
   }
