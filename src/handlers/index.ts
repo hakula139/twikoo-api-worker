@@ -11,7 +11,7 @@ import {
   getCommentsCount,
   getRecentComments,
 } from './comment';
-import { getConfig } from './config';
+import { getConfig, getConfigForAdmin, setConfig } from './config';
 import { counterGet } from './counter';
 import { getFuncVersion } from './meta';
 
@@ -25,9 +25,11 @@ export const handlers: Record<string, Handler> = {
   COUNTER_GET: counterGet,
   GET_COMMENTS_COUNT: getCommentsCount,
   GET_CONFIG: getConfig,
+  GET_CONFIG_FOR_ADMIN: getConfigForAdmin,
   GET_FUNC_VERSION: getFuncVersion,
   GET_PASSWORD_STATUS: getPasswordStatus,
   GET_RECENT_COMMENTS: getRecentComments,
   LOGIN: login,
+  SET_CONFIG: setConfig,
   SET_PASSWORD: setPassword,
 };
