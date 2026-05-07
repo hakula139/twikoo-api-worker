@@ -27,7 +27,6 @@ import {
   jsonParse,
 } from 'twikoo-func/utils/import';
 import { getMd5, getSha256, setCustomLibs } from 'twikoo-func/utils/lib';
-import { uploadImage } from 'twikoo-func/utils/image';
 import logger from 'twikoo-func/utils/logger';
 import { emailTest, sendNotice } from 'twikoo-func/utils/notify';
 import { postCheckSpam } from 'twikoo-func/utils/spam';
@@ -46,6 +45,13 @@ export const VERSION: string = twikooFuncPkg.version;
 // `getMd5()` / `getSha256()` are factories — cache once for stable references.
 export const md5 = getMd5();
 export const sha256 = getSha256();
+
+// Upstream helpers return `{code, ...payload}`; dispatch wraps with `code: 0`,
+// so handlers must strip the inner field to avoid double-wrapping.
+export const stripCode = <T extends { code: number }>(result: T): Omit<T, 'code'> => {
+  const { code: _code, ...rest } = result;
+  return rest;
+};
 
 export {
   addQQMailSuffix,
@@ -72,6 +78,5 @@ export {
   postCheckSpam,
   preCheckSpam,
   sendNotice,
-  uploadImage,
   validate,
 };

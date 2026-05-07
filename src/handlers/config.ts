@@ -5,24 +5,20 @@ import {
   VERSION,
   getConfigForAdmin as getConfigForAdminFn,
   getConfig as getConfigFn,
+  stripCode,
   validate,
 } from '../twikoo';
 
-export const getConfig: Handler = async (_payload, ctx) => {
-  return getConfigFn({
+export const getConfig: Handler = async (_payload, ctx) =>
+  getConfigFn({
     config: ctx.config,
     VERSION,
     isAdmin: isAdmin(ctx.uid, ctx.config),
   });
-};
 
 export const getConfigForAdmin: Handler = async (_payload, ctx) => {
   requireAdmin(ctx);
-  const { code: _code, ...rest } = await getConfigForAdminFn({
-    config: ctx.config,
-    isAdmin: true,
-  });
-  return rest;
+  return stripCode(await getConfigForAdminFn({ config: ctx.config, isAdmin: true }));
 };
 
 export const setConfig: Handler = async (payload, ctx) => {

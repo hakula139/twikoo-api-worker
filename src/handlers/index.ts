@@ -13,6 +13,8 @@ import {
 } from './comment';
 import { getConfig, getConfigForAdmin, setConfig } from './config';
 import { counterGet } from './counter';
+import { imageUpload } from './image';
+import { emailTest } from './mail';
 import { getFuncVersion } from './meta';
 
 export const handlers: Record<string, Handler> = {
@@ -23,12 +25,14 @@ export const handlers: Record<string, Handler> = {
   COMMENT_SET_FOR_ADMIN: commentSetForAdmin,
   COMMENT_SUBMIT: commentSubmit,
   COUNTER_GET: counterGet,
+  EMAIL_TEST: emailTest,
   GET_COMMENTS_COUNT: getCommentsCount,
   GET_CONFIG: getConfig,
   GET_CONFIG_FOR_ADMIN: getConfigForAdmin,
   GET_FUNC_VERSION: getFuncVersion,
   GET_PASSWORD_STATUS: getPasswordStatus,
   GET_RECENT_COMMENTS: getRecentComments,
+  IMAGE_UPLOAD: imageUpload,
   LOGIN: login,
   SET_CONFIG: setConfig,
   SET_PASSWORD: setPassword,
