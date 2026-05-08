@@ -8,6 +8,7 @@ deadnix
 direnv
 disqus
 easyimage
+esbuild
 hakula
 hentai
 ifnull
@@ -36,4 +37,5 @@ turnstile
 twikoo
 twikoojs
 valine
+workerd
 wrangler
