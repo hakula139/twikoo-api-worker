@@ -1,7 +1,7 @@
 {
   "name": "twikoo-api-worker",
   "description": "Cloudflare Workers backend for the Twikoo comment system, backed by D1 and R2.",
-  "version": "0.0.1",
+  "version": "0.1.0",
   "private": true,
   "type": "module",
   "main": "src/worker.ts",
