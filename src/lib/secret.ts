@@ -1,14 +1,13 @@
 import type { RequestCtx, TwikooConfig } from '../types';
 
-// env binding → admin-config field. Wrangler secret wins over admin config.
-// Turnstile is the lone naming mismatch (env vs upstream's admin UI key).
+// Env binding name == admin-config field name. Wrangler secret wins.
 const SECRET_PAIRS = {
   AKISMET_KEY: 'AKISMET_KEY',
   QQ_API_KEY: 'QQ_API_KEY',
   SENDER_EMAIL: 'SENDER_EMAIL',
   SMTP_PASS: 'SMTP_PASS',
   SMTP_USER: 'SMTP_USER',
-  TURNSTILE_SECRET: 'TURNSTILE_SECRET_KEY',
+  TURNSTILE_SECRET_KEY: 'TURNSTILE_SECRET_KEY',
 } as const satisfies Record<string, string>;
 
 type SecretEnvKey = keyof typeof SECRET_PAIRS;

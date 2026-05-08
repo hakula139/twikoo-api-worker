@@ -49,10 +49,10 @@ pnpm wrangler secret put QQ_API_KEY
 pnpm wrangler secret put SENDER_EMAIL
 pnpm wrangler secret put SMTP_PASS
 pnpm wrangler secret put SMTP_USER
-pnpm wrangler secret put TURNSTILE_SECRET
+pnpm wrangler secret put TURNSTILE_SECRET_KEY
 ```
 
-All of the above can also be set in the admin-config UI under the matching field name (`TURNSTILE_SECRET` is read as `TURNSTILE_SECRET_KEY` there). The wrangler secret takes precedence when both are set.
+All of the above can also be set in the admin-config UI under the matching field name. The wrangler secret takes precedence when both are set.
 
 For local dev secrets, create `.dev.vars` (gitignored) with `KEY=value` per line.
 

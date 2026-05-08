@@ -13,7 +13,7 @@ export interface Env {
   SENDER_EMAIL?: string;
   SMTP_PASS?: string;
   SMTP_USER?: string;
-  TURNSTILE_SECRET?: string;
+  TURNSTILE_SECRET_KEY?: string;
 }
 
 // Single-row blob in the `config` table. Lists every key the worker reads
