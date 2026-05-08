@@ -35,8 +35,5 @@
     "typescript": "^5.9.3",
     "typescript-eslint": "^8.0.0",
     "wrangler": "^4.54.0"
-  },
-  "overrides": {
-    "axios": "git+https://github.com/wuzhengmao/axios-cf-worker.git#v0.x-cf"
   }
 }
