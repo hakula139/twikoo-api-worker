@@ -50,7 +50,20 @@ export const dispatch = async (
   }
 
   const configRaw = await db.config.read();
-  const config: TwikooConfig = configRaw ? (JSON.parse(configRaw) as TwikooConfig) : {};
+  let config: TwikooConfig;
+  try {
+    config = configRaw ? (JSON.parse(configRaw) as TwikooConfig) : {};
+  } catch (error) {
+    // Avoid logging the raw row — it normally contains ADMIN_PASS and SMTP_PASS.
+    logger.error(`Config row is not valid JSON (length=${configRaw.length}):`, error);
+    return jsonResponse(
+      {
+        code: ResponseCode.CONFIG_NOT_EXIST,
+        message: 'Configuration is corrupted; please contact the administrator.',
+      },
+      corsHeaders(origin),
+    );
+  }
   const headers = corsHeaders(origin, config);
 
   // Reject before DB writes — without short-circuit, the browser still drops
