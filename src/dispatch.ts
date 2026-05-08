@@ -1,9 +1,16 @@
 import type { ExecutionContext } from '@cloudflare/workers-types';
 
-import type { Env, Handler, RequestCtx, TwikooConfig, TwikooResponse } from './types';
+import type {
+  Env,
+  EventName,
+  EventPayloads,
+  RequestCtx,
+  TwikooConfig,
+  TwikooResponse,
+} from './types';
 
 import { DB } from './db';
-import { handlers as defaultHandlers } from './handlers';
+import { handlers, isEventName } from './handlers';
 import { ResponseCode, TwikooError } from './lib/errors';
 import { extractGeo } from './lib/geo';
 import { corsHeaders, jsonResponse } from './lib/http';
@@ -19,7 +26,6 @@ export const dispatch = async (
   request: Request,
   env: Env,
   ctx: ExecutionContext,
-  registry: Record<string, Handler> = defaultHandlers,
 ): Promise<Response> => {
   const origin = request.headers.get('Origin');
   const db = new DB(env.DB);
@@ -64,13 +70,19 @@ export const dispatch = async (
     waitUntil: ctx.waitUntil.bind(ctx),
   };
 
-  const handler = registry[event];
-  if (!handler) {
+  if (!isEventName(event)) {
     return jsonResponse(
       { code: ResponseCode.EVENT_NOT_EXIST, message: `Event "${event}" is not supported.` },
       headers,
     );
   }
+  // Trust the handler's `validate()` for required-field shape checks; this
+  // cast lets the typed registry call the handler with its specific payload
+  // without per-event runtime narrowing here.
+  const handler = handlers[event] as (
+    payload: EventPayloads[EventName],
+    ctx: RequestCtx,
+  ) => Promise<Partial<TwikooResponse>>;
 
   let result: Partial<TwikooResponse>;
   try {
@@ -80,7 +92,11 @@ export const dispatch = async (
       return jsonResponse({ code: error.code, message: error.message }, headers);
     }
     logger.error('Unhandled handler error:', error);
-    return jsonResponse({ code: ResponseCode.FAIL, message: 'Internal error.' }, headers);
+    // twikoo-func's `validate` and similar helpers throw plain Errors with
+    // user-actionable messages (e.g. '评论内容过长'); preserve them so the
+    // widget can show the upstream copy instead of a generic 'Internal error.'
+    const message = error instanceof Error && error.message ? error.message : 'Internal error.';
+    return jsonResponse({ code: ResponseCode.FAIL, message }, headers);
   }
 
   return jsonResponse({ code: ResponseCode.SUCCESS, ...result }, headers);

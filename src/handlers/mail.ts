@@ -5,11 +5,9 @@ import { ResponseCode, TwikooError } from '../lib/errors';
 import { configWithSecrets } from '../lib/secret';
 import { emailTest as emailTestFn } from '../twikoo';
 
-// Upstream `emailTest` resets the cached transporter, re-runs `initMailer`,
-// and dispatches a real send. On failure it returns `{message}` (caught
-// internally) — convert to a typed throw so the client sees the dispatch
-// error envelope instead of a `code: 0` body that hides the failure.
-export const emailTest: Handler = async (payload, ctx) => {
+// Upstream `emailTest` swallows send failures into `{message}`; throw so the
+// client sees the error envelope instead of a misleading `code: 0`.
+export const emailTest: Handler<'EMAIL_TEST'> = async (payload, ctx) => {
   requireAdmin(ctx);
 
   const result = (await emailTestFn(payload, configWithSecrets(ctx), true)) as {

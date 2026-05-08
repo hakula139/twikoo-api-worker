@@ -5,6 +5,7 @@ import { XMLParser } from 'fast-xml-parser';
 
 import { requireAdmin } from '../lib/auth';
 import { ResponseCode, TwikooError } from '../lib/errors';
+import { newCommentId } from '../lib/id';
 import {
   commentImportArtalk,
   commentImportArtalk2,
@@ -32,28 +33,27 @@ const isImportSource = (s: string): s is ImportSource =>
 // strict NewComment schema; treat them as Records and normalize per row.
 type ImportedRow = Record<string, unknown>;
 
-export const commentImportForAdmin: Handler = async (payload, ctx) => {
+export const commentImportForAdmin: Handler<'COMMENT_IMPORT_FOR_ADMIN'> = async (payload, ctx) => {
   requireAdmin(ctx);
   validate(payload, ['source', 'file']);
 
-  const source = payload.source as string;
-  if (!isImportSource(source)) {
-    throw new TwikooError(ResponseCode.FAIL, `Unsupported source: ${source}`);
+  if (!isImportSource(payload.source)) {
+    throw new TwikooError(ResponseCode.FAIL, `Unsupported source: ${payload.source}`);
   }
 
-  const file = payload.file as string;
   const log: string[] = [];
   const append = (msg: string): void => {
     log.push(`${new Date().toISOString()} ${msg}`);
   };
 
-  append(`开始导入 ${source}`);
+  append(`开始导入 ${payload.source}`);
 
   let imported: ImportedRow[] | undefined;
   try {
-    imported = await runImport(source, file, append);
+    imported = await runImport(payload.source, payload.file, append);
   } catch (e) {
     append(`解析失败：${(e as Error).message}`);
+    throw new TwikooError(ResponseCode.FAIL, log.join('\n'));
   }
 
   if (imported && imported.length > 0) {
@@ -92,10 +92,8 @@ const runImport = async (
   }
 };
 
-// Upstream's `commentImportDisqus` was written against `xml2js` output: every
-// element is an array, attributes live under `$`, text is the array element.
-// `fast-xml-parser` natively returns scalars for single elements, so we wrap
-// non-`$` keys in arrays after parsing.
+// commentImportDisqus expects xml2js shape (every elem an array, attrs under
+// `$`); fast-xml-parser returns scalars, so re-wrap below.
 const xmlParser = new XMLParser({
   ignoreAttributes: false,
   attributeNamePrefix: '',
@@ -142,11 +140,7 @@ const toJsonArray = (v: unknown): string => {
   return '[]';
 };
 
-const newCommentId = (): string => crypto.randomUUID().replace(/-/g, '');
-
-// Upstream sources produce heterogeneous shapes — some omit fields entirely,
-// some carry MongoDB-style booleans, our own export carries D1's 0/1 + JSON
-// strings. Coerce everything into NewComment with safe defaults.
+// Coerce heterogeneous upstream shapes into NewComment with safe defaults.
 const normalizeRow = (raw: ImportedRow): NewComment => {
   const now = Date.now();
   return {

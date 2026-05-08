@@ -1,4 +1,4 @@
-import type { Handler } from '../types';
+import type { Handlers } from '../types';
 
 import { getPasswordStatus, login, setPassword } from './auth';
 import {
@@ -21,7 +21,9 @@ import { emailTest } from './mail';
 import { getFuncVersion } from './meta';
 import { getQqNick } from './qq';
 
-export const handlers: Record<string, Handler> = {
+// Keys are exhaustive over EventName via the Handlers type — adding or
+// renaming an event requires updating EventPayloads in types.ts in lockstep.
+export const handlers: Handlers = {
   COMMENT_DELETE_FOR_ADMIN: commentDeleteForAdmin,
   COMMENT_DELETE_FOR_USER: commentDeleteForUser,
   COMMENT_EXPORT_FOR_ADMIN: commentExportForAdmin,
@@ -45,3 +47,5 @@ export const handlers: Record<string, Handler> = {
   SET_PASSWORD: setPassword,
   UPLOAD_IMAGE: imageUpload,
 };
+
+export const isEventName = (s: string): s is keyof Handlers => s in handlers;

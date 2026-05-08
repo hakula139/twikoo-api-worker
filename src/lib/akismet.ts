@@ -1,7 +1,7 @@
-// Akismet HTTP comment-check. Replaces twikoo-func's `postCheckSpam` path,
-// which goes through `akismet-api` (`require('http')` and friends) — fine on
-// Node, awkward on Workers. Two POSTs to rest.akismet.com, urlencoded body,
-// plain "true" / "false" response.
+// Akismet HTTP comment-check; replaces twikoo-func's `postCheckSpam` path
+// (akismet-api uses `require('http')` and friends).
+
+import { logger } from '../twikoo';
 
 const checkUrl = (apiKey: string): string => `https://${apiKey}.rest.akismet.com/1.1/comment-check`;
 
@@ -40,6 +40,9 @@ export const checkAkismet = async (opts: AkismetCheckOpts): Promise<boolean> => 
 
   const response = await fetch(checkUrl(opts.apiKey), { method: 'POST', body });
   if (!response.ok) {
+    // Fail-open so transient Akismet outages don't block submission, but log
+    // loudly so a misconfigured key (which 4xx's persistently) is visible.
+    logger.warn(`Akismet returned ${response.status}; treating comment as ham.`);
     return false;
   }
 

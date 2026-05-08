@@ -1,9 +1,6 @@
-import xss from 'xss';
-
-export const sanitizeHtml = (input: string): string => xss(input);
-
-// DOMPurify-shape shim for `twikoo-func.setCustomLibs`. Comment HTML is already
-// sanitized at write time, so passing through here avoids stripping allowlist tokens.
+// DOMPurify-shape passthrough fed to twikoo-func.setCustomLibs. Comment HTML
+// is already sanitized by lib/sanitize at write time, so a no-op here avoids
+// stripping allowlist tokens twikoo-func re-renders on read.
 export const sanitizeShim = {
   sanitize: (input: string): string => input,
 };

@@ -2,9 +2,11 @@ import type { DrizzleD1Database } from 'drizzle-orm/d1';
 
 import type { SQL } from 'drizzle-orm';
 
+import type { Bit, Comment, NewComment } from './schema';
+
 import { and, asc, count, desc, eq, gt, inArray, lt, or, sql } from 'drizzle-orm';
 
-import { type Bit, type Comment, type NewComment, comment } from './schema';
+import { comment } from './schema';
 
 export type { Bit, Comment, NewComment } from './schema';
 
@@ -156,12 +158,28 @@ export class CommentDB {
     await this.db.delete(comment).where(eq(comment._id, id));
   }
 
-  // Caller passes the full ups / downs JSON; this method does not merge.
-  async updateVotes(id: string, upsJson: string, downsJson: string): Promise<void> {
-    await this.db
-      .update(comment)
-      .set({ ups: upsJson, downs: downsJson })
-      .where(eq(comment._id, id));
+  // Atomic toggle: a fresh `up` retracts any prior `down` (and vice versa);
+  // voting the same direction twice retracts that vote. Pure SQL because two
+  // concurrent voters racing through read-modify-write would lose each other.
+  // Returns false if no row matched.
+  async toggleVote(id: string, uid: string, type: 'up' | 'down'): Promise<boolean> {
+    const target = type === 'up' ? comment.ups : comment.downs;
+    const opposite = type === 'up' ? comment.downs : comment.ups;
+    const result = await this.db.run(sql`
+      UPDATE ${comment} SET
+        ${sql.raw(target.name)} = IIF(
+          EXISTS (SELECT 1 FROM json_each(${target}) WHERE value = ${uid}),
+          IFNULL((SELECT json_group_array(value) FROM json_each(${target}) WHERE value != ${uid}), '[]'),
+          json_insert(${target}, '$[#]', ${uid})
+        ),
+        ${sql.raw(opposite.name)} = IIF(
+          EXISTS (SELECT 1 FROM json_each(${target}) WHERE value = ${uid}),
+          ${opposite},
+          IFNULL((SELECT json_group_array(value) FROM json_each(${opposite}) WHERE value != ${uid}), '[]')
+        )
+      WHERE ${comment._id} = ${id}
+    `);
+    return result.meta.changes > 0;
   }
 
   async updateSpam(id: string, isSpam: Bit, updated: number): Promise<void> {
@@ -206,11 +224,15 @@ const adminWhere = (filter: AdminFilter): SQL | undefined =>
     filter.keyword ? adminKeywordFilter(filter.keyword) : undefined,
   );
 
-// Single bind across seven LIKE columns; builder chains would re-bind.
-const adminKeywordFilter = (keyword: string): SQL => sql`(${comment.nick} LIKE ${keyword}
-  OR ${comment.mail} LIKE ${keyword}
-  OR ${comment.link} LIKE ${keyword}
-  OR ${comment.ip} LIKE ${keyword}
-  OR ${comment.comment} LIKE ${keyword}
-  OR ${comment.url} LIKE ${keyword}
-  OR ${comment.href} LIKE ${keyword})`;
+// Single bind across seven LIKE columns; builder chains would re-bind. The
+// ESCAPE clause makes `_` `%` `\` literal — admins searching for `foo_bar`
+// or `50%` see exact matches instead of wildcard expansions.
+const adminKeywordFilter = (
+  keyword: string,
+): SQL => sql`(${comment.nick} LIKE ${keyword} ESCAPE '\\'
+  OR ${comment.mail} LIKE ${keyword} ESCAPE '\\'
+  OR ${comment.link} LIKE ${keyword} ESCAPE '\\'
+  OR ${comment.ip} LIKE ${keyword} ESCAPE '\\'
+  OR ${comment.comment} LIKE ${keyword} ESCAPE '\\'
+  OR ${comment.url} LIKE ${keyword} ESCAPE '\\'
+  OR ${comment.href} LIKE ${keyword} ESCAPE '\\')`;

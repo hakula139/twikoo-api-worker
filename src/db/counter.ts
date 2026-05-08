@@ -1,8 +1,10 @@
 import type { DrizzleD1Database } from 'drizzle-orm/d1';
 
+import type { Counter } from './schema';
+
 import { eq, sql } from 'drizzle-orm';
 
-import { type Counter, counter } from './schema';
+import { counter } from './schema';
 
 export type { Counter } from './schema';
 

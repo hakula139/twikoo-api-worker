@@ -1,6 +1,4 @@
-// Cloudflare Turnstile siteverify. POSTs the user's challenge token to
-// challenges.cloudflare.com and returns whether it passed. Replaces
-// twikoo-func/utils/captcha's checkTurnstileCaptcha (which depends on axios).
+// Cloudflare Turnstile siteverify; replaces twikoo-func's axios-based path.
 
 const SITEVERIFY_URL = 'https://challenges.cloudflare.com/turnstile/v0/siteverify';
 
