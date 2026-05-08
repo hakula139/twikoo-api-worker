@@ -15,7 +15,7 @@ A long-term roadmap to drop Twikoo entirely and ship a custom comment system liv
 ├── .github/
 │   ├── actions/setup-nix/      # Composite action: install Nix + Cachix
 │   └── workflows/
-│       ├── ci.yml              # PR validation: flake check + type/format/lint/spell
+│       ├── ci.yml              # PR validation: flake check + type/format/lint/spell/test + Codecov upload
 │       └── deploy.yml          # Push-to-main → wrangler deploy
 ├── scripts/
 │   └── bundle-trim.mjs         # postinstall: empty out Node-only modules to fit 1 MiB bundle
@@ -27,9 +27,14 @@ A long-term roadmap to drop Twikoo entirely and ship a custom comment system liv
 │   ├── dispatch.ts             # body parsing, ctx assembly, handler invocation
 │   ├── twikoo.ts               # twikoo-func wiring + V8-compatible shims
 │   └── types.ts                # Env interface + shared types
+├── tests/
+│   ├── tsconfig.json           # adds @cloudflare/vitest-pool-workers types
+│   └── unit/                   # vitest suites running inside workerd
 ├── drizzle.config.ts           # drizzle-kit config (d1-http driver)
 ├── flake.nix                   # Nix dev shell + git-hooks-nix pre-commit
 ├── wrangler.toml               # Worker config (D1 + R2 bindings, custom domain)
+├── codecov.yml                 # Codecov status thresholds (informational during ramp-up)
+├── vitest.config.ts            # cloudflareTest plugin + istanbul coverage
 ├── package.json
 ├── tsconfig.json
 ├── cspell.json
@@ -61,7 +66,8 @@ nix flake check              # Nix-side hooks (Node-side run in CI's `check` job
 ```bash
 pnpm install                 # also runs scripts/bundle-trim.mjs
 pnpm dev                     # wrangler dev on port 8787 (config in wrangler.toml)
-pnpm check                   # tsc --noEmit
+pnpm check                   # tsc --noEmit (root + tests/tsconfig.json)
+pnpm test                    # vitest run inside workerd
 ```
 
 For local secrets, create `.dev.vars` (gitignored) with one `KEY=value` per line.
@@ -139,7 +145,8 @@ Driven by [git-hooks-nix](https://github.com/cachix/git-hooks.nix), wired in `fl
 Run after implementation and before review:
 
 ```bash
-pnpm check                   # tsc --noEmit
+pnpm check                   # tsc --noEmit (root + tests/tsconfig.json)
+pnpm test                    # vitest run inside workerd
 pnpm lint                    # markdownlint + eslint
 pnpm format                  # prettier --check
 pnpm spellcheck              # cspell

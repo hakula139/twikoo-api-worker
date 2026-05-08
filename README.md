@@ -61,6 +61,7 @@ For local dev secrets, create `.dev.vars` (gitignored) with `KEY=value` per line
 ```bash
 pnpm dev                     # wrangler dev on port 8787
 pnpm check                   # type-check
+pnpm test                    # vitest run (workerd via @cloudflare/vitest-pool-workers)
 pnpm format                  # prettier --check .
 pnpm lint                    # markdownlint + eslint
 pnpm spellcheck              # cspell
