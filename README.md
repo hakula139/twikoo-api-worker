@@ -52,7 +52,7 @@ pnpm wrangler secret put SMTP_USER
 pnpm wrangler secret put TURNSTILE_SECRET
 ```
 
-`QQ_API_KEY` is optional — it unlocks the v1.nsuuu.com nickname lookup used by `GET_QQ_NICK` (free path is rate-limited / key-gated; obtain one at <https://api.nsuuu.com>). The handler also falls back to the same key set in admin config (`QQ_API_KEY` field), so either path works — the secret takes precedence.
+All of the above can also be set in the admin-config UI under the matching field name (`TURNSTILE_SECRET` is read as `TURNSTILE_SECRET_KEY` there). The wrangler secret takes precedence when both are set.
 
 For local dev secrets, create `.dev.vars` (gitignored) with `KEY=value` per line.
 
