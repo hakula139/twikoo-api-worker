@@ -38,16 +38,19 @@ export class CommentDB {
     return row;
   }
 
-  async count(url: string, showAll: boolean, uid: string): Promise<number> {
+  async count(urls: string[], showAll: boolean, uid: string): Promise<number> {
+    if (urls.length === 0) {
+      return 0;
+    }
     const [row] = await this.db
       .select({ count: count() })
       .from(comment)
-      .where(and(eq(comment.url, url), eq(comment.rid, ''), visibility(showAll, uid)));
+      .where(and(inArray(comment.url, urls), eq(comment.rid, ''), visibility(showAll, uid)));
     return row?.count ?? 0;
   }
 
   async list(
-    url: string,
+    urls: string[],
     showAll: boolean,
     uid: string,
     before: number,
@@ -55,12 +58,15 @@ export class CommentDB {
     limit: number,
     sort: CommentSort = 'newest',
   ): Promise<Comment[]> {
+    if (urls.length === 0) {
+      return [];
+    }
     return this.db
       .select()
       .from(comment)
       .where(
         and(
-          eq(comment.url, url),
+          inArray(comment.url, urls),
           visibility(showAll, uid),
           lt(comment.created, before),
           eq(comment.top, top),
@@ -71,14 +77,14 @@ export class CommentDB {
       .limit(limit);
   }
 
-  async replies(url: string, showAll: boolean, uid: string, rids: string[]): Promise<Comment[]> {
-    if (rids.length === 0) {
+  async replies(urls: string[], showAll: boolean, uid: string, rids: string[]): Promise<Comment[]> {
+    if (rids.length === 0 || urls.length === 0) {
       return [];
     }
     return this.db
       .select()
       .from(comment)
-      .where(and(eq(comment.url, url), visibility(showAll, uid), inArray(comment.rid, rids)));
+      .where(and(inArray(comment.url, urls), visibility(showAll, uid), inArray(comment.rid, rids)));
   }
 
   // Returns a `url → count` map; callers fan out url variants via `getUrlsQuery`
