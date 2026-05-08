@@ -60,14 +60,16 @@ const isCommentSort = (s: string): s is CommentSort =>
 export const commentGet: Handler<'COMMENT_GET'> = async (payload, ctx) => {
   validate(payload, ['url']);
 
-  const url = payload.url;
+  // Fan out `/path` and `/path/` so a viewer arriving at either form sees
+  // comments posted on the other; matches getCommentsCount / getRecentComments.
+  const urls = getUrlsQuery([payload.url]);
   const beforeRaw = Number(payload.before);
   const before = Number.isFinite(beforeRaw) && beforeRaw > 0 ? beforeRaw : MAX_TIMESTAMP_MILLIS;
   const showAll = isAdmin(ctx.uid, ctx.config);
   const pageSize = Number(ctx.config.COMMENT_PAGE_SIZE) || 8;
   const sort: CommentSort = payload.sort && isCommentSort(payload.sort) ? payload.sort : 'newest';
 
-  const total = await ctx.db.comment.count(url, showAll, ctx.uid);
+  const total = await ctx.db.comment.count(urls, showAll, ctx.uid);
 
   // The widget's `before` cursor (min rendered created) is only meaningful for
   // `newest`; `oldest` / `popular` fetch up to NON_NEWEST_LIMIT in one shot.
@@ -75,11 +77,11 @@ export const commentGet: Handler<'COMMENT_GET'> = async (payload, ctx) => {
   let probed: Comment[];
   let more = false;
   if (isNewest) {
-    probed = await ctx.db.comment.list(url, showAll, ctx.uid, before, 0, pageSize + 1, sort);
+    probed = await ctx.db.comment.list(urls, showAll, ctx.uid, before, 0, pageSize + 1, sort);
     more = probed.length > pageSize;
   } else if (!payload.before) {
     probed = await ctx.db.comment.list(
-      url,
+      urls,
       showAll,
       ctx.uid,
       MAX_TIMESTAMP_MILLIS,
@@ -95,11 +97,11 @@ export const commentGet: Handler<'COMMENT_GET'> = async (payload, ctx) => {
   const top =
     ctx.config.TOP_DISABLED || payload.before
       ? []
-      : await ctx.db.comment.list(url, showAll, ctx.uid, MAX_TIMESTAMP_MILLIS, 1, MAX_QUERY_LIMIT);
+      : await ctx.db.comment.list(urls, showAll, ctx.uid, MAX_TIMESTAMP_MILLIS, 1, MAX_QUERY_LIMIT);
 
   const heads = [...top, ...main];
   const replies = await ctx.db.comment.replies(
-    url,
+    urls,
     showAll,
     ctx.uid,
     heads.map((c) => c._id),
