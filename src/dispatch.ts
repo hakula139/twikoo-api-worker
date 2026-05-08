@@ -93,9 +93,8 @@ export const dispatch = async (
       headers,
     );
   }
-  // Trust the handler's `validate()` for required-field shape checks; this
-  // cast lets the typed registry call the handler with its specific payload
-  // without per-event runtime narrowing here.
+  // Cast erases per-event payload narrowing here; each handler's validate()
+  // re-checks required fields at runtime.
   const handler = handlers[event] as (
     payload: EventPayloads[EventName],
     ctx: RequestCtx,
@@ -109,9 +108,8 @@ export const dispatch = async (
       return jsonResponse({ code: error.code, message: error.message }, headers);
     }
     logger.error('Unhandled handler error:', error);
-    // twikoo-func's `validate` and similar helpers throw plain Errors with
-    // user-actionable messages (e.g. '评论内容过长'); preserve them so the
-    // widget can show the upstream copy instead of a generic 'Internal error.'
+    // Preserve upstream Error messages (e.g. twikoo-func's '评论内容过长')
+    // so the widget can show the original copy instead of 'Internal error.'
     const message = error instanceof Error && error.message ? error.message : 'Internal error.';
     return jsonResponse({ code: ResponseCode.FAIL, message }, headers);
   }

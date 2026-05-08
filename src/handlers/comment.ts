@@ -228,16 +228,14 @@ export const commentLike: Handler<'COMMENT_LIKE'> = async (payload, ctx) => {
   return { updated: 1 };
 };
 
-// 10-minute rolling window. Config keys are named `LIMIT_PER_MINUTE` for
-// upstream parity, but they cap submissions over this window, not per minute.
+// 10-minute rolling window. The `LIMIT_PER_MINUTE` config keys cap
+// submissions over this window — the name is upstream parity.
 const FREQUENCY_WINDOW_MS = 10 * 60 * 1000;
 const DEFAULT_LIMIT_PER_IP = 10;
 
 const enforceFrequencyLimit = async (ctx: RequestCtx): Promise<void> => {
   const since = Date.now() - FREQUENCY_WINDOW_MS;
 
-  // count is comments already stored in the window; the next submission
-  // would be the (count + 1)-th, so reject once count reaches the cap.
   const perIp = numberConfig(ctx.config, 'LIMIT_PER_MINUTE', DEFAULT_LIMIT_PER_IP);
   if ((await ctx.db.comment.countSinceByIp(since, ctx.ip)) >= perIp) {
     throw new TwikooError(ResponseCode.FAIL, '发言频率过高');

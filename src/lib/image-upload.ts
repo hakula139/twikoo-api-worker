@@ -38,7 +38,7 @@ const isUrl = (s: string): boolean => /^https?:\/\//.test(s);
 
 const stripTrailingSlash = (s: string): string => s.replace(/\/$/, '');
 
-// Strip path separators and parent-dir traversal so a hostile fileName can't
+// Drop path separators and collapse repeated dots so a hostile fileName can't
 // climb out of the configured prefix or collide with a different tenant.
 const safeBaseName = (name: string): string => {
   const base = name.replace(/.*[\\/]/, '').replace(/\.{2,}/g, '.');
@@ -406,7 +406,6 @@ export const uploadImage = async (
   try {
     const imageService = stringConfig(config, 'IMAGE_CDN') ?? '';
 
-    // Each branch validates its own credentials/binding requirements.
     if (imageService === 's3') {
       if (!stringConfig(config, 'S3_BUCKET') || !stringConfig(config, 'S3_ACCESS_KEY_ID')) {
         throw new Error('未配置 S3 图床参数（S3_BUCKET、S3_ACCESS_KEY_ID、S3_SECRET_ACCESS_KEY）');
