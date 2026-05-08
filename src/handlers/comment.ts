@@ -3,6 +3,7 @@ import type { EventPayloads, Handler, RequestCtx } from '@/types';
 
 import { checkAkismet } from '@/lib/akismet';
 import { isAdmin, requireAdmin } from '@/lib/auth';
+import { numberConfig } from '@/lib/config-read';
 import { ResponseCode, TwikooError } from '@/lib/errors';
 import { formatIpRegion } from '@/lib/geo';
 import { isPlainObject } from '@/lib/guards';
@@ -232,28 +233,17 @@ export const commentLike: Handler<'COMMENT_LIKE'> = async (payload, ctx) => {
 const FREQUENCY_WINDOW_MS = 10 * 60 * 1000;
 const DEFAULT_LIMIT_PER_IP = 10;
 
-const positiveInt = (raw: unknown, fallback: number): number => {
-  if (typeof raw === 'number') {
-    return Number.isFinite(raw) && raw > 0 ? raw : fallback;
-  }
-  if (typeof raw === 'string') {
-    const parsed = parseInt(raw, 10);
-    return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback;
-  }
-  return fallback;
-};
-
 const enforceFrequencyLimit = async (ctx: RequestCtx): Promise<void> => {
   const since = Date.now() - FREQUENCY_WINDOW_MS;
 
   // count is comments already stored in the window; the next submission
   // would be the (count + 1)-th, so reject once count reaches the cap.
-  const perIp = positiveInt(ctx.config.LIMIT_PER_MINUTE, DEFAULT_LIMIT_PER_IP);
+  const perIp = numberConfig(ctx.config, 'LIMIT_PER_MINUTE', DEFAULT_LIMIT_PER_IP);
   if ((await ctx.db.comment.countSinceByIp(since, ctx.ip)) >= perIp) {
     throw new TwikooError(ResponseCode.FAIL, '发言频率过高');
   }
 
-  const global = positiveInt(ctx.config.LIMIT_PER_MINUTE_ALL, 0);
+  const global = numberConfig(ctx.config, 'LIMIT_PER_MINUTE_ALL', 0);
   if (global > 0 && (await ctx.db.comment.countSince(since)) >= global) {
     throw new TwikooError(ResponseCode.FAIL, '评论太火爆啦 >_< 请稍后再试');
   }

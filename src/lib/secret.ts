@@ -1,5 +1,7 @@
 import type { RequestCtx, TwikooConfig } from '@/types';
 
+import { stringConfig } from './config-read';
+
 // Env binding name == admin-config field name. Wrangler secret wins.
 const SECRET_PAIRS = {
   AKISMET_KEY: 'AKISMET_KEY',
@@ -17,8 +19,7 @@ export const secret = (ctx: RequestCtx, key: SecretEnvKey): string | undefined =
   if (fromEnv) {
     return fromEnv;
   }
-  const fromConfig = ctx.config[SECRET_PAIRS[key]];
-  return typeof fromConfig === 'string' ? fromConfig : undefined;
+  return stringConfig(ctx.config, SECRET_PAIRS[key]);
 };
 
 // Hand to upstream code (notify, spam) that reads config keys directly — env

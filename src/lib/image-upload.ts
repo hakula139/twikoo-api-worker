@@ -4,6 +4,7 @@
 import type { Env, TwikooConfig } from '@/types';
 
 import { logger } from '@/twikoo';
+import { stringConfig } from './config-read';
 import { ResponseCode, TwikooError } from './errors';
 
 type R2Env = Pick<Env, 'R2' | 'R2_PUBLIC_URL'>;
@@ -42,11 +43,6 @@ const stripTrailingSlash = (s: string): string => s.replace(/\/$/, '');
 const safeBaseName = (name: string): string => {
   const base = name.replace(/.*[\\/]/, '').replace(/\.{2,}/g, '.');
   return base || 'upload';
-};
-
-const stringConfig = (config: TwikooConfig, key: string): string | undefined => {
-  const v = config[key];
-  return typeof v === 'string' && v.length > 0 ? v : undefined;
 };
 
 // ── NSFW pre-check ──
