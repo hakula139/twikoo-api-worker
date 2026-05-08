@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { ResponseCode, TwikooError } from '../../../src/lib/errors';
+import { ResponseCode, TwikooError } from '@/lib/errors';
 
 describe('ResponseCode', () => {
   it('pins the upstream-frontend contract values', () => {

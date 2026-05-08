@@ -1,11 +1,11 @@
-import type { Comment, NewComment } from '../../../src/db';
-import type { RequestCtx, TwikooConfig } from '../../../src/types';
+import type { Comment, NewComment } from '@/db';
+import type { RequestCtx, TwikooConfig } from '@/types';
 
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 // twikoo-func eagerly requires axios / form-data at module init — workerd in
 // the vitest pool segfaults loading those. Stub the worker's twikoo boundary.
-vi.mock('../../../src/twikoo', () => ({
+vi.mock('@/twikoo', () => ({
   addQQMailSuffix: (m: string) => m,
   equalsMail: (a: string, b: string) =>
     Boolean(a) && Boolean(b) && a.toLowerCase() === b.toLowerCase(),
@@ -23,8 +23,8 @@ vi.mock('../../../src/twikoo', () => ({
   validate: () => undefined,
 }));
 
-import { TwikooError } from '../../../src/lib/errors';
-import { commentSubmit } from '../../../src/handlers/comment';
+import { TwikooError } from '@/lib/errors';
+import { commentSubmit } from '@/handlers/comment';
 
 interface FakeDb {
   saved: NewComment[];

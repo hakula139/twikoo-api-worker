@@ -1,8 +1,8 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-vi.mock('../../../src/twikoo', () => ({ logger: console }));
+vi.mock('@/twikoo', () => ({ logger: console }));
 
-import { checkAkismet } from '../../../src/lib/akismet';
+import { checkAkismet } from '@/lib/akismet';
 
 const baseOpts = {
   apiKey: 'KEY123',

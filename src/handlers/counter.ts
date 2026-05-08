@@ -1,6 +1,6 @@
-import type { Handler } from '../types';
+import type { Handler } from '@/types';
 
-import { validate } from '../twikoo';
+import { validate } from '@/twikoo';
 
 export const counterGet: Handler<'COUNTER_GET'> = async (payload, ctx) => {
   validate(payload, ['url']);

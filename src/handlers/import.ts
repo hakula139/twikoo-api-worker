@@ -1,11 +1,11 @@
-import type { Bit, NewComment } from '../db';
-import type { Handler } from '../types';
+import type { Bit, NewComment } from '@/db';
+import type { Handler } from '@/types';
 
 import { XMLParser } from 'fast-xml-parser';
 
-import { requireAdmin } from '../lib/auth';
-import { ResponseCode, TwikooError } from '../lib/errors';
-import { newCommentId } from '../lib/id';
+import { requireAdmin } from '@/lib/auth';
+import { ResponseCode, TwikooError } from '@/lib/errors';
+import { newCommentId } from '@/lib/id';
 import {
   commentImportArtalk,
   commentImportArtalk2,
@@ -14,7 +14,7 @@ import {
   commentImportValine,
   jsonParse,
   validate,
-} from '../twikoo';
+} from '@/twikoo';
 
 type ImportSource = 'twikoo' | 'valine' | 'disqus' | 'artalk' | 'artalk2';
 

@@ -1,14 +1,14 @@
-import type { Env, TwikooConfig } from '../../../src/types';
+import type { Env, TwikooConfig } from '@/types';
 
 import { env as rawEnv } from 'cloudflare:test';
 
 const env = rawEnv as unknown as Env;
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-vi.mock('../../../src/twikoo', () => ({ logger: console }));
+vi.mock('@/twikoo', () => ({ logger: console }));
 
-import { ResponseCode, TwikooError } from '../../../src/lib/errors';
-import { uploadImage } from '../../../src/lib/image-upload';
+import { ResponseCode, TwikooError } from '@/lib/errors';
+import { uploadImage } from '@/lib/image-upload';
 
 const PNG_BASE64 = 'iVBORw0KGgo='; // arbitrary 8-byte payload, mime-flagged as png
 const dataUrl = `data:image/png;base64,${PNG_BASE64}`;

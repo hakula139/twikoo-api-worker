@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-import { verifyTurnstile } from '../../../src/lib/turnstile';
+import { verifyTurnstile } from '@/lib/turnstile';
 
 const okResponse = (body: unknown): Response =>
   new Response(JSON.stringify(body), {

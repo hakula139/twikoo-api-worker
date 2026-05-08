@@ -1,9 +1,9 @@
 // Port of twikoo-func/utils/image.js to Web APIs (Blob / FormData / fetch /
 // Web Crypto for S3 SigV4); upstream uses Node fs / axios / form-data.
 
-import type { Env, TwikooConfig } from '../types';
+import type { Env, TwikooConfig } from '@/types';
 
-import { logger } from '../twikoo';
+import { logger } from '@/twikoo';
 import { ResponseCode, TwikooError } from './errors';
 
 type R2Env = Pick<Env, 'R2' | 'R2_PUBLIC_URL'>;

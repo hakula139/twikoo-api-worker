@@ -1,4 +1,4 @@
-import type { RequestCtx, TwikooConfig } from '../types';
+import type { RequestCtx, TwikooConfig } from '@/types';
 
 // Env binding name == admin-config field name. Wrangler secret wins.
 const SECRET_PAIRS = {

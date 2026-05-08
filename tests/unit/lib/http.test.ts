@@ -1,10 +1,10 @@
-import type { TwikooConfig } from '../../../src/types';
+import type { TwikooConfig } from '@/types';
 
 import { describe, expect, it, vi } from 'vitest';
 
-vi.mock('../../../src/twikoo', () => ({ logger: console }));
+vi.mock('@/twikoo', () => ({ logger: console }));
 
-import { corsHeaders, jsonResponse } from '../../../src/lib/http';
+import { corsHeaders, jsonResponse } from '@/lib/http';
 
 describe('corsHeaders', () => {
   it('returns an empty object when origin is null', () => {

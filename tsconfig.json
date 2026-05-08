@@ -9,6 +9,9 @@
     "resolveJsonModule": true,
     "allowSyntheticDefaultImports": true,
     "esModuleInterop": true,
+    "paths": {
+      "@/*": ["./src/*"]
+    },
     "types": [
       "@cloudflare/vitest-pool-workers",
       "@cloudflare/vitest-pool-workers/types",

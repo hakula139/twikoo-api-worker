@@ -1,14 +1,14 @@
-import type { Handler } from '../types';
+import type { Handler } from '@/types';
 
-import { isAdmin } from '../lib/auth';
-import { ResponseCode, TwikooError } from '../lib/errors';
+import { isAdmin } from '@/lib/auth';
+import { ResponseCode, TwikooError } from '@/lib/errors';
 import {
   VERSION,
   getPasswordStatus as getPasswordStatusFn,
   md5,
   stripCode,
   validate,
-} from '../twikoo';
+} from '@/twikoo';
 
 export const getPasswordStatus: Handler<'GET_PASSWORD_STATUS'> = async (_payload, ctx) =>
   stripCode(await getPasswordStatusFn(ctx.config, VERSION));

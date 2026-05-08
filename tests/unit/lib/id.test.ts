@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { newCommentId } from '../../../src/lib/id';
+import { newCommentId } from '@/lib/id';
 
 describe('newCommentId', () => {
   it('returns a 32-char lowercase hex string with no dashes', () => {

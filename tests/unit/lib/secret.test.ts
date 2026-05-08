@@ -1,8 +1,8 @@
-import type { Env, RequestCtx, TwikooConfig } from '../../../src/types';
+import type { Env, RequestCtx, TwikooConfig } from '@/types';
 
 import { describe, expect, it } from 'vitest';
 
-import { configWithSecrets, secret } from '../../../src/lib/secret';
+import { configWithSecrets, secret } from '@/lib/secret';
 
 const buildCtx = (env: Partial<Env>, config: TwikooConfig): RequestCtx =>
   ({ env, config }) as unknown as RequestCtx;

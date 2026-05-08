@@ -1,14 +1,14 @@
-import type { AdminFilter, Bit, Comment, CommentSort, NewComment } from '../db';
-import type { EventPayloads, Handler, RequestCtx } from '../types';
+import type { AdminFilter, Bit, Comment, CommentSort, NewComment } from '@/db';
+import type { EventPayloads, Handler, RequestCtx } from '@/types';
 
-import { checkAkismet } from '../lib/akismet';
-import { isAdmin, requireAdmin } from '../lib/auth';
-import { ResponseCode, TwikooError } from '../lib/errors';
-import { formatIpRegion } from '../lib/geo';
-import { newCommentId } from '../lib/id';
-import { configWithSecrets, secret } from '../lib/secret';
-import { verifyTurnstile } from '../lib/turnstile';
-import { sanitizeHtml } from '../lib/sanitize';
+import { checkAkismet } from '@/lib/akismet';
+import { isAdmin, requireAdmin } from '@/lib/auth';
+import { ResponseCode, TwikooError } from '@/lib/errors';
+import { formatIpRegion } from '@/lib/geo';
+import { newCommentId } from '@/lib/id';
+import { configWithSecrets, secret } from '@/lib/secret';
+import { verifyTurnstile } from '@/lib/turnstile';
+import { sanitizeHtml } from '@/lib/sanitize';
 import {
   addQQMailSuffix,
   equalsMail,
@@ -24,7 +24,7 @@ import {
   sendNotice,
   sha256,
   validate,
-} from '../twikoo';
+} from '@/twikoo';
 
 // Year 3270 — sentinel "no `before` cursor" so the `<` comparison always passes.
 const MAX_TIMESTAMP_MILLIS = 41025312000000;

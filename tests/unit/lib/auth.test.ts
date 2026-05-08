@@ -1,18 +1,18 @@
-import type { RequestCtx, TwikooConfig } from '../../../src/types';
+import type { RequestCtx, TwikooConfig } from '@/types';
 
 import { describe, expect, it, vi } from 'vitest';
 
 // twikoo-func eagerly requires axios / form-data at module init — workerd in
 // the vitest pool segfaults loading those. Stub the worker's twikoo boundary.
-vi.mock('../../../src/twikoo', () => ({
+vi.mock('@/twikoo', () => ({
   md5: (s: string) => `md5(${s})`,
   sha256: (s: string) => `sha256(${s})`,
   logger: console,
 }));
 
-import { isAdmin, requireAdmin } from '../../../src/lib/auth';
-import { ResponseCode, TwikooError } from '../../../src/lib/errors';
-import { md5 } from '../../../src/twikoo';
+import { isAdmin, requireAdmin } from '@/lib/auth';
+import { ResponseCode, TwikooError } from '@/lib/errors';
+import { md5 } from '@/twikoo';
 
 const buildCtx = (uid: string, config: TwikooConfig): RequestCtx =>
   ({ uid, config }) as unknown as RequestCtx;
