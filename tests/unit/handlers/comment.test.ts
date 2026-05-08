@@ -5,6 +5,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { TwikooError } from '@/lib/errors';
 import { commentGet, commentSubmit } from '@/handlers/comment';
+import { mkIp, mkUid } from '@/types';
 import { buildCtx } from '../../helpers/ctx';
 
 interface FakeDb {
@@ -25,7 +26,12 @@ const buildSubmitCtx = (config: TwikooConfig, fake: FakeDb, ip = '1.2.3.4'): Req
       updateSpam: vi.fn(async () => undefined),
     },
   };
-  return buildCtx({ ip, uid: 'guest-uid', config, db: db as unknown as RequestCtx['db'] });
+  return buildCtx({
+    ip: mkIp(ip),
+    uid: mkUid('guest-uid'),
+    config,
+    db: db as unknown as RequestCtx['db'],
+  });
 };
 
 const submitPayload = (overrides: Partial<Record<string, string>> = {}) => ({
@@ -142,7 +148,7 @@ describe('commentGet > malformed votes JSON', () => {
         replies: vi.fn(async () => [] as Comment[]),
       },
     };
-    return buildCtx({ uid: 'guest-uid', db: db as unknown as RequestCtx['db'] });
+    return buildCtx({ uid: mkUid('guest-uid'), db: db as unknown as RequestCtx['db'] });
   };
 
   it('treats malformed ups as empty array and still returns the comment', async () => {

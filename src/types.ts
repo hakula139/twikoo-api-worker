@@ -24,6 +24,21 @@ export interface Secrets {
 
 export interface Env extends Bindings, Secrets {}
 
+// Branded primitives — keep request-scope identity strings (uid, client IP)
+// and database row ids from being passed interchangeably. The cast helpers
+// localize the unavoidable `as` so callers don't sprinkle them.
+export type Uid = string & { readonly __uid: unique symbol };
+export type Ip = string & { readonly __ip: unique symbol };
+export type CommentId = string & { readonly __commentId: unique symbol };
+
+export const mkUid = (s: string): Uid => s as Uid;
+export const mkIp = (s: string): Ip => s as Ip;
+export const mkCommentId = (s: string): CommentId => s as CommentId;
+
+// JSON-encoded payload of T. Forces a parse step before structural ops —
+// `comment.ups.split(',')` on a `JsonString<string[]>` is a compile error.
+export type JsonString<T> = string & { readonly __json: T };
+
 // Single-row blob in the `config` table. Lists every key the worker reads
 // directly. Upstream twikoo-func sets/reads its own keys (NOTIFY_*, IMAGE_*,
 // SMTP_*, etc.) — the open index signature covers those.
@@ -65,10 +80,10 @@ export interface RequestCtx {
   env: Env;
   request: Request;
   waitUntil: ExecutionContext['waitUntil'];
-  ip: string;
+  ip: Ip;
   region: string;
   origin: string | null;
-  uid: string;
+  uid: Uid;
   config: TwikooConfig;
   db: DB;
 }
