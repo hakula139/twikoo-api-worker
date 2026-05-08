@@ -113,6 +113,24 @@ describe('commentSubmit > enforceFrequencyLimit', () => {
     await expect(commentSubmit(submitPayload(), ctx)).rejects.toBeInstanceOf(TwikooError);
     expect(fake.saved).toHaveLength(0);
   });
+
+  it('accepts at one below the global cap', async () => {
+    const fake: FakeDb = { saved: [], perIp: 0, global: 99 };
+    const ctx = buildCtx({ LIMIT_PER_MINUTE: '50', LIMIT_PER_MINUTE_ALL: '100' }, fake);
+
+    const result = await commentSubmit(submitPayload(), ctx);
+    expect(typeof result.id).toBe('string');
+    expect(fake.saved).toHaveLength(1);
+  });
+
+  it('LIMIT_PER_MINUTE_ALL=0 disables the global cap', async () => {
+    const fake: FakeDb = { saved: [], perIp: 0, global: 1_000_000 };
+    const ctx = buildCtx({ LIMIT_PER_MINUTE: '50', LIMIT_PER_MINUTE_ALL: '0' }, fake);
+
+    const result = await commentSubmit(submitPayload(), ctx);
+    expect(typeof result.id).toBe('string');
+    expect(fake.saved).toHaveLength(1);
+  });
 });
 
 describe('commentGet > malformed votes JSON', () => {
@@ -215,6 +233,16 @@ describe('commentSubmit > enforceTurnstile', () => {
     };
 
     await expect(commentSubmit(submitPayload(), ctx)).rejects.toBeInstanceOf(TwikooError);
+    expect(fake.saved).toHaveLength(0);
+  });
+
+  it('throws when CAPTCHA_PROVIDER=Turnstile but TURNSTILE_SECRET_KEY is unset', async () => {
+    const fake: FakeDb = { saved: [], perIp: 0, global: 0 };
+    const ctx = buildCtx({ CAPTCHA_PROVIDER: 'Turnstile' }, fake);
+
+    await expect(
+      commentSubmit(submitPayload({ turnstileToken: 'tk' }), ctx),
+    ).rejects.toBeInstanceOf(TwikooError);
     expect(fake.saved).toHaveLength(0);
   });
 
