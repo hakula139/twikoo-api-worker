@@ -37,6 +37,7 @@ tencentcloud
 turnstile
 twikoo
 twikoojs
+vitest
 valine
 workerd
 wrangler
