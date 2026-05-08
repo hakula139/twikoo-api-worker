@@ -13,11 +13,9 @@ import { DB } from './db';
 import { handlers, isEventName } from './handlers';
 import { ResponseCode, TwikooError } from './lib/errors';
 import { extractGeo } from './lib/geo';
+import { isPlainObject } from './lib/guards';
 import { corsHeaders, isOriginAllowed, jsonResponse } from './lib/http';
 import { logger } from './twikoo';
-
-const isPlainObject = (value: unknown): value is Record<string, unknown> =>
-  value !== null && typeof value === 'object' && !Array.isArray(value);
 
 const stringField = (body: Record<string, unknown>, key: string): string =>
   typeof body[key] === 'string' ? body[key] : '';

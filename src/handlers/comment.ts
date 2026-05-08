@@ -5,6 +5,7 @@ import { checkAkismet } from '@/lib/akismet';
 import { isAdmin, requireAdmin } from '@/lib/auth';
 import { ResponseCode, TwikooError } from '@/lib/errors';
 import { formatIpRegion } from '@/lib/geo';
+import { isPlainObject } from '@/lib/guards';
 import { newCommentId } from '@/lib/id';
 import { configWithSecrets, secret } from '@/lib/secret';
 import { verifyTurnstile } from '@/lib/turnstile';
@@ -428,7 +429,10 @@ export const commentGetForAdmin: Handler<'COMMENT_GET_FOR_ADMIN'> = async (paylo
 // timestamps stay immutable through this path.
 const ADMIN_MUTABLE_FIELDS = ['comment', 'isSpam', 'top'] as const;
 
-const pickAdminUpdate = (raw: Record<string, unknown>): Partial<NewComment> => {
+const pickAdminUpdate = (raw: unknown): Partial<NewComment> => {
+  if (!isPlainObject(raw)) {
+    throw new TwikooError(ResponseCode.FAIL, '`set` must be an object.');
+  }
   const out: Partial<NewComment> = {};
   for (const key of ADMIN_MUTABLE_FIELDS) {
     if (!(key in raw)) {
