@@ -17,7 +17,7 @@ export const extractGeo = (request: Request): RequestGeo => {
   return { ip, region };
 };
 
-// "China||Beijing||" → "China · Beijing"
+// "China|0|Beijing||" → "China · Beijing"
 export const formatIpRegion = (region: string): string => {
   return region
     .split('|')

@@ -25,6 +25,22 @@ describe('extractGeo', () => {
     expect(ip).toBe('203.0.113.42');
   });
 
+  it('assembles the region string from request.cf populated by Cloudflare', () => {
+    const request = new Request('https://example.com', {
+      cf: { country: 'CN', region: 'Zhejiang', city: 'Hangzhou' },
+    });
+    const { region } = extractGeo(request);
+    expect(region).toBe('CN|0|Zhejiang|Hangzhou|');
+  });
+
+  it('emits region from country alone when subdivisions are absent', () => {
+    const request = new Request('https://example.com', {
+      cf: { country: 'CN' },
+    });
+    const { region } = extractGeo(request);
+    expect(region).toBe('CN|0|||');
+  });
+
   it('returns an empty IP and region when no headers or cf properties are set', () => {
     const request = new Request('https://example.com');
     const { ip, region } = extractGeo(request);
