@@ -1,11 +1,11 @@
 {
   "name": "twikoo-api-worker",
   "description": "Cloudflare Workers backend for the Twikoo comment system, backed by D1 and R2.",
-  "version": "0.0.1",
+  "version": "0.1.0",
   "private": true,
   "type": "module",
   "main": "src/worker.ts",
-  "packageManager": "pnpm@10.30.3",
+  "packageManager": "pnpm@11.0.8",
   "scripts": {
     "check": "tsc --noEmit",
     "db:push": "drizzle-kit push",
@@ -25,18 +25,15 @@
     "xss": "^1.0.15"
   },
   "devDependencies": {
-    "@cloudflare/workers-types": "^4.20260101.0",
-    "@types/node": "^22.10.0",
+    "@cloudflare/workers-types": "^4.20260507.1",
+    "@types/node": "^25.6.0",
     "cspell": "^10.0.0",
     "drizzle-kit": "^0.31.10",
-    "eslint": "^9.0.0",
-    "markdownlint-cli2": "^0.22.0",
-    "prettier": "^3.8.1",
-    "typescript": "^5.9.3",
-    "typescript-eslint": "^8.0.0",
-    "wrangler": "^4.54.0"
-  },
-  "overrides": {
-    "axios": "git+https://github.com/wuzhengmao/axios-cf-worker.git#v0.x-cf"
+    "eslint": "^10.3.0",
+    "markdownlint-cli2": "^0.22.1",
+    "prettier": "^3.8.3",
+    "typescript": "^6.0.3",
+    "typescript-eslint": "^8.59.2",
+    "wrangler": "^4.88.0"
   }
 }
