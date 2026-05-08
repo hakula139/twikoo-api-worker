@@ -9,7 +9,6 @@ import {
   getFuncVersion,
   getMailMd5,
   getPasswordStatus,
-  getQQAvatar,
   getUrlsQuery,
   isQQ,
   normalizeMail,
@@ -28,7 +27,6 @@ import {
 import { getMd5, getSha256, setCustomLibs } from 'twikoo-func/utils/lib';
 import logger from 'twikoo-func/utils/logger';
 import { emailTest, sendNotice } from 'twikoo-func/utils/notify';
-import { postCheckSpam } from 'twikoo-func/utils/spam';
 import twikooFuncPkg from 'twikoo-func/package.json';
 
 import { mailShim } from './shims/mail';
@@ -66,14 +64,12 @@ export {
   getFuncVersion,
   getMailMd5,
   getPasswordStatus,
-  getQQAvatar,
   getUrlsQuery,
   isQQ,
   jsonParse,
   logger,
   normalizeMail,
   parseComment,
-  postCheckSpam,
   preCheckSpam,
   sendNotice,
   validate,
