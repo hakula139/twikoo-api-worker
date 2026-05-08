@@ -1,4 +1,4 @@
-import type { Handlers } from '../types';
+import type { Handlers } from '@/types';
 
 import { getPasswordStatus, login, setPassword } from './auth';
 import {

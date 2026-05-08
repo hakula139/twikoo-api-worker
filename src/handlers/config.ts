@@ -1,13 +1,13 @@
-import type { Handler } from '../types';
+import type { Handler } from '@/types';
 
-import { isAdmin, requireAdmin } from '../lib/auth';
+import { isAdmin, requireAdmin } from '@/lib/auth';
 import {
   VERSION,
   getConfigForAdmin as getConfigForAdminFn,
   getConfig as getConfigFn,
   stripCode,
   validate,
-} from '../twikoo';
+} from '@/twikoo';
 
 // Public-facing keys that upstream's getConfig surfaces but should never leave
 // the worker. QQ_API_KEY is consumed by GET_QQ_NICK on the server.

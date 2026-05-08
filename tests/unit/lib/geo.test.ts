@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { extractGeo, formatIpRegion } from '../../../src/lib/geo';
+import { extractGeo, formatIpRegion } from '@/lib/geo';
 
 describe('formatIpRegion', () => {
   it('drops the ISP placeholder at index 1 and trailing empty parts', () => {

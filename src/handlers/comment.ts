@@ -1,14 +1,14 @@
-import type { AdminFilter, Bit, Comment, CommentSort, NewComment } from '../db';
-import type { EventPayloads, Handler, RequestCtx } from '../types';
+import type { AdminFilter, Bit, Comment, CommentSort, NewComment } from '@/db';
+import type { EventPayloads, Handler, RequestCtx } from '@/types';
 
-import { checkAkismet } from '../lib/akismet';
-import { isAdmin, requireAdmin } from '../lib/auth';
-import { ResponseCode, TwikooError } from '../lib/errors';
-import { formatIpRegion } from '../lib/geo';
-import { newCommentId } from '../lib/id';
-import { configWithSecrets, secret } from '../lib/secret';
-import { verifyTurnstile } from '../lib/turnstile';
-import { sanitizeHtml } from '../lib/sanitize';
+import { checkAkismet } from '@/lib/akismet';
+import { isAdmin, requireAdmin } from '@/lib/auth';
+import { ResponseCode, TwikooError } from '@/lib/errors';
+import { formatIpRegion } from '@/lib/geo';
+import { newCommentId } from '@/lib/id';
+import { configWithSecrets, secret } from '@/lib/secret';
+import { verifyTurnstile } from '@/lib/turnstile';
+import { sanitizeHtml } from '@/lib/sanitize';
 import {
   addQQMailSuffix,
   equalsMail,
@@ -24,7 +24,7 @@ import {
   sendNotice,
   sha256,
   validate,
-} from '../twikoo';
+} from '@/twikoo';
 
 // Year 3270 — sentinel "no `before` cursor" so the `<` comparison always passes.
 const MAX_TIMESTAMP_MILLIS = 41025312000000;
@@ -232,13 +232,15 @@ const positiveInt = (raw: unknown, fallback: number): number => {
 const enforceFrequencyLimit = async (ctx: RequestCtx): Promise<void> => {
   const since = Date.now() - FREQUENCY_WINDOW_MS;
 
+  // count is comments already stored in the window; the next submission
+  // would be the (count + 1)-th, so reject once count reaches the cap.
   const perIp = positiveInt(ctx.config.LIMIT_PER_MINUTE, DEFAULT_LIMIT_PER_IP);
-  if ((await ctx.db.comment.countSinceByIp(since, ctx.ip)) > perIp) {
+  if ((await ctx.db.comment.countSinceByIp(since, ctx.ip)) >= perIp) {
     throw new TwikooError(ResponseCode.FAIL, '发言频率过高');
   }
 
   const global = positiveInt(ctx.config.LIMIT_PER_MINUTE_ALL, 0);
-  if (global > 0 && (await ctx.db.comment.countSince(since)) > global) {
+  if (global > 0 && (await ctx.db.comment.countSince(since)) >= global) {
     throw new TwikooError(ResponseCode.FAIL, '评论太火爆啦 >_< 请稍后再试');
   }
 };
@@ -250,12 +252,12 @@ const enforceTurnstile = async (
   if (ctx.config.CAPTCHA_PROVIDER !== 'Turnstile') {
     return;
   }
+  // Only the secret is needed for siteverify; the site key is a frontend-only
+  // hint that GET_CONFIG hands to the widget. Guarding the backend on it
+  // failed every captcha when the admin left the site-key field blank.
   const turnstileSecret = secret(ctx, 'TURNSTILE_SECRET_KEY');
-  const siteKey = ctx.config.TURNSTILE_SITE_KEY;
-  if (!turnstileSecret || !siteKey) {
-    // Fail closed: provider is configured but credentials are missing —
-    // silently skipping would let bots through with no signal.
-    logger.error('Turnstile is enabled but TURNSTILE_SECRET_KEY / TURNSTILE_SITE_KEY is unset.');
+  if (!turnstileSecret) {
+    logger.error('Turnstile is enabled but TURNSTILE_SECRET_KEY is unset.');
     throw new TwikooError(ResponseCode.FAIL, '人机验证未配置完整，请联系管理员');
   }
   const token = payload.turnstileToken ?? '';

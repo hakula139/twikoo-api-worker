@@ -1,7 +1,7 @@
-import type { Handler } from '../types';
+import type { Handler } from '@/types';
 
-import { secret } from '../lib/secret';
-import { logger, validate } from '../twikoo';
+import { secret } from '@/lib/secret';
+import { logger, validate } from '@/twikoo';
 
 const QQ_NICK_API = 'https://v1.nsuuu.com/api/qqname';
 

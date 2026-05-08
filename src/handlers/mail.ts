@@ -1,9 +1,9 @@
-import type { Handler } from '../types';
+import type { Handler } from '@/types';
 
-import { requireAdmin } from '../lib/auth';
-import { ResponseCode, TwikooError } from '../lib/errors';
-import { configWithSecrets } from '../lib/secret';
-import { emailTest as emailTestFn } from '../twikoo';
+import { requireAdmin } from '@/lib/auth';
+import { ResponseCode, TwikooError } from '@/lib/errors';
+import { configWithSecrets } from '@/lib/secret';
+import { emailTest as emailTestFn } from '@/twikoo';
 
 // Upstream `emailTest` swallows send failures into `{message}`; throw so the
 // client sees the error envelope instead of a misleading `code: 0`.

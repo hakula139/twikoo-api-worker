@@ -1,7 +1,7 @@
 // Akismet HTTP comment-check; replaces twikoo-func's `postCheckSpam` path
 // (akismet-api uses `require('http')` and friends).
 
-import { logger } from '../twikoo';
+import { logger } from '@/twikoo';
 
 const checkUrl = (apiKey: string): string => `https://${apiKey}.rest.akismet.com/1.1/comment-check`;
 

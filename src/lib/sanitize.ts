@@ -1,4 +1,14 @@
-import { FilterXSS, getDefaultWhiteList } from 'xss';
+// xss is CJS that re-attaches named exports onto module.exports at runtime;
+// vitest's ESM resolver only sees the default callable. Pull through default
+// to keep both wrangler's bundler and the test pool happy.
+import xssDefault, { type FilterXSS as FilterXSSType } from 'xss';
+
+interface XssNamespace {
+  FilterXSS: new (opts: ConstructorParameters<typeof FilterXSSType>[0]) => FilterXSSType;
+  getDefaultWhiteList: () => Record<string, string[]>;
+}
+
+const { FilterXSS, getDefaultWhiteList } = xssDefault as unknown as XssNamespace;
 
 // Comments are sanitized at write time. Mirror DOMPurify's defaults that the
 // upstream widget expects: keep formatting and links, allow images and code
