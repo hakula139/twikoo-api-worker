@@ -54,3 +54,6 @@ jobs:
 
       - name: Spell check
         run: nix develop -c pnpm spellcheck
+
+      - name: Test
+        run: nix develop -c pnpm test
