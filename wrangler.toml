@@ -24,12 +24,12 @@ bucket_name = "twikoo"
 R2_PUBLIC_URL = "https://twikoo-r2.hakula.xyz"
 
 # Set via `wrangler secret put`:
-# AKISMET_KEY        - Akismet API key (spam check)
-# QQ_API_KEY         - QQ nickname API key (api.nsuuu.com, optional)
-# SENDER_EMAIL       - notification sender address (verified at provider)
-# SMTP_PASS          - mail provider API key
-# SMTP_USER          - mail provider account name (any non-empty string for SendGrid)
-# TURNSTILE_SECRET   - Cloudflare Turnstile secret (captcha)
+# AKISMET_KEY          - Akismet API key (spam check)
+# QQ_API_KEY           - QQ nickname API key (api.nsuuu.com, optional)
+# SENDER_EMAIL         - notification sender address (verified at provider)
+# SMTP_PASS            - mail provider API key
+# SMTP_USER            - mail provider account name (any non-empty string for SendGrid)
+# TURNSTILE_SECRET_KEY - Cloudflare Turnstile secret (captcha)
 
 [observability.logs]
 enabled = true
