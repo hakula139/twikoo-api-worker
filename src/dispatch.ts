@@ -13,7 +13,7 @@ import { DB } from './db';
 import { handlers, isEventName } from './handlers';
 import { ResponseCode, TwikooError } from './lib/errors';
 import { extractGeo } from './lib/geo';
-import { corsHeaders, jsonResponse } from './lib/http';
+import { corsHeaders, isOriginAllowed, jsonResponse } from './lib/http';
 import { logger } from './twikoo';
 
 const isPlainObject = (value: unknown): value is Record<string, unknown> =>
@@ -52,6 +52,12 @@ export const dispatch = async (
   const configRaw = await db.config.read();
   const config: TwikooConfig = configRaw ? (JSON.parse(configRaw) as TwikooConfig) : {};
   const headers = corsHeaders(origin, config);
+
+  // Reject before DB writes — without short-circuit, the browser still drops
+  // the response on a CORS miss, but the handler has already persisted state.
+  if (!isOriginAllowed(origin, config)) {
+    return jsonResponse({ code: ResponseCode.FORBIDDEN, message: 'Origin not allowed.' }, headers);
+  }
 
   const event = stringField(body, 'event');
   const accessToken = stringField(body, 'accessToken');
