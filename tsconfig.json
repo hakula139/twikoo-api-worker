@@ -9,6 +9,7 @@
     "resolveJsonModule": true,
     "allowSyntheticDefaultImports": true,
     "esModuleInterop": true,
-    "types": ["@cloudflare/workers-types", "node"]
-  }
+    "types": ["@cloudflare/vitest-pool-workers", "@cloudflare/workers-types", "node"]
+  },
+  "include": ["drizzle.config.ts", "src/**/*", "tests/**/*", "vitest.config.ts"]
 }

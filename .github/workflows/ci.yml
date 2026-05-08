@@ -54,3 +54,12 @@ jobs:
 
       - name: Spell check
         run: nix develop -c pnpm spellcheck
+
+      - name: Test
+        run: nix develop -c pnpm test --coverage
+
+      - name: Upload to Codecov
+        uses: codecov/codecov-action@v6
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          files: coverage/lcov.info

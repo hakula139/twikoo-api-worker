@@ -11,6 +11,9 @@ result-*
 .wrangler/
 .dev.vars
 
+# vitest coverage
+/coverage/
+
 # OS files
 .DS_Store
 

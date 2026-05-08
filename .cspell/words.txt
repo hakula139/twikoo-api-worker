@@ -38,5 +38,6 @@ turnstile
 twikoo
 twikoojs
 valine
+vitest
 workerd
 wrangler
