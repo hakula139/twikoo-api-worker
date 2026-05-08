@@ -250,12 +250,12 @@ const enforceTurnstile = async (
   if (ctx.config.CAPTCHA_PROVIDER !== 'Turnstile') {
     return;
   }
+  // Only the secret is needed for siteverify; the site key is a frontend-only
+  // hint that GET_CONFIG hands to the widget. Guarding the backend on it
+  // failed every captcha when the admin left the site-key field blank.
   const turnstileSecret = secret(ctx, 'TURNSTILE_SECRET_KEY');
-  const siteKey = ctx.config.TURNSTILE_SITE_KEY;
-  if (!turnstileSecret || !siteKey) {
-    // Fail closed: provider is configured but credentials are missing —
-    // silently skipping would let bots through with no signal.
-    logger.error('Turnstile is enabled but TURNSTILE_SECRET_KEY / TURNSTILE_SITE_KEY is unset.');
+  if (!turnstileSecret) {
+    logger.error('Turnstile is enabled but TURNSTILE_SECRET_KEY is unset.');
     throw new TwikooError(ResponseCode.FAIL, '人机验证未配置完整，请联系管理员');
   }
   const token = payload.turnstileToken ?? '';
