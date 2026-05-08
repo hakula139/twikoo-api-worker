@@ -4,6 +4,7 @@
 import type { Env, TwikooConfig } from '@/types';
 
 import { logger } from '@/twikoo';
+import { stringConfig } from './config-read';
 import { ResponseCode, TwikooError } from './errors';
 
 type R2Env = Pick<Env, 'R2' | 'R2_PUBLIC_URL'>;
@@ -37,16 +38,11 @@ const isUrl = (s: string): boolean => /^https?:\/\//.test(s);
 
 const stripTrailingSlash = (s: string): string => s.replace(/\/$/, '');
 
-// Strip path separators and parent-dir traversal so a hostile fileName can't
+// Drop path separators and collapse repeated dots so a hostile fileName can't
 // climb out of the configured prefix or collide with a different tenant.
 const safeBaseName = (name: string): string => {
   const base = name.replace(/.*[\\/]/, '').replace(/\.{2,}/g, '.');
   return base || 'upload';
-};
-
-const stringConfig = (config: TwikooConfig, key: string): string | undefined => {
-  const v = config[key];
-  return typeof v === 'string' && v.length > 0 ? v : undefined;
 };
 
 // ── NSFW pre-check ──
@@ -410,7 +406,6 @@ export const uploadImage = async (
   try {
     const imageService = stringConfig(config, 'IMAGE_CDN') ?? '';
 
-    // Each branch validates its own credentials/binding requirements.
     if (imageService === 's3') {
       if (!stringConfig(config, 'S3_BUCKET') || !stringConfig(config, 'S3_ACCESS_KEY_ID')) {
         throw new Error('未配置 S3 图床参数（S3_BUCKET、S3_ACCESS_KEY_ID、S3_SECRET_ACCESS_KEY）');

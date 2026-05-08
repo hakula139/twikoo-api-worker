@@ -3,28 +3,9 @@ import type { RequestCtx, TwikooConfig } from '@/types';
 
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-// twikoo-func eagerly requires axios / form-data at module init — workerd in
-// the vitest pool segfaults loading those. Stub the worker's twikoo boundary.
-vi.mock('@/twikoo', () => ({
-  addQQMailSuffix: (m: string) => m,
-  equalsMail: (a: string, b: string) =>
-    Boolean(a) && Boolean(b) && a.toLowerCase() === b.toLowerCase(),
-  getAvatar: () => '',
-  getMailMd5: () => '',
-  getUrlsQuery: (urls: string[]) => urls,
-  isQQ: () => false,
-  logger: console,
-  md5: (s: string) => `md5(${s})`,
-  normalizeMail: (m: string) => m.toLowerCase(),
-  parseComment: (rows: unknown) => rows,
-  preCheckSpam: () => false,
-  sendNotice: async () => undefined,
-  sha256: (s: string) => `sha256(${s})`,
-  validate: () => undefined,
-}));
-
 import { TwikooError } from '@/lib/errors';
-import { commentSubmit } from '@/handlers/comment';
+import { commentGet, commentSubmit } from '@/handlers/comment';
+import { buildCtx } from '../../helpers/ctx';
 
 interface FakeDb {
   saved: NewComment[];
@@ -32,7 +13,7 @@ interface FakeDb {
   global: number;
 }
 
-const buildCtx = (config: TwikooConfig, fake: FakeDb, payloadIp = '1.2.3.4'): RequestCtx => {
+const buildSubmitCtx = (config: TwikooConfig, fake: FakeDb, ip = '1.2.3.4'): RequestCtx => {
   const db = {
     comment: {
       save: vi.fn(async (c: NewComment) => {
@@ -44,17 +25,7 @@ const buildCtx = (config: TwikooConfig, fake: FakeDb, payloadIp = '1.2.3.4'): Re
       updateSpam: vi.fn(async () => undefined),
     },
   };
-  return {
-    env: {} as RequestCtx['env'],
-    request: new Request('https://twikoo.example/'),
-    waitUntil: () => undefined,
-    ip: payloadIp,
-    region: '',
-    origin: null,
-    uid: 'guest-uid',
-    config,
-    db: db as unknown as RequestCtx['db'],
-  };
+  return buildCtx({ ip, uid: 'guest-uid', config, db: db as unknown as RequestCtx['db'] });
 };
 
 const submitPayload = (overrides: Partial<Record<string, string>> = {}) => ({
@@ -91,7 +62,7 @@ describe('COMMENT_GET trailing-slash variants', () => {
 describe('commentSubmit > enforceFrequencyLimit', () => {
   it('rejects the (perIp + 1)-th submission when count already equals the cap', async () => {
     const fake: FakeDb = { saved: [], perIp: 3, global: 0 };
-    const ctx = buildCtx({ LIMIT_PER_MINUTE: '3' }, fake);
+    const ctx = buildSubmitCtx({ LIMIT_PER_MINUTE: '3' }, fake);
 
     await expect(commentSubmit(submitPayload(), ctx)).rejects.toBeInstanceOf(TwikooError);
     expect(fake.saved).toHaveLength(0);
@@ -99,7 +70,7 @@ describe('commentSubmit > enforceFrequencyLimit', () => {
 
   it('accepts a submission while count is still below the cap', async () => {
     const fake: FakeDb = { saved: [], perIp: 2, global: 0 };
-    const ctx = buildCtx({ LIMIT_PER_MINUTE: '3' }, fake);
+    const ctx = buildSubmitCtx({ LIMIT_PER_MINUTE: '3' }, fake);
 
     const result = await commentSubmit(submitPayload(), ctx);
     expect(typeof result.id).toBe('string');
@@ -108,10 +79,79 @@ describe('commentSubmit > enforceFrequencyLimit', () => {
 
   it('rejects when the global cap is reached', async () => {
     const fake: FakeDb = { saved: [], perIp: 0, global: 100 };
-    const ctx = buildCtx({ LIMIT_PER_MINUTE: '50', LIMIT_PER_MINUTE_ALL: '100' }, fake);
+    const ctx = buildSubmitCtx({ LIMIT_PER_MINUTE: '50', LIMIT_PER_MINUTE_ALL: '100' }, fake);
 
     await expect(commentSubmit(submitPayload(), ctx)).rejects.toBeInstanceOf(TwikooError);
     expect(fake.saved).toHaveLength(0);
+  });
+
+  it('accepts at one below the global cap', async () => {
+    const fake: FakeDb = { saved: [], perIp: 0, global: 99 };
+    const ctx = buildSubmitCtx({ LIMIT_PER_MINUTE: '50', LIMIT_PER_MINUTE_ALL: '100' }, fake);
+
+    const result = await commentSubmit(submitPayload(), ctx);
+    expect(typeof result.id).toBe('string');
+    expect(fake.saved).toHaveLength(1);
+  });
+
+  it('LIMIT_PER_MINUTE_ALL=0 disables the global cap', async () => {
+    const fake: FakeDb = { saved: [], perIp: 0, global: 1_000_000 };
+    const ctx = buildSubmitCtx({ LIMIT_PER_MINUTE: '50', LIMIT_PER_MINUTE_ALL: '0' }, fake);
+
+    const result = await commentSubmit(submitPayload(), ctx);
+    expect(typeof result.id).toBe('string');
+    expect(fake.saved).toHaveLength(1);
+  });
+});
+
+describe('commentGet > malformed votes JSON', () => {
+  const baseRow: Comment = {
+    _id: 'c1',
+    uid: 'u',
+    nick: 'n',
+    mail: '',
+    mailMd5: '',
+    link: '',
+    ua: '',
+    ip: '',
+    ipRegion: '',
+    master: 0,
+    url: '/post',
+    href: '',
+    comment: 'hi',
+    pid: '',
+    rid: '',
+    isSpam: 0,
+    created: 0,
+    updated: 0,
+    ups: '[]',
+    downs: '[]',
+    top: 0,
+    avatar: '',
+  };
+
+  const buildGetCtx = (rows: Comment[]): RequestCtx => {
+    const db = {
+      comment: {
+        count: vi.fn(async () => rows.length),
+        // First call probes head/main; second call (top=1) returns empty.
+        list: vi
+          .fn<(...args: unknown[]) => Promise<Comment[]>>()
+          .mockResolvedValueOnce(rows)
+          .mockResolvedValue([]),
+        replies: vi.fn(async () => [] as Comment[]),
+      },
+    };
+    return buildCtx({ uid: 'guest-uid', db: db as unknown as RequestCtx['db'] });
+  };
+
+  it('treats malformed ups as empty array and still returns the comment', async () => {
+    const bad: Comment = { ...baseRow, _id: 'bad', ups: '{not-json' };
+    const ctx = buildGetCtx([bad]);
+    const result = await commentGet({ url: '/post' }, ctx);
+    expect(result.count).toBe(1);
+    const data = result.data as Array<{ ups?: unknown }>;
+    expect(data).toHaveLength(1);
   });
 });
 
@@ -119,7 +159,7 @@ describe('commentSubmit > enforceTurnstile', () => {
   it('skips siteverify when CAPTCHA_PROVIDER is unset', async () => {
     const fetchSpy = vi.spyOn(globalThis, 'fetch');
     const fake: FakeDb = { saved: [], perIp: 0, global: 0 };
-    const ctx = buildCtx({}, fake);
+    const ctx = buildSubmitCtx({}, fake);
 
     await commentSubmit(submitPayload(), ctx);
 
@@ -136,7 +176,7 @@ describe('commentSubmit > enforceTurnstile', () => {
     );
     const fake: FakeDb = { saved: [], perIp: 0, global: 0 };
     const ctx: RequestCtx = {
-      ...buildCtx({ CAPTCHA_PROVIDER: 'Turnstile' }, fake),
+      ...buildSubmitCtx({ CAPTCHA_PROVIDER: 'Turnstile' }, fake),
       env: { TURNSTILE_SECRET_KEY: 'sk-test' } as RequestCtx['env'],
     };
 
@@ -149,11 +189,21 @@ describe('commentSubmit > enforceTurnstile', () => {
   it('rejects when the Turnstile token is missing', async () => {
     const fake: FakeDb = { saved: [], perIp: 0, global: 0 };
     const ctx: RequestCtx = {
-      ...buildCtx({ CAPTCHA_PROVIDER: 'Turnstile' }, fake),
+      ...buildSubmitCtx({ CAPTCHA_PROVIDER: 'Turnstile' }, fake),
       env: { TURNSTILE_SECRET_KEY: 'sk-test' } as RequestCtx['env'],
     };
 
     await expect(commentSubmit(submitPayload(), ctx)).rejects.toBeInstanceOf(TwikooError);
+    expect(fake.saved).toHaveLength(0);
+  });
+
+  it('throws when CAPTCHA_PROVIDER=Turnstile but TURNSTILE_SECRET_KEY is unset', async () => {
+    const fake: FakeDb = { saved: [], perIp: 0, global: 0 };
+    const ctx = buildSubmitCtx({ CAPTCHA_PROVIDER: 'Turnstile' }, fake);
+
+    await expect(
+      commentSubmit(submitPayload({ turnstileToken: 'tk' }), ctx),
+    ).rejects.toBeInstanceOf(TwikooError);
     expect(fake.saved).toHaveLength(0);
   });
 
@@ -166,7 +216,7 @@ describe('commentSubmit > enforceTurnstile', () => {
     );
     const fake: FakeDb = { saved: [], perIp: 0, global: 0 };
     const ctx: RequestCtx = {
-      ...buildCtx({ CAPTCHA_PROVIDER: 'Turnstile' }, fake),
+      ...buildSubmitCtx({ CAPTCHA_PROVIDER: 'Turnstile' }, fake),
       env: { TURNSTILE_SECRET_KEY: 'sk-test' } as RequestCtx['env'],
     };
 

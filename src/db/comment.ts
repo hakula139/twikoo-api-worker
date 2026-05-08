@@ -220,7 +220,6 @@ export class CommentDB {
 
 export interface AdminFilter {
   isSpam?: Bit;
-  // Already wrapped in `%foo%` if a substring match is desired.
   keyword?: string;
 }
 

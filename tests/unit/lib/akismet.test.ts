@@ -1,7 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-vi.mock('@/twikoo', () => ({ logger: console }));
-
 import { checkAkismet } from '@/lib/akismet';
 
 const baseOpts = {
@@ -61,8 +59,26 @@ describe('checkAkismet', () => {
     expect(body.get('comment_author_url')).toBe('https://a.example');
   });
 
-  it('fail-opens to non-spam when Akismet returns a non-OK status', async () => {
+  it('fail-opens with logger.warn on 5xx (transient outage)', async () => {
     vi.spyOn(globalThis, 'fetch').mockResolvedValue(textResponse('true', 500));
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => undefined);
     expect(await checkAkismet(baseOpts)).toBe(false);
+    expect(warnSpy).toHaveBeenCalledTimes(1);
+    expect(errorSpy).not.toHaveBeenCalled();
+  });
+
+  it('fail-opens with logger.error on 4xx (misconfigured key)', async () => {
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(textResponse('', 401));
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+    expect(await checkAkismet(baseOpts)).toBe(false);
+    expect(errorSpy).toHaveBeenCalledTimes(1);
+    expect(warnSpy).not.toHaveBeenCalled();
+  });
+
+  it('propagates network errors (caller wraps for fail-open)', async () => {
+    vi.spyOn(globalThis, 'fetch').mockRejectedValue(new Error('ENETDOWN'));
+    await expect(checkAkismet(baseOpts)).rejects.toThrow('ENETDOWN');
   });
 });

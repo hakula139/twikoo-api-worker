@@ -1,10 +1,8 @@
 import type { TwikooConfig } from '@/types';
 
-import { describe, expect, it, vi } from 'vitest';
+import { describe, expect, it } from 'vitest';
 
-vi.mock('@/twikoo', () => ({ logger: console }));
-
-import { corsHeaders, jsonResponse } from '@/lib/http';
+import { corsHeaders, isOriginAllowed, jsonResponse } from '@/lib/http';
 
 describe('corsHeaders', () => {
   it('returns an empty object when origin is null', () => {
@@ -82,6 +80,26 @@ describe('corsHeaders', () => {
     expect(corsHeaders('https://a.example', config)['Access-Control-Allow-Origin']).toBe(
       'https://a.example',
     );
+  });
+});
+
+describe('isOriginAllowed', () => {
+  it('allows when origin is null (non-browser request)', () => {
+    expect(isOriginAllowed(null, { CORS_ALLOW_ORIGIN: 'https://blog.example' })).toBe(true);
+  });
+
+  it('rejects an origin missing from a non-empty allowlist', () => {
+    const config: TwikooConfig = { CORS_ALLOW_ORIGIN: 'https://blog.example' };
+    expect(isOriginAllowed('https://other.example', config)).toBe(false);
+  });
+
+  it('allows when allowlist is empty (permissive — upstream parity)', () => {
+    expect(isOriginAllowed('https://anywhere.example', { CORS_ALLOW_ORIGIN: '' })).toBe(true);
+  });
+
+  it('allows localhost regardless of allowlist', () => {
+    const config: TwikooConfig = { CORS_ALLOW_ORIGIN: 'https://prod.example' };
+    expect(isOriginAllowed('http://localhost:5173', config)).toBe(true);
   });
 });
 

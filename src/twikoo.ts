@@ -32,6 +32,8 @@ import twikooFuncPkg from 'twikoo-func/package.json';
 import { mailShim } from './shims/mail';
 import { sanitizeShim } from './shims/sanitize';
 
+// Must run before any twikoo-func code path resolves DOMPurify / nodemailer —
+// hence top-level (import-order matters); sanitizeShim and mailShim are V8-safe.
 setCustomLibs({
   DOMPurify: sanitizeShim,
   nodemailer: mailShim,

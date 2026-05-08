@@ -61,6 +61,13 @@ const matchAllowedOrigin = (origin: string, config: TwikooConfig): string => {
   return entries.some((entry) => matchEntry(originUrl, entry)) ? origin : '';
 };
 
+export const isOriginAllowed = (origin: string | null, config: TwikooConfig): boolean => {
+  if (!origin) {
+    return true;
+  }
+  return matchAllowedOrigin(origin, config) !== '';
+};
+
 export const corsHeaders = (
   origin: string | null,
   config?: TwikooConfig,

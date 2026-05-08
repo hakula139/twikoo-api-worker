@@ -40,12 +40,23 @@ export const checkAkismet = async (opts: AkismetCheckOpts): Promise<boolean> => 
 
   const response = await fetch(checkUrl(opts.apiKey), { method: 'POST', body });
   if (!response.ok) {
-    // Fail-open so transient Akismet outages don't block submission, but log
-    // loudly so a misconfigured key (which 4xx's persistently) is visible.
-    logger.warn(`Akismet returned ${response.status}; treating comment as ham.`);
+    // Fail-open so users aren't blocked on outage. Split severity: 4xx is
+    // almost always a misconfigured key (admin should know); 5xx is transient.
+    const message = `Akismet returned ${response.status}; treating comment as ham.`;
+    if (response.status >= 400 && response.status < 500) {
+      logger.error(message);
+    } else {
+      logger.warn(message);
+    }
     return false;
   }
 
-  const text = (await response.text()).trim();
+  let text: string;
+  try {
+    text = (await response.text()).trim();
+  } catch (error) {
+    logger.warn('Akismet response body read failed; treating comment as ham:', error);
+    return false;
+  }
   return text === 'true';
 };

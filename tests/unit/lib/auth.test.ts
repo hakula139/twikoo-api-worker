@@ -1,21 +1,13 @@
-import type { RequestCtx, TwikooConfig } from '@/types';
+import type { TwikooConfig } from '@/types';
 
-import { describe, expect, it, vi } from 'vitest';
-
-// twikoo-func eagerly requires axios / form-data at module init — workerd in
-// the vitest pool segfaults loading those. Stub the worker's twikoo boundary.
-vi.mock('@/twikoo', () => ({
-  md5: (s: string) => `md5(${s})`,
-  sha256: (s: string) => `sha256(${s})`,
-  logger: console,
-}));
+import { describe, expect, it } from 'vitest';
 
 import { isAdmin, requireAdmin } from '@/lib/auth';
 import { ResponseCode, TwikooError } from '@/lib/errors';
 import { md5 } from '@/twikoo';
+import { buildCtx } from '../../helpers/ctx';
 
-const buildCtx = (uid: string, config: TwikooConfig): RequestCtx =>
-  ({ uid, config }) as unknown as RequestCtx;
+const ctxOf = (uid: string, config: TwikooConfig) => buildCtx({ uid, config });
 
 describe('isAdmin', () => {
   it('matches when md5(uid) equals the stored ADMIN_PASS', () => {
@@ -38,12 +30,12 @@ describe('isAdmin', () => {
 describe('requireAdmin', () => {
   it('passes silently for the admin uid', () => {
     const uid = 'admin-uid';
-    const ctx = buildCtx(uid, { ADMIN_PASS: md5(uid) });
+    const ctx = ctxOf(uid, { ADMIN_PASS: md5(uid) });
     expect(() => requireAdmin(ctx)).not.toThrow();
   });
 
   it('throws NEED_LOGIN when the caller is not the admin', () => {
-    const ctx = buildCtx('guest', { ADMIN_PASS: md5('admin') });
+    const ctx = ctxOf('guest', { ADMIN_PASS: md5('admin') });
     try {
       requireAdmin(ctx);
       throw new Error('expected requireAdmin to throw');

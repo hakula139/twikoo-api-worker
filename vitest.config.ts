@@ -13,6 +13,7 @@ export default defineConfig({
     alias: { '@': path.resolve(import.meta.dirname, 'src') },
   },
   test: {
+    setupFiles: ['./tests/setup.ts'],
     coverage: {
       provider: 'istanbul',
       reporter: ['text', 'lcov'],

@@ -3,8 +3,10 @@ import type { EventPayloads, Handler, RequestCtx } from '@/types';
 
 import { checkAkismet } from '@/lib/akismet';
 import { isAdmin, requireAdmin } from '@/lib/auth';
+import { numberConfig } from '@/lib/config-read';
 import { ResponseCode, TwikooError } from '@/lib/errors';
 import { formatIpRegion } from '@/lib/geo';
+import { isPlainObject } from '@/lib/guards';
 import { newCommentId } from '@/lib/id';
 import { configWithSecrets, secret } from '@/lib/secret';
 import { verifyTurnstile } from '@/lib/turnstile';
@@ -35,7 +37,20 @@ const RECENT_MAX_PAGE_SIZE = 100;
 
 const stripHtml = (html: string): string => html.replace(/<[^>]*>/g, '');
 
-const parseUidArray = (raw: string): string[] => (raw ? (JSON.parse(raw) as string[]) : []);
+const truncate = (s: string, max = 80): string => (s.length <= max ? s : `${s.slice(0, max)}…`);
+
+const parseUidArray = (raw: string, commentId: string, field: string): string[] => {
+  if (!raw) {
+    return [];
+  }
+  try {
+    const parsed = JSON.parse(raw) as unknown;
+    return Array.isArray(parsed) ? (parsed as string[]) : [];
+  } catch {
+    logger.warn(`Malformed ${field} JSON on comment ${commentId}: ${truncate(raw)}`);
+    return [];
+  }
+};
 
 const QQ_AVATAR_API = 'https://aq.qq.com/cn2/get_img/get_face';
 
@@ -67,8 +82,8 @@ type DecodedComment = Omit<Comment, 'ups' | 'downs'> & { ups: string[]; downs: s
 
 const decodeVotes = (row: Comment): DecodedComment => ({
   ...row,
-  ups: parseUidArray(row.ups),
-  downs: parseUidArray(row.downs),
+  ups: parseUidArray(row.ups, row._id, 'ups'),
+  downs: parseUidArray(row.downs, row._id, 'downs'),
 });
 
 const SORT_VALUES = ['newest', 'oldest', 'popular'] as const satisfies readonly CommentSort[];
@@ -213,33 +228,20 @@ export const commentLike: Handler<'COMMENT_LIKE'> = async (payload, ctx) => {
   return { updated: 1 };
 };
 
-// 10-minute rolling window. Config keys are named `LIMIT_PER_MINUTE` for
-// upstream parity, but they cap submissions over this window, not per minute.
+// 10-minute rolling window. The `LIMIT_PER_MINUTE` config keys cap
+// submissions over this window — the name is upstream parity.
 const FREQUENCY_WINDOW_MS = 10 * 60 * 1000;
 const DEFAULT_LIMIT_PER_IP = 10;
-
-const positiveInt = (raw: unknown, fallback: number): number => {
-  if (typeof raw === 'number') {
-    return Number.isFinite(raw) && raw > 0 ? raw : fallback;
-  }
-  if (typeof raw === 'string') {
-    const parsed = parseInt(raw, 10);
-    return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback;
-  }
-  return fallback;
-};
 
 const enforceFrequencyLimit = async (ctx: RequestCtx): Promise<void> => {
   const since = Date.now() - FREQUENCY_WINDOW_MS;
 
-  // count is comments already stored in the window; the next submission
-  // would be the (count + 1)-th, so reject once count reaches the cap.
-  const perIp = positiveInt(ctx.config.LIMIT_PER_MINUTE, DEFAULT_LIMIT_PER_IP);
+  const perIp = numberConfig(ctx.config, 'LIMIT_PER_MINUTE', DEFAULT_LIMIT_PER_IP);
   if ((await ctx.db.comment.countSinceByIp(since, ctx.ip)) >= perIp) {
     throw new TwikooError(ResponseCode.FAIL, '发言频率过高');
   }
 
-  const global = positiveInt(ctx.config.LIMIT_PER_MINUTE_ALL, 0);
+  const global = numberConfig(ctx.config, 'LIMIT_PER_MINUTE_ALL', 0);
   if (global > 0 && (await ctx.db.comment.countSince(since)) >= global) {
     throw new TwikooError(ResponseCode.FAIL, '评论太火爆啦 >_< 请稍后再试');
   }
@@ -415,7 +417,10 @@ export const commentGetForAdmin: Handler<'COMMENT_GET_FOR_ADMIN'> = async (paylo
 // timestamps stay immutable through this path.
 const ADMIN_MUTABLE_FIELDS = ['comment', 'isSpam', 'top'] as const;
 
-const pickAdminUpdate = (raw: Record<string, unknown>): Partial<NewComment> => {
+const pickAdminUpdate = (raw: unknown): Partial<NewComment> => {
+  if (!isPlainObject(raw)) {
+    throw new TwikooError(ResponseCode.FAIL, '`set` must be an object.');
+  }
   const out: Partial<NewComment> = {};
   for (const key of ADMIN_MUTABLE_FIELDS) {
     if (!(key in raw)) {

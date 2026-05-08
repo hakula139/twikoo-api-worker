@@ -1,13 +1,19 @@
 import type { ExecutionContext } from '@cloudflare/workers-types';
 
 import type { DB } from './db';
+import type { ResponseCodeValue } from './lib/errors';
 
-export interface Env {
+// Workers bindings (D1, R2) and the public URL — wired in wrangler.toml,
+// always present at runtime.
+export interface Bindings {
   DB: D1Database;
   R2: R2Bucket;
   R2_PUBLIC_URL: string;
+}
 
-  // Secrets are optional so the smoke-test path runs without them; consumers must validate.
+// Wrangler secrets — optional so the smoke-test path runs without them;
+// consumers must validate (see lib/secret#requireSecret for the throwing form).
+export interface Secrets {
   AKISMET_KEY?: string;
   QQ_API_KEY?: string;
   SENDER_EMAIL?: string;
@@ -15,6 +21,8 @@ export interface Env {
   SMTP_USER?: string;
   TURNSTILE_SECRET_KEY?: string;
 }
+
+export interface Env extends Bindings, Secrets {}
 
 // Single-row blob in the `config` table. Lists every key the worker reads
 // directly. Upstream twikoo-func sets/reads its own keys (NOTIFY_*, IMAGE_*,
@@ -67,7 +75,7 @@ export interface RequestCtx {
 
 // Open index signature: events emit ad-hoc top-level fields (count, more, time, log, id).
 export interface TwikooResponse {
-  code: number;
+  code: ResponseCodeValue;
   message?: string;
   data?: unknown;
   version?: string;

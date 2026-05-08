@@ -1,6 +1,9 @@
 // Workers free-tier bundles cap at 1 MiB. `twikoo-func` pulls in three
 // Node-only modules the runtime can't execute; null out their entry points so
 // esbuild tree-shakes the rest. The lookup walks pnpm's `.pnpm/` hoist layout.
+// CI enforces a 950 KiB compressed cap (.github/workflows/ci.yml). If a new
+// twikoo-func release pulls in another Node-only dep, add it to PACKAGES below
+// — the CI gate is the alarm.
 
 import { existsSync, globSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
