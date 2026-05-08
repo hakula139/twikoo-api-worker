@@ -3,32 +3,14 @@ import type { EventPayloads, Handler, JsonString, RequestCtx } from '@/types';
 
 import { mkCommentId } from '@/types';
 
-import { checkAkismet } from '@/lib/akismet';
 import { isAdmin, requireAdmin } from '@/lib/auth';
-import { numberConfig } from '@/lib/config-read';
+import { enforceTurnstile } from '@/lib/captcha-guard';
+import { buildComment, postSubmit } from '@/lib/comment-build';
 import { ResponseCode, TwikooError } from '@/lib/errors';
 import { formatIpRegion } from '@/lib/geo';
 import { isPlainObject } from '@/lib/guards';
-import { newCommentId } from '@/lib/id';
-import { configWithSecrets, secret } from '@/lib/secret';
-import { verifyTurnstile } from '@/lib/turnstile';
-import { sanitizeHtml } from '@/lib/sanitize';
-import {
-  addQQMailSuffix,
-  equalsMail,
-  getAvatar,
-  getMailMd5,
-  getUrlsQuery,
-  isQQ,
-  logger,
-  md5,
-  normalizeMail,
-  parseComment,
-  preCheckSpam,
-  sendNotice,
-  sha256,
-  validate,
-} from '@/twikoo';
+import { enforceFrequencyLimit } from '@/lib/rate-limit';
+import { getAvatar, getMailMd5, getUrlsQuery, logger, parseComment, validate } from '@/twikoo';
 
 // Year 3270 — sentinel "no `before` cursor" so the `<` comparison always passes.
 const MAX_TIMESTAMP_MILLIS = 41025312000000;
@@ -55,25 +37,6 @@ const parseUidArray = (
   } catch {
     logger.warn(`Malformed ${field} JSON on comment ${commentId}: ${truncate(raw)}`);
     return [];
-  }
-};
-
-const QQ_AVATAR_API = 'https://aq.qq.com/cn2/get_img/get_face';
-
-// Best-effort: any failure returns '' so `getAvatar` falls back to gravatar.
-const fetchQqAvatar = async (qqMail: string): Promise<string> => {
-  const qqNum = qqMail.replace(/@qq\.com$/i, '');
-  try {
-    const url = `${QQ_AVATAR_API}?img_type=3&uin=${encodeURIComponent(qqNum)}`;
-    const response = await fetch(url);
-    if (!response.ok) {
-      return '';
-    }
-    const data = await response.json<{ url?: string }>();
-    return data.url ?? '';
-  } catch (error) {
-    logger.warn('Failed to fetch QQ avatar:', error);
-    return '';
   }
 };
 
@@ -234,150 +197,13 @@ export const commentLike: Handler<'COMMENT_LIKE'> = async (payload, ctx) => {
   return { updated: 1 };
 };
 
-// 10-minute rolling window. The `LIMIT_PER_MINUTE` config keys cap
-// submissions over this window — the name is upstream parity.
-const FREQUENCY_WINDOW_MS = 10 * 60 * 1000;
-const DEFAULT_LIMIT_PER_IP = 10;
-
-const enforceFrequencyLimit = async (ctx: RequestCtx): Promise<void> => {
-  const since = Date.now() - FREQUENCY_WINDOW_MS;
-
-  const perIp = numberConfig(ctx.config, 'LIMIT_PER_MINUTE', DEFAULT_LIMIT_PER_IP);
-  if ((await ctx.db.comment.countSinceByIp(since, ctx.ip)) >= perIp) {
-    throw new TwikooError(ResponseCode.FAIL, '发言频率过高');
-  }
-
-  const global = numberConfig(ctx.config, 'LIMIT_PER_MINUTE_ALL', 0);
-  if (global > 0 && (await ctx.db.comment.countSince(since)) >= global) {
-    throw new TwikooError(ResponseCode.FAIL, '评论太火爆啦 >_< 请稍后再试');
-  }
-};
-
-const enforceTurnstile = async (
-  payload: EventPayloads['COMMENT_SUBMIT'],
-  ctx: RequestCtx,
-): Promise<void> => {
-  if (ctx.config.CAPTCHA_PROVIDER !== 'Turnstile') {
-    return;
-  }
-  // Only the secret is needed for siteverify; the site key is a frontend-only
-  // hint that GET_CONFIG hands to the widget. Guarding the backend on it
-  // failed every captcha when the admin left the site-key field blank.
-  const turnstileSecret = secret(ctx, 'TURNSTILE_SECRET_KEY');
-  if (!turnstileSecret) {
-    logger.error('Turnstile is enabled but TURNSTILE_SECRET_KEY is unset.');
-    throw new TwikooError(ResponseCode.FAIL, '人机验证未配置完整，请联系管理员');
-  }
-  const token = payload.turnstileToken ?? '';
-  if (!token) {
-    throw new TwikooError(ResponseCode.CREDENTIALS_INVALID, '人机验证失败，请刷新页面重试');
-  }
-  const result = await verifyTurnstile({ secret: turnstileSecret, token, ip: ctx.ip });
-  if (!result.success) {
-    throw new TwikooError(
-      ResponseCode.CREDENTIALS_INVALID,
-      `人机验证失败：${result.errorCodes.join(', ')}`,
-    );
-  }
-};
-
-const buildComment = async (
-  payload: EventPayloads['COMMENT_SUBMIT'],
-  ctx: RequestCtx,
-  isAdminUser: boolean,
-): Promise<NewComment> => {
-  const isBlogger = equalsMail(payload.mail ?? '', ctx.config.BLOGGER_EMAIL ?? '');
-  if (isBlogger && !isAdminUser) {
-    throw new TwikooError(ResponseCode.NEED_LOGIN, '请先登录管理面板，再使用博主身份发送评论');
-  }
-
-  const timestamp = Date.now();
-  const hashMail = (mail: string): string => {
-    const normalized = normalizeMail(mail);
-    return ctx.config.GRAVATAR_CDN === 'cravatar.cn' ? md5(normalized) : sha256(normalized);
-  };
-
-  let mail = payload.mail ?? '';
-  let avatar = '';
-  if (mail && isQQ(mail)) {
-    mail = addQQMailSuffix(mail);
-    avatar = await fetchQqAvatar(mail);
-  }
-
-  return {
-    _id: newCommentId(),
-    uid: ctx.uid,
-    nick: payload.nick || '匿名',
-    mail,
-    mailMd5: mail ? hashMail(mail) : '',
-    link: payload.link ?? '',
-    ua: payload.ua,
-    ip: ctx.ip,
-    ipRegion: ctx.region,
-    master: isBlogger ? 1 : 0,
-    url: payload.url,
-    href: payload.href ?? '',
-    comment: sanitizeHtml(payload.comment),
-    pid: payload.pid || (payload.rid ?? ''),
-    rid: payload.rid ?? '',
-    isSpam: !isAdminUser && preCheckSpam(payload, ctx.config) ? 1 : 0,
-    created: timestamp,
-    updated: timestamp,
-    ups: '[]' as JsonString<string[]>,
-    downs: '[]' as JsonString<string[]>,
-    top: 0,
-    avatar,
-  };
-};
-
-const postSubmit = async (saved: Comment, ctx: RequestCtx): Promise<void> => {
-  // Mutate `saved` in place so sendNotice sees fresh isSpam — upstream
-  // suppresses spam notifications when NOTIFY_SPAM='false'.
-  try {
-    const akismetKey = secret(ctx, 'AKISMET_KEY') ?? '';
-    if (akismetKey && akismetKey !== 'MANUAL_REVIEW') {
-      const blog = ctx.config.SITE_URL || `https://${new URL(ctx.request.url).host}`;
-      const isSpam = await checkAkismet({
-        apiKey: akismetKey,
-        blog,
-        userIp: saved.ip,
-        userAgent: saved.ua,
-        permalink: saved.href,
-        author: saved.nick,
-        authorEmail: saved.mail,
-        authorUrl: saved.link,
-        content: saved.comment,
-      });
-      if (isSpam) {
-        saved.isSpam = 1;
-        await ctx.db.comment.updateSpam(saved._id, 1, Date.now());
-      }
-    }
-  } catch (error) {
-    logger.error('Akismet check failed for', saved._id, error);
-  }
-
-  try {
-    // sendNotice expects the upstream comment shape; our row is structurally
-    // compatible. It looks up the parent for reply mails.
-    const getParentComment = async (curr: unknown): Promise<unknown> => {
-      const parentId = (curr as { pid?: string }).pid;
-      return parentId ? ctx.db.comment.byId(mkCommentId(parentId)) : undefined;
-    };
-    await sendNotice(saved, configWithSecrets(ctx), getParentComment);
-  } catch (error) {
-    logger.error('sendNotice failed for', saved._id, error);
-  }
-};
-
 export const commentSubmit: Handler<'COMMENT_SUBMIT'> = async (payload, ctx) => {
   validate(payload, ['url', 'ua', 'comment']);
 
   await enforceFrequencyLimit(ctx);
   await enforceTurnstile(payload, ctx);
 
-  const isAdminUser = isAdmin(ctx.uid, ctx.config);
-  const newComment = await buildComment(payload, ctx, isAdminUser);
+  const newComment = await buildComment(payload, ctx);
 
   await ctx.db.comment.save(newComment);
   ctx.waitUntil(postSubmit(newComment as Comment, ctx));
