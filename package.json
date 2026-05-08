@@ -7,7 +7,7 @@
   "main": "src/worker.ts",
   "packageManager": "pnpm@11.0.8",
   "scripts": {
-    "check": "tsc --noEmit && tsc --noEmit -p tests/tsconfig.json",
+    "check": "tsc --noEmit",
     "db:push": "drizzle-kit push",
     "deploy": "wrangler deploy --minify",
     "dev": "wrangler dev",

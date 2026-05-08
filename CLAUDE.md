@@ -28,7 +28,6 @@ A long-term roadmap to drop Twikoo entirely and ship a custom comment system liv
 │   ├── twikoo.ts               # twikoo-func wiring + V8-compatible shims
 │   └── types.ts                # Env interface + shared types
 ├── tests/
-│   ├── tsconfig.json           # adds @cloudflare/vitest-pool-workers types
 │   └── unit/                   # vitest suites running inside workerd
 ├── drizzle.config.ts           # drizzle-kit config (d1-http driver)
 ├── flake.nix                   # Nix dev shell + git-hooks-nix pre-commit
@@ -66,7 +65,7 @@ nix flake check              # Nix-side hooks (Node-side run in CI's `check` job
 ```bash
 pnpm install                 # also runs scripts/bundle-trim.mjs
 pnpm dev                     # wrangler dev on port 8787 (config in wrangler.toml)
-pnpm check                   # tsc --noEmit (root + tests/tsconfig.json)
+pnpm check                   # tsc --noEmit
 pnpm test                    # vitest run inside workerd
 ```
 
@@ -145,7 +144,7 @@ Driven by [git-hooks-nix](https://github.com/cachix/git-hooks.nix), wired in `fl
 Run after implementation and before review:
 
 ```bash
-pnpm check                   # tsc --noEmit (root + tests/tsconfig.json)
+pnpm check                   # tsc --noEmit
 pnpm test                    # vitest run inside workerd
 pnpm lint                    # markdownlint + eslint
 pnpm format                  # prettier --check

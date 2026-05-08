@@ -14,9 +14,7 @@ export default defineConfig([
     extends: [tseslint.configs.recommendedTypeChecked],
     languageOptions: {
       parserOptions: {
-        projectService: {
-          allowDefaultProject: ['drizzle.config.ts', 'vitest.config.ts'],
-        },
+        projectService: true,
         tsconfigRootDir: import.meta.dirname,
       },
     },
