@@ -2,7 +2,8 @@ import type { Env, TwikooConfig } from '@/types';
 
 import { describe, expect, it } from 'vitest';
 
-import { configWithSecrets, secret } from '@/lib/secret';
+import { ResponseCode, TwikooError } from '@/lib/errors';
+import { configWithSecrets, requireSecret, secret } from '@/lib/secret';
 import { buildCtx } from '../../helpers/ctx';
 
 const ctxOf = (env: Partial<Env>, config: TwikooConfig) => buildCtx({ env: env as Env, config });
@@ -34,6 +35,34 @@ describe('secret', () => {
   it('returns undefined when the config value is non-string', () => {
     const ctx = ctxOf({}, { SMTP_PASS: 42 as unknown as string });
     expect(secret(ctx, 'SMTP_PASS')).toBeUndefined();
+  });
+});
+
+describe('requireSecret', () => {
+  it('returns the secret when set', () => {
+    const ctx = ctxOf({ TURNSTILE_SECRET_KEY: 'sk' }, {});
+    expect(requireSecret(ctx, 'TURNSTILE_SECRET_KEY')).toBe('sk');
+  });
+
+  it('throws TwikooError(CONFIG_NOT_EXIST) by default when missing', () => {
+    const ctx = ctxOf({}, {});
+    try {
+      requireSecret(ctx, 'TURNSTILE_SECRET_KEY');
+      throw new Error('expected requireSecret to throw');
+    } catch (e) {
+      expect(e).toBeInstanceOf(TwikooError);
+      expect((e as TwikooError).code).toBe(ResponseCode.CONFIG_NOT_EXIST);
+    }
+  });
+
+  it('lets callers override the error code', () => {
+    const ctx = ctxOf({}, {});
+    try {
+      requireSecret(ctx, 'AKISMET_KEY', ResponseCode.AKISMET_ERROR);
+      throw new Error('expected requireSecret to throw');
+    } catch (e) {
+      expect((e as TwikooError).code).toBe(ResponseCode.AKISMET_ERROR);
+    }
   });
 });
 

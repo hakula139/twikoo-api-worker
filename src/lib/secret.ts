@@ -1,6 +1,7 @@
 import type { RequestCtx, TwikooConfig } from '@/types';
 
 import { stringConfig } from './config-read';
+import { ResponseCode, type ResponseCodeValue, TwikooError } from './errors';
 
 // Env binding name == admin-config field name. Wrangler secret wins.
 const SECRET_PAIRS = {
@@ -20,6 +21,20 @@ export const secret = (ctx: RequestCtx, key: SecretEnvKey): string | undefined =
     return fromEnv;
   }
   return stringConfig(ctx.config, SECRET_PAIRS[key]);
+};
+
+// Throwing variant for sites where the secret is mandatory; saves callers a
+// truthiness check and a hand-written error message.
+export const requireSecret = (
+  ctx: RequestCtx,
+  key: SecretEnvKey,
+  errorCode: ResponseCodeValue = ResponseCode.CONFIG_NOT_EXIST,
+): string => {
+  const value = secret(ctx, key);
+  if (!value) {
+    throw new TwikooError(errorCode, `${key} is not configured.`);
+  }
+  return value;
 };
 
 // Hand to upstream code (notify, spam) that reads config keys directly — env
