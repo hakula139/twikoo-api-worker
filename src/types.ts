@@ -1,6 +1,7 @@
 import type { ExecutionContext } from '@cloudflare/workers-types';
 
 import type { DB } from './db';
+import type { ResponseCodeValue } from './lib/errors';
 
 export interface Env {
   DB: D1Database;
@@ -67,7 +68,7 @@ export interface RequestCtx {
 
 // Open index signature: events emit ad-hoc top-level fields (count, more, time, log, id).
 export interface TwikooResponse {
-  code: number;
+  code: ResponseCodeValue;
   message?: string;
   data?: unknown;
   version?: string;
