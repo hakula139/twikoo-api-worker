@@ -3,9 +3,7 @@ import type { Env, TwikooConfig } from '@/types';
 import { env as rawEnv } from 'cloudflare:test';
 
 const env = rawEnv as unknown as Env;
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-
-vi.mock('@/twikoo', () => ({ logger: console }));
+import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
 import { ResponseCode, TwikooError } from '@/lib/errors';
 import { uploadImage } from '@/lib/image-upload';

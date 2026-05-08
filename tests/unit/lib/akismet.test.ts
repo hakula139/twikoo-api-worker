@@ -1,7 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-vi.mock('@/twikoo', () => ({ logger: console }));
-
 import { checkAkismet } from '@/lib/akismet';
 
 const baseOpts = {

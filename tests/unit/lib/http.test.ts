@@ -1,8 +1,6 @@
 import type { TwikooConfig } from '@/types';
 
-import { describe, expect, it, vi } from 'vitest';
-
-vi.mock('@/twikoo', () => ({ logger: console }));
+import { describe, expect, it } from 'vitest';
 
 import { corsHeaders, isOriginAllowed, jsonResponse } from '@/lib/http';
 
