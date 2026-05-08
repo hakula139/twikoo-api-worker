@@ -5,7 +5,9 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { TwikooError } from '@/lib/errors';
 import { commentGet, commentSubmit } from '@/handlers/comment';
-import { mkIp, mkUid } from '@/types';
+import { mkCommentId, mkIp, mkUid } from '@/types';
+
+import type { JsonString } from '@/types';
 import { buildCtx } from '../../helpers/ctx';
 
 interface FakeDb {
@@ -112,7 +114,7 @@ describe('commentSubmit > enforceFrequencyLimit', () => {
 
 describe('commentGet > malformed votes JSON', () => {
   const baseRow: Comment = {
-    _id: 'c1',
+    _id: mkCommentId('c1'),
     uid: 'u',
     nick: 'n',
     mail: '',
@@ -130,8 +132,8 @@ describe('commentGet > malformed votes JSON', () => {
     isSpam: 0,
     created: 0,
     updated: 0,
-    ups: '[]',
-    downs: '[]',
+    ups: '[]' as JsonString<string[]>,
+    downs: '[]' as JsonString<string[]>,
     top: 0,
     avatar: '',
   };
@@ -152,7 +154,11 @@ describe('commentGet > malformed votes JSON', () => {
   };
 
   it('treats malformed ups as empty array and still returns the comment', async () => {
-    const bad: Comment = { ...baseRow, _id: 'bad', ups: '{not-json' };
+    const bad: Comment = {
+      ...baseRow,
+      _id: mkCommentId('bad'),
+      ups: '{not-json' as JsonString<string[]>,
+    };
     const ctx = buildGetCtx([bad]);
     const result = await commentGet({ url: '/post' }, ctx);
     expect(result.count).toBe(1);

@@ -1,5 +1,7 @@
 import type { AdminFilter, Bit, Comment, CommentSort, NewComment } from '@/db';
-import type { EventPayloads, Handler, RequestCtx } from '@/types';
+import type { EventPayloads, Handler, JsonString, RequestCtx } from '@/types';
+
+import { mkCommentId } from '@/types';
 
 import { checkAkismet } from '@/lib/akismet';
 import { isAdmin, requireAdmin } from '@/lib/auth';
@@ -39,7 +41,11 @@ const stripHtml = (html: string): string => html.replace(/<[^>]*>/g, '');
 
 const truncate = (s: string, max = 80): string => (s.length <= max ? s : `${s.slice(0, max)}…`);
 
-const parseUidArray = (raw: string, commentId: string, field: string): string[] => {
+const parseUidArray = (
+  raw: JsonString<string[]> | null | undefined,
+  commentId: string,
+  field: string,
+): string[] => {
   if (!raw) {
     return [];
   }
@@ -150,7 +156,7 @@ export const commentGet: Handler<'COMMENT_GET'> = async (payload, ctx) => {
   if (showRegion) {
     const byId = new Map(all.map((c) => [c._id, c]));
     const patch = (dto: ParsedComment): void => {
-      const original = byId.get(dto.id);
+      const original = byId.get(mkCommentId(dto.id));
       if (original?.ipRegion) {
         dto.ipRegion = formatIpRegion(original.ipRegion);
       }
@@ -220,7 +226,7 @@ export const commentLike: Handler<'COMMENT_LIKE'> = async (payload, ctx) => {
     throw new TwikooError(ResponseCode.FAIL, `Invalid like type: ${type}`);
   }
 
-  const matched = await ctx.db.comment.toggleVote(payload.id, ctx.uid, type);
+  const matched = await ctx.db.comment.toggleVote(mkCommentId(payload.id), ctx.uid, type);
   if (!matched) {
     throw new TwikooError(ResponseCode.FAIL, 'Comment not found.');
   }
@@ -317,8 +323,8 @@ const buildComment = async (
     isSpam: !isAdminUser && preCheckSpam(payload, ctx.config) ? 1 : 0,
     created: timestamp,
     updated: timestamp,
-    ups: '[]',
-    downs: '[]',
+    ups: '[]' as JsonString<string[]>,
+    downs: '[]' as JsonString<string[]>,
     top: 0,
     avatar,
   };
@@ -356,7 +362,7 @@ const postSubmit = async (saved: Comment, ctx: RequestCtx): Promise<void> => {
     // compatible. It looks up the parent for reply mails.
     const getParentComment = async (curr: unknown): Promise<unknown> => {
       const parentId = (curr as { pid?: string }).pid;
-      return parentId ? ctx.db.comment.byId(parentId) : undefined;
+      return parentId ? ctx.db.comment.byId(mkCommentId(parentId)) : undefined;
     };
     await sendNotice(saved, configWithSecrets(ctx), getParentComment);
   } catch (error) {
@@ -446,7 +452,7 @@ export const commentSetForAdmin: Handler<'COMMENT_SET_FOR_ADMIN'> = async (paylo
 
   const set = pickAdminUpdate(payload.set);
 
-  await ctx.db.comment.update(payload.id, { ...set, updated: Date.now() });
+  await ctx.db.comment.update(mkCommentId(payload.id), { ...set, updated: Date.now() });
   return { updated: 1 };
 };
 
@@ -454,14 +460,14 @@ export const commentDeleteForAdmin: Handler<'COMMENT_DELETE_FOR_ADMIN'> = async 
   requireAdmin(ctx);
   validate(payload, ['id']);
 
-  await ctx.db.comment.delete(payload.id);
+  await ctx.db.comment.delete(mkCommentId(payload.id));
   return { deleted: 1 };
 };
 
 export const commentDeleteForUser: Handler<'COMMENT_DELETE_FOR_USER'> = async (payload, ctx) => {
   validate(payload, ['id']);
 
-  const id = payload.id;
+  const id = mkCommentId(payload.id);
   if (!ctx.uid) {
     // Anonymous comments have empty uid; an empty equality match would
     // collapse all anon authors into one delete-able pool.
