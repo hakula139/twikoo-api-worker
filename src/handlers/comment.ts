@@ -14,7 +14,6 @@ import {
   equalsMail,
   getAvatar,
   getMailMd5,
-  getQQAvatar,
   getUrlsQuery,
   isQQ,
   logger,
@@ -37,6 +36,25 @@ const RECENT_MAX_PAGE_SIZE = 100;
 const stripHtml = (html: string): string => html.replace(/<[^>]*>/g, '');
 
 const parseUidArray = (raw: string): string[] => (raw ? (JSON.parse(raw) as string[]) : []);
+
+const QQ_AVATAR_API = 'https://aq.qq.com/cn2/get_img/get_face';
+
+// Best-effort: any failure returns '' so `getAvatar` falls back to gravatar.
+const fetchQqAvatar = async (qqMail: string): Promise<string> => {
+  const qqNum = qqMail.replace(/@qq\.com$/i, '');
+  try {
+    const url = `${QQ_AVATAR_API}?img_type=3&uin=${encodeURIComponent(qqNum)}`;
+    const response = await fetch(url);
+    if (!response.ok) {
+      return '';
+    }
+    const data = await response.json<{ url?: string }>();
+    return data.url ?? '';
+  } catch (error) {
+    logger.warn('Failed to fetch QQ avatar:', error);
+    return '';
+  }
+};
 
 interface ParsedComment {
   id: string;
@@ -271,11 +289,7 @@ const buildComment = async (
   let avatar = '';
   if (mail && isQQ(mail)) {
     mail = addQQMailSuffix(mail);
-    try {
-      avatar = await getQQAvatar(mail);
-    } catch (error) {
-      logger.warn('getQQAvatar failed; falling back to gravatar:', error);
-    }
+    avatar = await fetchQqAvatar(mail);
   }
 
   return {

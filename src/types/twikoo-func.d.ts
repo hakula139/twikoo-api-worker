@@ -34,7 +34,6 @@ declare module 'twikoo-func/utils' {
   export function getUrlsQuery(urls: readonly string[]): string[];
   export function isQQ(mail: string): boolean;
   export function addQQMailSuffix(mail: string): string;
-  export function getQQAvatar(mail: string): Promise<string>;
   export function getPasswordStatus(
     config: unknown,
     VERSION: string,
@@ -50,10 +49,6 @@ declare module 'twikoo-func/utils' {
     isAdmin: boolean;
   }): Promise<{ code: number; config?: unknown; message?: string }>;
   export function validate(event: unknown, requiredFields: readonly string[]): void;
-}
-
-declare module 'twikoo-func/utils/spam' {
-  export function postCheckSpam(comment: unknown, config: unknown): Promise<boolean>;
 }
 
 declare module 'twikoo-func/utils/notify' {
