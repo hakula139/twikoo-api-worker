@@ -35,7 +35,20 @@ const RECENT_MAX_PAGE_SIZE = 100;
 
 const stripHtml = (html: string): string => html.replace(/<[^>]*>/g, '');
 
-const parseUidArray = (raw: string): string[] => (raw ? (JSON.parse(raw) as string[]) : []);
+const truncate = (s: string, max = 80): string => (s.length <= max ? s : `${s.slice(0, max)}…`);
+
+const parseUidArray = (raw: string, commentId: string, field: string): string[] => {
+  if (!raw) {
+    return [];
+  }
+  try {
+    const parsed = JSON.parse(raw) as unknown;
+    return Array.isArray(parsed) ? (parsed as string[]) : [];
+  } catch {
+    logger.warn(`Malformed ${field} JSON on comment ${commentId}: ${truncate(raw)}`);
+    return [];
+  }
+};
 
 const QQ_AVATAR_API = 'https://aq.qq.com/cn2/get_img/get_face';
 
@@ -67,8 +80,8 @@ type DecodedComment = Omit<Comment, 'ups' | 'downs'> & { ups: string[]; downs: s
 
 const decodeVotes = (row: Comment): DecodedComment => ({
   ...row,
-  ups: parseUidArray(row.ups),
-  downs: parseUidArray(row.downs),
+  ups: parseUidArray(row.ups, row._id, 'ups'),
+  downs: parseUidArray(row.downs, row._id, 'downs'),
 });
 
 const SORT_VALUES = ['newest', 'oldest', 'popular'] as const satisfies readonly CommentSort[];

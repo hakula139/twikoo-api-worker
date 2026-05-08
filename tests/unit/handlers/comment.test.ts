@@ -24,7 +24,7 @@ vi.mock('@/twikoo', () => ({
 }));
 
 import { TwikooError } from '@/lib/errors';
-import { commentSubmit } from '@/handlers/comment';
+import { commentGet, commentSubmit } from '@/handlers/comment';
 
 interface FakeDb {
   saved: NewComment[];
@@ -112,6 +112,67 @@ describe('commentSubmit > enforceFrequencyLimit', () => {
 
     await expect(commentSubmit(submitPayload(), ctx)).rejects.toBeInstanceOf(TwikooError);
     expect(fake.saved).toHaveLength(0);
+  });
+});
+
+describe('commentGet > malformed votes JSON', () => {
+  const baseRow: Comment = {
+    _id: 'c1',
+    uid: 'u',
+    nick: 'n',
+    mail: '',
+    mailMd5: '',
+    link: '',
+    ua: '',
+    ip: '',
+    ipRegion: '',
+    master: 0,
+    url: '/post',
+    href: '',
+    comment: 'hi',
+    pid: '',
+    rid: '',
+    isSpam: 0,
+    created: 0,
+    updated: 0,
+    ups: '[]',
+    downs: '[]',
+    top: 0,
+    avatar: '',
+  };
+
+  const buildGetCtx = (rows: Comment[]): RequestCtx => {
+    const db = {
+      comment: {
+        count: vi.fn(async () => rows.length),
+        // First call probes head/main; second call (top=1) returns empty.
+        list: vi
+          .fn<(...args: unknown[]) => Promise<Comment[]>>()
+          .mockResolvedValueOnce(rows)
+          .mockResolvedValue([]),
+        replies: vi.fn(async () => [] as Comment[]),
+      },
+    };
+    return {
+      env: {} as RequestCtx['env'],
+      request: new Request('https://twikoo.example/'),
+      waitUntil: () => undefined,
+      ip: '1.2.3.4',
+      region: '',
+      origin: null,
+      uid: 'guest-uid',
+      config: {},
+      db: db as unknown as RequestCtx['db'],
+    };
+  };
+
+  it('treats malformed ups as empty array and still returns the comment', async () => {
+    const bad: Comment = { ...baseRow, _id: 'bad', ups: '{not-json' };
+    const ctx = buildGetCtx([bad]);
+    const result = await commentGet({ url: '/post' }, ctx);
+    expect(result.count).toBe(1);
+    const data = result.data as Array<{ ups?: unknown }>;
+    expect(data).toHaveLength(1);
   });
 });
 
