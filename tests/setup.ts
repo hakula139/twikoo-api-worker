@@ -1,14 +1,9 @@
-// twikoo-func eagerly requires axios / form-data at module init — workerd in
-// the vitest pool segfaults loading those. Stub the worker's twikoo boundary
-// with a superset that covers every consumer; per-test overrides go through
-// `vi.mocked(twikooMod.x).mockReturnValueOnce(...)`.
+// twikoo-func loads axios / form-data at module init; workerd segfaults.
+// Mock the boundary — `vi.fn()` for helpers tests override per call,
+// plain arrow fns for pure utilities (md5, validate, ...).
 
 import { vi } from 'vitest';
 
-// Helpers that handler tests override per-call go through `vi.fn()` so
-// `vi.mocked(twikooMod.x).mockResolvedValueOnce(...)` works. Pure utilities
-// (md5, validate, getUrlsQuery, …) stay as plain arrow functions — handlers
-// rely on their behavior, not their callability as mocks.
 vi.mock('@/twikoo', () => ({
   VERSION: '0.0.0-test',
   addQQMailSuffix: (m: string) => m,
