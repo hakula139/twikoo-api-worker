@@ -1,13 +1,9 @@
-# `lib/`, `db/`, and `handlers/` all have unit suites. Patch coverage is
-# enforced at 80% so new code lands with tests; project stays informational
-# until dispatch / worker catch up.
 coverage:
   status:
     project:
       default:
         target: auto
         threshold: 1%
-        informational: true
     patch:
       default:
         target: 80%

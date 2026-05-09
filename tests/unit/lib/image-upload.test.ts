@@ -36,10 +36,12 @@ describe('uploadImage — r2 path', () => {
     expect(key).toMatch(/^\d+-sample\.png$/);
 
     const stored = await env.R2.get(key);
-    expect(stored).not.toBeNull();
-    const bytes = new Uint8Array(await stored!.arrayBuffer());
+    if (!stored) {
+      throw new Error('expected R2 to return the uploaded object');
+    }
+    const bytes = new Uint8Array(await stored.arrayBuffer());
     expect(bytes.length).toBe(expectedBytes);
-    expect(stored!.httpMetadata?.contentType).toBe('image/png');
+    expect(stored.httpMetadata?.contentType).toBe('image/png');
   });
 
   it('strips path traversal segments from the upload key', async () => {
