@@ -11,6 +11,9 @@ result-*
 .wrangler/
 .dev.vars
 
+# drizzle-kit regenerated output (only tests/fixtures/schema.sql is committed)
+/migrations/
+
 # vitest coverage
 /coverage/
 

@@ -1,6 +1,6 @@
-# Coverage is informational during the test-suite ramp-up: PRs adding handlers /
-# DB / dispatch code currently land without tests, and a hard 80% patch gate
-# would block them. Flip both to enforced once the suite covers `lib/` + `db/`.
+# `lib/` + `db/` are both above 90% statement coverage. Patch coverage is now
+# enforced at 70% so new code lands with tests; project stays informational
+# until handlers / dispatch / worker catch up.
 coverage:
   status:
     project:
@@ -10,5 +10,4 @@ coverage:
         informational: true
     patch:
       default:
-        target: 80%
-        informational: true
+        target: 70%

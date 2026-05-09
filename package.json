@@ -8,6 +8,7 @@
   "packageManager": "pnpm@11.0.8",
   "scripts": {
     "check": "tsc --noEmit",
+    "db:fixture": "drizzle-kit generate && cp migrations/0000_*.sql tests/fixtures/schema.sql",
     "db:push": "drizzle-kit push",
     "deploy": "wrangler deploy --minify",
     "dev": "wrangler dev",
