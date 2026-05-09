@@ -40,13 +40,13 @@ export const checkAkismet = async (opts: AkismetCheckOpts): Promise<boolean> => 
 
   const response = await fetch(checkUrl(opts.apiKey), { method: 'POST', body });
   if (!response.ok) {
-    // Fail-open so users aren't blocked on outage. Split severity: 4xx is
-    // almost always a misconfigured key (admin should know); 5xx is transient.
-    const message = `Akismet returned ${response.status}; treating comment as ham.`;
+    // Fail-open. 4xx is usually a misconfigured key (admin should know); 5xx is transient.
+    const fields = { provider: 'akismet', status: response.status };
+    const message = 'non-OK; treating comment as ham';
     if (response.status >= 400 && response.status < 500) {
-      logger.error(message);
+      logger.error(fields, message);
     } else {
-      logger.warn(message);
+      logger.warn(fields, message);
     }
     return false;
   }
@@ -55,7 +55,7 @@ export const checkAkismet = async (opts: AkismetCheckOpts): Promise<boolean> => 
   try {
     text = (await response.text()).trim();
   } catch (error) {
-    logger.warn('Akismet response body read failed; treating comment as ham:', error);
+    logger.warn({ provider: 'akismet', error }, 'response body read failed; treating as ham');
     return false;
   }
   return text === 'true';

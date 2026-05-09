@@ -112,18 +112,20 @@ export const postSubmit = async (saved: Comment, ctx: RequestCtx): Promise<void>
       }
     }
   } catch (error) {
-    logger.error('Akismet check failed for', saved._id, error);
+    logger.error({ stage: 'akismet', id: saved._id, url: saved.url, error }, 'postSubmit failed');
   }
 
   try {
-    // sendNotice expects the upstream comment shape; our row is structurally
-    // compatible. It looks up the parent for reply mails.
+    // sendNotice consumes the upstream comment shape; our row is compatible.
     const getParentComment = async (curr: unknown): Promise<unknown> => {
       const parentId = (curr as { pid?: string }).pid;
       return parentId ? ctx.db.comment.byId(mkCommentId(parentId)) : undefined;
     };
     await sendNotice(saved, configWithSecrets(ctx), getParentComment);
   } catch (error) {
-    logger.error('sendNotice failed for', saved._id, error);
+    logger.error(
+      { stage: 'sendNotice', id: saved._id, url: saved.url, error },
+      'postSubmit failed',
+    );
   }
 };
