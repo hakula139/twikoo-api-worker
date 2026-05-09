@@ -1,6 +1,6 @@
 import { beforeAll, beforeEach, describe, expect, it } from 'vitest';
 
-import { applyTestSchema, dbInstance, resetTestDb } from '../../helpers/db';
+import { applyTestSchema, dbInstance, resetTestDb } from '@tests/helpers/db';
 
 beforeAll(async () => {
   await applyTestSchema();

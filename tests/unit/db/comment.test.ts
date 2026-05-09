@@ -4,8 +4,8 @@ import type { CommentSort, NewComment } from '@/db';
 import { beforeAll, beforeEach, describe, expect, it } from 'vitest';
 
 import { mkCommentId } from '@/types';
-import { newComment, resetCommentCounter } from '../../helpers/comment-fixture';
-import { applyTestSchema, dbInstance, resetTestDb } from '../../helpers/db';
+import { newComment, resetCommentCounter } from '@tests/helpers/comment-fixture';
+import { applyTestSchema, dbInstance, resetTestDb } from '@tests/helpers/db';
 
 beforeAll(async () => {
   await applyTestSchema();

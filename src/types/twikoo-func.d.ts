@@ -37,7 +37,13 @@ declare module 'twikoo-func/utils' {
   export function getPasswordStatus(
     config: unknown,
     VERSION: string,
-  ): Promise<{ code: number; status?: number; version?: string; message?: string }>;
+  ): Promise<{
+    code: number;
+    status?: boolean;
+    credentials?: boolean;
+    version?: string;
+    message?: string;
+  }>;
   export function preCheckSpam(comment: unknown, config: unknown): boolean;
   export function getConfig(opts: {
     config: unknown;
@@ -57,11 +63,13 @@ declare module 'twikoo-func/utils/notify' {
     config: unknown,
     getParentComment: (current: unknown) => Promise<unknown>,
   ): Promise<void>;
+  // Upstream returns {} (no admin), { result } (success), or { message } (error) —
+  // never a `code` field, so the dispatch envelope wraps it without colliding.
   export function emailTest(
     event: unknown,
     config: unknown,
     isAdmin: boolean,
-  ): Promise<{ code: number; data?: unknown; message?: string }>;
+  ): Promise<{ result?: unknown; message?: string }>;
 }
 
 declare module 'twikoo-func/utils/image' {

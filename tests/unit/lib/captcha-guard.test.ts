@@ -4,7 +4,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { enforceTurnstile } from '@/lib/captcha-guard';
 import { ResponseCode, TwikooError } from '@/lib/errors';
-import { buildCtx } from '../../helpers/ctx';
+import { buildCtx } from '@tests/helpers/ctx';
 
 const okSiteverify = (success: boolean, errorCodes?: string[]): Response =>
   new Response(JSON.stringify({ 'success': success, 'error-codes': errorCodes ?? [] }), {

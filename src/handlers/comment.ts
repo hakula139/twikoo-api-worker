@@ -21,7 +21,7 @@ const RECENT_MAX_PAGE_SIZE = 100;
 
 const stripHtml = (html: string): string => html.replace(/<[^>]*>/g, '');
 
-const truncate = (s: string, max = 80): string => (s.length <= max ? s : `${s.slice(0, max)}…`);
+const truncate = (s: string, max = 80): string => (s.length <= max ? s : `${s.slice(0, max)}...`);
 
 const parseUidArray = (
   raw: JsonString<string[]> | null | undefined,
