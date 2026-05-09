@@ -1,3 +1,6 @@
+// AKIAIOSFODNN is AWS's published synthetic access key for SigV4 examples.
+// cspell:ignore AKIAIOSFODNN
+
 import type { Env, TwikooConfig } from '@/types';
 
 import { env as rawEnv } from 'cloudflare:test';
@@ -180,6 +183,45 @@ describe('uploadImage routes IMAGE_CDN to the right provider', () => {
     expect(headers.Authorization).toMatch(/^AWS4-HMAC-SHA256 /);
     const sig = /Signature=([0-9a-f]+)/.exec(headers.Authorization);
     expect(sig?.[1]).toMatch(/^[0-9a-f]{64}$/);
+  });
+
+  // Pins the SigV4 derivation against fixed inputs. Catches drift in canonical
+  // request shape, header ordering, signing-key chain, etc. The pinned hex was
+  // computed by this implementation; if it changes, audit the diff before
+  // updating — a passing structural test is not enough.
+  it('s3 SigV4 produces a stable signature for fixed inputs', async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-01-15T00:00:00Z'));
+    try {
+      const fetchSpy = vi
+        .spyOn(globalThis, 'fetch')
+        .mockResolvedValue(new Response('', { status: 200 }));
+      const config: TwikooConfig = {
+        IMAGE_CDN: 's3',
+        S3_BUCKET: 'my-bucket',
+        S3_ACCESS_KEY_ID: 'AKIAIOSFODNN7EXAMPLE',
+        S3_SECRET_ACCESS_KEY: 'wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY',
+        S3_REGION: 'us-east-1',
+      };
+
+      await uploadImage(dataUrl, 'a.png', config, r2Env());
+
+      const [url, init] = fetchSpy.mock.calls[0] as [string, RequestInit];
+      expect(url).toBe('https://my-bucket.s3.us-east-1.amazonaws.com/1768435200000-a.png');
+      const headers = init.headers as Record<string, string>;
+      expect(headers['x-amz-date']).toBe('20260115T000000Z');
+      // `iVBORw0KGgo=` decoded is the PNG magic byte sequence; SHA-256 is stable.
+      expect(headers['x-amz-content-sha256']).toBe(
+        '4c4b6a3be1314ab86138bef4314dde022e600960d8689a2c8f8631802d20dab6',
+      );
+      expect(headers.Authorization).toBe(
+        'AWS4-HMAC-SHA256 Credential=AKIAIOSFODNN7EXAMPLE/20260115/us-east-1/s3/aws4_request, ' +
+          'SignedHeaders=content-type;host;x-amz-content-sha256;x-amz-date, ' +
+          'Signature=031bfd6aa2d81e30bc47456932807c116a997c91d3e1650300c8574080aaa153',
+      );
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it('rejects when imageService is unrecognized but token-gating passed', async () => {
