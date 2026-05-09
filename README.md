@@ -41,7 +41,7 @@ After `wrangler d1 create twikoo`, copy the printed `database_id` into [`wrangle
 
 `pnpm db:push` syncs [`src/db/schema.ts`](src/db/schema.ts) to remote D1 (needs `CLOUDFLARE_D1_TOKEN`), diffing against the live database and applying the delta directly — no migration files in the repo.
 
-Secrets (set as needed):
+Optional secrets — set as needed; all of the below can also be set in the admin-config UI under the matching field name, and the wrangler secret takes precedence when both are set:
 
 ```bash
 pnpm wrangler secret put AKISMET_KEY
@@ -52,7 +52,14 @@ pnpm wrangler secret put SMTP_USER
 pnpm wrangler secret put TURNSTILE_SECRET_KEY
 ```
 
-All of the above can also be set in the admin-config UI under the matching field name. The wrangler secret takes precedence when both are set.
+Required for first-time bootstrap — `SET_PASSWORD` is admin-only by design (the open "claim by first call" path upstream Twikoo ships is intentionally not supported, since the deploy → first-call window is a TOCTOU race). Seed the admin identity with the md5 of your plaintext password:
+
+```bash
+printf 'my-plain-password' | md5           # macOS: returns 32 hex chars
+pnpm wrangler secret put ADMIN_PASS_HASH   # paste the hex
+```
+
+Once an admin calls `SET_PASSWORD` to rotate, the D1 value shadows env on subsequent requests and the secret can be removed.
 
 For local dev secrets, create `.dev.vars` (gitignored) with `KEY=value` per line.
 

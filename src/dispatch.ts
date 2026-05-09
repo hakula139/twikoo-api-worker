@@ -63,6 +63,13 @@ export const dispatch = async (
       corsHeaders(origin),
     );
   }
+  // Bootstrap path: SET_PASSWORD is admin-only, so an empty config row would
+  // be unrecoverable. ADMIN_PASS_HASH (md5 of plaintext) seeds the admin
+  // identity from a wrangler secret; once an admin rotates via SET_PASSWORD,
+  // the D1 value shadows env on subsequent requests.
+  if (!config.ADMIN_PASS && env.ADMIN_PASS_HASH) {
+    config.ADMIN_PASS = env.ADMIN_PASS_HASH;
+  }
   const headers = corsHeaders(origin, config);
 
   // Reject before DB writes — without short-circuit, the browser still drops

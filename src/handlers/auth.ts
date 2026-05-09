@@ -1,6 +1,6 @@
 import type { Handler } from '@/types';
 
-import { isAdmin } from '@/lib/auth';
+import { requireAdmin } from '@/lib/auth';
 import { ResponseCode, TwikooError } from '@/lib/errors';
 import {
   VERSION,
@@ -13,14 +13,14 @@ import {
 export const getPasswordStatus: Handler<'GET_PASSWORD_STATUS'> = async (_payload, ctx) =>
   stripCode(await getPasswordStatusFn(ctx.config, VERSION));
 
-// Initial setup is open; once set, only the current admin can rotate.
-// Upstream's CloudBase ticket-signing branch is dropped (no Workers equivalent).
+// SET_PASSWORD is admin-only — open bootstrap is intentionally unsupported
+// because the deploy → first-call window is a TOCTOU race anyone reaching
+// the worker could win. Bootstrap by setting ADMIN_PASS_HASH (md5 of the
+// plaintext password) via `wrangler secret put`; dispatch merges it into
+// ctx.config.ADMIN_PASS so admin auth works from request one.
 export const setPassword: Handler<'SET_PASSWORD'> = async (payload, ctx) => {
   validate(payload, ['password']);
-
-  if (ctx.config.ADMIN_PASS && !isAdmin(ctx.uid, ctx.config)) {
-    throw new TwikooError(ResponseCode.PASS_EXIST, '请先登录再修改密码');
-  }
+  requireAdmin(ctx);
 
   await ctx.db.config.writePatch({ ADMIN_PASS: md5(payload.password) });
   return {};
