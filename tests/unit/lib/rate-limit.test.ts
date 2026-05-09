@@ -41,7 +41,7 @@ describe('enforceFrequencyLimit > per-IP cap', () => {
 
   it('falls back to a 10-cap when LIMIT_PER_MINUTE is unset', async () => {
     const ctx = buildRateCtx({}, { perIp: 10, global: 0 });
-    await expect(enforceFrequencyLimit(ctx)).rejects.toBeInstanceOf(TwikooError);
+    await expect(enforceFrequencyLimit(ctx)).rejects.toMatchObject({ code: ResponseCode.FAIL });
   });
 
   it('queries by the request IP — different IP, different bucket', async () => {
@@ -62,7 +62,7 @@ describe('enforceFrequencyLimit > global cap', () => {
       { LIMIT_PER_MINUTE: '50', LIMIT_PER_MINUTE_ALL: '100' },
       { perIp: 0, global: 100 },
     );
-    await expect(enforceFrequencyLimit(ctx)).rejects.toBeInstanceOf(TwikooError);
+    await expect(enforceFrequencyLimit(ctx)).rejects.toMatchObject({ code: ResponseCode.FAIL });
   });
 
   it('LIMIT_PER_MINUTE_ALL=0 disables the global cap', async () => {

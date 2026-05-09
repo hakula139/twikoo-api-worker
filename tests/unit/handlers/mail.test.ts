@@ -1,6 +1,6 @@
 import type { RequestCtx } from '@/types';
 
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { emailTest } from '@/handlers/mail';
 import { ResponseCode } from '@/lib/errors';
@@ -15,6 +15,10 @@ const buildMailCtx = (uid: string, adminUid = 'admin-uid', env: Partial<RequestC
     uid: mkUid(uid),
     env: env as RequestCtx['env'],
   });
+
+afterEach(() => {
+  vi.clearAllMocks();
+});
 
 describe('emailTest', () => {
   it('rejects a non-admin caller before invoking the upstream helper', async () => {

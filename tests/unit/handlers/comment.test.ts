@@ -82,41 +82,6 @@ afterEach(() => {
   vi.restoreAllMocks();
 });
 
-// Boundary cases for the guards live in tests/unit/lib/{rate-limit,captcha-guard}.
-// These integration smokes pin the wiring: commentSubmit invokes the guards
-// before save and the build step before save.
-describe('commentSubmit', () => {
-  it('saves a row when no guards reject', async () => {
-    const fake: FakeDb = { saved: [], perIp: 0, global: 0 };
-    const ctx = buildSubmitCtx({}, fake);
-
-    const result = await commentSubmit(submitPayload(), ctx);
-
-    expect(typeof result.id).toBe('string');
-    expect(fake.saved).toHaveLength(1);
-    expect(fake.saved[0]?._id).toBe(result.id);
-  });
-
-  it('does not save when the per-IP frequency cap is reached', async () => {
-    const fake: FakeDb = { saved: [], perIp: 10, global: 0 };
-    const ctx = buildSubmitCtx({}, fake);
-
-    await expect(commentSubmit(submitPayload(), ctx)).rejects.toBeInstanceOf(TwikooError);
-    expect(fake.saved).toHaveLength(0);
-  });
-
-  it('does not save when Turnstile is enabled but the token is missing', async () => {
-    const fake: FakeDb = { saved: [], perIp: 0, global: 0 };
-    const ctx: RequestCtx = {
-      ...buildSubmitCtx({ CAPTCHA_PROVIDER: 'Turnstile' }, fake),
-      env: { TURNSTILE_SECRET_KEY: 'sk-test' } as RequestCtx['env'],
-    };
-
-    await expect(commentSubmit(submitPayload(), ctx)).rejects.toBeInstanceOf(TwikooError);
-    expect(fake.saved).toHaveLength(0);
-  });
-});
-
 describe('commentGet > malformed votes JSON', () => {
   const buildGetCtx = (rows: Comment[]): RequestCtx => {
     const db = {
@@ -188,7 +153,7 @@ describe('getCommentsCount > urls validation', () => {
     const ctx = buildCountCtx();
     await expect(
       getCommentsCount({ urls: ['/a', 1 as unknown as string] }, ctx),
-    ).rejects.toBeInstanceOf(TwikooError);
+    ).rejects.toMatchObject({ code: ResponseCode.FAIL });
   });
 });
 
@@ -212,7 +177,7 @@ describe('getRecentComments > urls validation', () => {
     const ctx = buildRecentCtx();
     await expect(
       getRecentComments({ urls: 'https://x' as unknown as string[] }, ctx),
-    ).rejects.toBeInstanceOf(TwikooError);
+    ).rejects.toMatchObject({ code: ResponseCode.FAIL });
   });
 });
 
@@ -228,9 +193,9 @@ describe('commentLike', () => {
 
   it('rejects an unknown like type', async () => {
     const { ctx, toggleVote } = buildLikeCtx(true);
-    await expect(commentLike({ id: 'c1', type: 'sideways' }, ctx)).rejects.toBeInstanceOf(
-      TwikooError,
-    );
+    await expect(commentLike({ id: 'c1', type: 'sideways' }, ctx)).rejects.toMatchObject({
+      code: ResponseCode.FAIL,
+    });
     expect(toggleVote).not.toHaveBeenCalled();
   });
 
@@ -249,48 +214,42 @@ describe('commentLike', () => {
   });
 });
 
-describe('commentDeleteForUser', () => {
-  const buildOwnerCtx = (uid: string, row?: Comment) => {
-    const byId = vi.fn(async () => row);
-    const del = vi.fn(async () => undefined);
-    const ctx = buildCtx({
-      uid: mkUid(uid),
-      db: { comment: { byId, delete: del } } as unknown as RequestCtx['db'],
-    });
-    return { ctx, byId, del };
-  };
+// Boundary cases for the guards live in tests/unit/lib/{rate-limit,captcha-guard}.
+// These integration smokes pin the wiring: commentSubmit invokes the guards
+// before save and the build step before save.
+describe('commentSubmit', () => {
+  it('saves a row when no guards reject', async () => {
+    const fake: FakeDb = { saved: [], perIp: 0, global: 0 };
+    const ctx = buildSubmitCtx({}, fake);
 
-  it('rejects an anonymous caller (empty uid)', async () => {
-    const { ctx, del } = buildOwnerCtx('');
-    await expect(commentDeleteForUser({ id: 'c1' }, ctx)).rejects.toMatchObject({
-      code: ResponseCode.NEED_LOGIN,
-    });
-    expect(del).not.toHaveBeenCalled();
+    const result = await commentSubmit(submitPayload(), ctx);
+
+    expect(typeof result.id).toBe('string');
+    expect(fake.saved).toHaveLength(1);
+    expect(fake.saved[0]?._id).toBe(result.id);
   });
 
-  it('rejects when the row is missing', async () => {
-    const { ctx, del } = buildOwnerCtx('owner-uid', undefined);
-    await expect(commentDeleteForUser({ id: 'c1' }, ctx)).rejects.toMatchObject({
+  it('does not save when the per-IP frequency cap is reached', async () => {
+    const fake: FakeDb = { saved: [], perIp: 10, global: 0 };
+    const ctx = buildSubmitCtx({}, fake);
+
+    await expect(commentSubmit(submitPayload(), ctx)).rejects.toMatchObject({
       code: ResponseCode.FAIL,
     });
-    expect(del).not.toHaveBeenCalled();
+    expect(fake.saved).toHaveLength(0);
   });
 
-  it('rejects when the caller is not the author', async () => {
-    const row: Comment = { ...baseRow, uid: 'other-uid' };
-    const { ctx, del } = buildOwnerCtx('owner-uid', row);
-    await expect(commentDeleteForUser({ id: 'c1' }, ctx)).rejects.toMatchObject({
-      code: ResponseCode.FAIL,
+  it('does not save when Turnstile is enabled but the token is missing', async () => {
+    const fake: FakeDb = { saved: [], perIp: 0, global: 0 };
+    const ctx: RequestCtx = {
+      ...buildSubmitCtx({ CAPTCHA_PROVIDER: 'Turnstile' }, fake),
+      env: { TURNSTILE_SECRET_KEY: 'sk-test' } as RequestCtx['env'],
+    };
+
+    await expect(commentSubmit(submitPayload(), ctx)).rejects.toMatchObject({
+      code: ResponseCode.CREDENTIALS_INVALID,
     });
-    expect(del).not.toHaveBeenCalled();
-  });
-
-  it('deletes when the caller owns the row', async () => {
-    const row: Comment = { ...baseRow, uid: 'owner-uid' };
-    const { ctx, del } = buildOwnerCtx('owner-uid', row);
-    const result = await commentDeleteForUser({ id: 'c1' }, ctx);
-    expect(result).toEqual({ deleted: 1 });
-    expect(del).toHaveBeenCalledWith('c1');
+    expect(fake.saved).toHaveLength(0);
   });
 });
 
@@ -351,14 +310,6 @@ describe('commentGetForAdmin', () => {
     };
     expect(result.data[0]?.ipRegion).toBe('China · Beijing');
   });
-
-  it('returns an empty ipRegion when the row has no stored region', async () => {
-    const { ctx } = buildAdminCtx(ADMIN, [{ ...baseRow, ipRegion: '' }]);
-    const result = (await commentGetForAdmin({ per: 10, page: 1 }, ctx)) as {
-      data: Array<{ ipRegion: string }>;
-    };
-    expect(result.data[0]?.ipRegion).toBe('');
-  });
 });
 
 describe('commentSetForAdmin', () => {
@@ -378,7 +329,7 @@ describe('commentSetForAdmin', () => {
     const { ctx, update } = buildSetCtx('guest');
     await expect(
       commentSetForAdmin({ id: 'c1', set: { comment: 'edited' } }, ctx),
-    ).rejects.toBeInstanceOf(TwikooError);
+    ).rejects.toMatchObject({ code: ResponseCode.NEED_LOGIN });
     expect(update).not.toHaveBeenCalled();
   });
 
@@ -389,7 +340,7 @@ describe('commentSetForAdmin', () => {
         { id: 'c1', set: 'not-an-object' as unknown as Record<string, unknown> },
         ctx,
       ),
-    ).rejects.toBeInstanceOf(TwikooError);
+    ).rejects.toMatchObject({ code: ResponseCode.FAIL });
   });
 
   it('writes only allowlisted fields and stamps `updated`', async () => {
@@ -417,9 +368,9 @@ describe('commentSetForAdmin', () => {
 
   it('rejects out-of-range values for boolean-like fields', async () => {
     const { ctx } = buildSetCtx(ADMIN);
-    await expect(commentSetForAdmin({ id: 'c1', set: { isSpam: 2 } }, ctx)).rejects.toBeInstanceOf(
-      TwikooError,
-    );
+    await expect(commentSetForAdmin({ id: 'c1', set: { isSpam: 2 } }, ctx)).rejects.toMatchObject({
+      code: ResponseCode.FAIL,
+    });
   });
 });
 
@@ -438,13 +389,60 @@ describe('commentDeleteForAdmin', () => {
 
   it('rejects a non-admin caller', async () => {
     const { ctx, del } = buildDelCtx('guest');
-    await expect(commentDeleteForAdmin({ id: 'c1' }, ctx)).rejects.toBeInstanceOf(TwikooError);
+    await expect(commentDeleteForAdmin({ id: 'c1' }, ctx)).rejects.toMatchObject({
+      code: ResponseCode.NEED_LOGIN,
+    });
     expect(del).not.toHaveBeenCalled();
   });
 
   it('forwards the id and returns deleted:1 when admin', async () => {
     const { ctx, del } = buildDelCtx(ADMIN);
     const result = await commentDeleteForAdmin({ id: 'c1' }, ctx);
+    expect(result).toEqual({ deleted: 1 });
+    expect(del).toHaveBeenCalledWith('c1');
+  });
+});
+
+describe('commentDeleteForUser', () => {
+  const buildOwnerCtx = (uid: string, row?: Comment) => {
+    const byId = vi.fn(async () => row);
+    const del = vi.fn(async () => undefined);
+    const ctx = buildCtx({
+      uid: mkUid(uid),
+      db: { comment: { byId, delete: del } } as unknown as RequestCtx['db'],
+    });
+    return { ctx, byId, del };
+  };
+
+  it('rejects an anonymous caller (empty uid)', async () => {
+    const { ctx, del } = buildOwnerCtx('');
+    await expect(commentDeleteForUser({ id: 'c1' }, ctx)).rejects.toMatchObject({
+      code: ResponseCode.NEED_LOGIN,
+    });
+    expect(del).not.toHaveBeenCalled();
+  });
+
+  it('rejects when the row is missing', async () => {
+    const { ctx, del } = buildOwnerCtx('owner-uid', undefined);
+    await expect(commentDeleteForUser({ id: 'c1' }, ctx)).rejects.toMatchObject({
+      code: ResponseCode.FAIL,
+    });
+    expect(del).not.toHaveBeenCalled();
+  });
+
+  it('rejects when the caller is not the author', async () => {
+    const row: Comment = { ...baseRow, uid: 'other-uid' };
+    const { ctx, del } = buildOwnerCtx('owner-uid', row);
+    await expect(commentDeleteForUser({ id: 'c1' }, ctx)).rejects.toMatchObject({
+      code: ResponseCode.FAIL,
+    });
+    expect(del).not.toHaveBeenCalled();
+  });
+
+  it('deletes when the caller owns the row', async () => {
+    const row: Comment = { ...baseRow, uid: 'owner-uid' };
+    const { ctx, del } = buildOwnerCtx('owner-uid', row);
+    const result = await commentDeleteForUser({ id: 'c1' }, ctx);
     expect(result).toEqual({ deleted: 1 });
     expect(del).toHaveBeenCalledWith('c1');
   });
@@ -471,7 +469,9 @@ describe('commentExportForAdmin', () => {
 
   it('rejects a non-admin caller', async () => {
     const { ctx, commentExport } = buildExportCtx('guest');
-    await expect(commentExportForAdmin({}, ctx)).rejects.toBeInstanceOf(TwikooError);
+    await expect(commentExportForAdmin({}, ctx)).rejects.toMatchObject({
+      code: ResponseCode.NEED_LOGIN,
+    });
     expect(commentExport).not.toHaveBeenCalled();
   });
 

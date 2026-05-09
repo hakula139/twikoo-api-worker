@@ -1,6 +1,6 @@
 import type { RequestCtx, TwikooConfig } from '@/types';
 
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { getPasswordStatus, login, setPassword } from '@/handlers/auth';
 import { ResponseCode, TwikooError } from '@/lib/errors';
@@ -18,6 +18,10 @@ const buildAuthCtx = (uid: string, config: TwikooConfig) => {
   });
   return { ctx, writePatch };
 };
+
+afterEach(() => {
+  vi.clearAllMocks();
+});
 
 describe('setPassword', () => {
   it('writes a new admin hash when the caller is the existing admin', async () => {
