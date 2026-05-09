@@ -39,7 +39,7 @@ describe('commentImportForAdmin', () => {
     const { ctx, saveMany } = buildImportCtx(ADMIN);
     await expect(
       commentImportForAdmin({ source: 'wordpress', file: '[]' }, ctx),
-    ).rejects.toBeInstanceOf(TwikooError);
+    ).rejects.toMatchObject({ code: ResponseCode.FAIL });
     expect(saveMany).not.toHaveBeenCalled();
   });
 

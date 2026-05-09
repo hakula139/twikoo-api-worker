@@ -1,13 +1,9 @@
-# `lib/` + `db/` are both above 90% statement coverage. Patch coverage is now
-# enforced at 70% so new code lands with tests; project stays informational
-# until handlers / dispatch / worker catch up.
 coverage:
   status:
     project:
       default:
         target: auto
-        threshold: 1%
-        informational: true
+        threshold: 0.5%
     patch:
       default:
-        target: 70%
+        target: 80%

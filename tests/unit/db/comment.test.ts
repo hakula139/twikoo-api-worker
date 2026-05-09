@@ -378,7 +378,7 @@ describe('CommentDB admin views', () => {
   });
 
   // cspell:ignore fooXbar
-  it('keyword filter treats _ / % literally via ESCAPE', async () => {
+  it('keyword filter treats _ literally via ESCAPE', async () => {
     await seed([
       newComment({ _id: mkCommentId('lit'), comment: 'foo_bar' }),
       newComment({ _id: mkCommentId('alt'), comment: 'fooXbar' }),
@@ -386,6 +386,29 @@ describe('CommentDB admin views', () => {
 
     const db = dbInstance();
     const rows = await db.comment.listForAdmin({ keyword: '%foo\\_bar%' }, 10, 0);
+    expect(rows.map((r) => r._id)).toEqual(['lit']);
+  });
+
+  it('keyword filter treats % literally via ESCAPE', async () => {
+    await seed([
+      newComment({ _id: mkCommentId('lit'), comment: '50% off' }),
+      newComment({ _id: mkCommentId('alt'), comment: '50 fancy off' }),
+    ]);
+
+    const db = dbInstance();
+    const rows = await db.comment.listForAdmin({ keyword: '%50\\% off%' }, 10, 0);
+    expect(rows.map((r) => r._id)).toEqual(['lit']);
+  });
+
+  // cspell:ignore pathXfile
+  it('keyword filter treats backslash literally via ESCAPE', async () => {
+    await seed([
+      newComment({ _id: mkCommentId('lit'), comment: 'path\\file' }),
+      newComment({ _id: mkCommentId('alt'), comment: 'pathXfile' }),
+    ]);
+
+    const db = dbInstance();
+    const rows = await db.comment.listForAdmin({ keyword: '%path\\\\file%' }, 10, 0);
     expect(rows.map((r) => r._id)).toEqual(['lit']);
   });
 });
