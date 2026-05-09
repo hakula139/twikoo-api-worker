@@ -18,6 +18,7 @@ vi.mock('@/twikoo', () => ({
   getAvatar: () => '',
   getConfig: vi.fn(async () => ({})),
   getConfigForAdmin: vi.fn(async () => ({})),
+  getFuncVersion: vi.fn(() => ({})),
   getMailMd5: () => '',
   getPasswordStatus: vi.fn(async () => ({})),
   getUrlsQuery: (urls: string[]) => urls,
