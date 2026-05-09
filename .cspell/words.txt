@@ -38,6 +38,7 @@ tcomment
 tencentcloud
 toctou
 turnstile
+upserts
 twikoo
 twikoojs
 valine

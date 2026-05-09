@@ -149,13 +149,14 @@ export class CommentDB {
     await this.db.insert(comment).values(c);
   }
 
-  // Drizzle binds ~23 placeholders per row. SQLite caps at 999 per statement,
-  // so chunk well under that to keep headroom for any future column.
+  // D1 caps each statement at 100 bound parameters (per Cloudflare docs).
+  // 22 columns × CHUNK ≤ 100 → CHUNK = 4 keeps headroom against future
+  // columns.
   async saveMany(rows: NewComment[]): Promise<void> {
     if (rows.length === 0) {
       return;
     }
-    const CHUNK = 25;
+    const CHUNK = 4;
     for (let i = 0; i < rows.length; i += CHUNK) {
       await this.db.insert(comment).values(rows.slice(i, i + CHUNK));
     }
