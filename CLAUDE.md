@@ -78,8 +78,18 @@ pnpm wrangler login                        # one-time OAuth
 pnpm wrangler d1 create twikoo             # capture database_id → wrangler.toml + drizzle.config.ts
 pnpm wrangler r2 bucket create twikoo
 pnpm db:push                               # sync schema.ts to remote D1 (needs CLOUDFLARE_D1_TOKEN)
+pnpm wrangler secret put ADMIN_PASS_HASH   # md5 of plaintext admin password — see "Admin bootstrap" below
 pnpm wrangler secret put SMTP_PASS         # repeat per secret
 pnpm deploy
+```
+
+### Admin bootstrap
+
+`SET_PASSWORD` is admin-only — the open "claim by first call" path upstream Twikoo ships is intentionally **unsupported** (TOCTOU race on the deploy → first-call window). Seed the admin identity via `ADMIN_PASS_HASH` (md5 of the plaintext password); `dispatch.ts` merges it into `ctx.config.ADMIN_PASS` until the D1 row has its own. Once `SET_PASSWORD` rotates that value the secret can be removed.
+
+```bash
+printf 'my-plain-password' | md5           # macOS: returns 32 hex chars
+pnpm wrangler secret put ADMIN_PASS_HASH   # paste the hex
 ```
 
 ### CI deploy

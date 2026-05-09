@@ -14,6 +14,7 @@ export interface Bindings {
 // Wrangler secrets — optional so the smoke-test path runs without them;
 // consumers must validate (see lib/secret#requireSecret for the throwing form).
 export interface Secrets {
+  ADMIN_PASS_HASH?: string;
   AKISMET_KEY?: string;
   QQ_API_KEY?: string;
   SENDER_EMAIL?: string;

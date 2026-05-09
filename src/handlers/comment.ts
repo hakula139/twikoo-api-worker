@@ -8,7 +8,7 @@ import { enforceTurnstile } from '@/lib/captcha-guard';
 import { buildComment, postSubmit } from '@/lib/comment-build';
 import { ResponseCode, TwikooError } from '@/lib/errors';
 import { formatIpRegion } from '@/lib/geo';
-import { isPlainObject } from '@/lib/guards';
+import { isPlainObject, isStringArray } from '@/lib/guards';
 import { enforceFrequencyLimit } from '@/lib/rate-limit';
 import { getAvatar, getMailMd5, getUrlsQuery, logger, parseComment, validate } from '@/twikoo';
 
@@ -137,6 +137,9 @@ export const commentGet: Handler<'COMMENT_GET'> = async (payload, ctx) => {
 
 export const getCommentsCount: Handler<'GET_COMMENTS_COUNT'> = async (payload, ctx) => {
   validate(payload, ['urls']);
+  if (!isStringArray(payload.urls)) {
+    throw new TwikooError(ResponseCode.FAIL, '`urls` must be an array of strings.');
+  }
 
   const urls = payload.urls.filter(Boolean);
   const includeReply = !!payload.includeReply;
@@ -153,6 +156,9 @@ export const getCommentsCount: Handler<'GET_COMMENTS_COUNT'> = async (payload, c
 };
 
 export const getRecentComments: Handler<'GET_RECENT_COMMENTS'> = async (payload, ctx) => {
+  if (payload.urls !== undefined && !isStringArray(payload.urls)) {
+    throw new TwikooError(ResponseCode.FAIL, '`urls` must be an array of strings.');
+  }
   const urlsRaw = payload.urls?.filter(Boolean);
   const urls = urlsRaw?.length ? getUrlsQuery(urlsRaw) : undefined;
   const includeReply = !!payload.includeReply;
