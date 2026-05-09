@@ -7,12 +7,12 @@ import { drizzle } from 'drizzle-orm/d1';
 import { DB } from '@/db';
 import schemaSql from '../fixtures/schema.sql?raw';
 
-// drizzle-kit emits one .sql file with `--> statement-breakpoint` between
-// statements. applyD1Migrations is idempotent (tracks applied migrations
-// in `d1_migrations`), so calling it from each suite's beforeAll is safe
+// `drizzle-kit export` writes plain DDL with `;` statement terminators.
+// applyD1Migrations is idempotent (tracks applied migrations in
+// `d1_migrations`), so calling it from each suite's beforeAll is safe
 // even when miniflare reuses the binding across files in the same worker.
 const migrationQueries = schemaSql
-  .split('--> statement-breakpoint')
+  .split(';')
   .map((q: string) => q.trim())
   .filter(Boolean);
 
