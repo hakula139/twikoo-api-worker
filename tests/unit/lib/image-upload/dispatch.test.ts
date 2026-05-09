@@ -254,3 +254,124 @@ describe('uploadImage NSFW pre-check', () => {
     }
   });
 });
+
+describe('uploadImage > dispatch-level config gates', () => {
+  it('rejects when IMAGE_CDN is unset', async () => {
+    await expect(uploadImage(dataUrl, 'a.png', {}, r2Env())).rejects.toMatchObject({
+      code: ResponseCode.UPLOAD_FAILED,
+      message: expect.stringContaining('未配置图片上传服务') as unknown as string,
+    });
+  });
+
+  it('rejects when a non-r2/non-s3 provider is missing IMAGE_CDN_TOKEN', async () => {
+    const config: TwikooConfig = { IMAGE_CDN: 'lskypro' };
+    await expect(uploadImage(dataUrl, 'a.png', config, r2Env())).rejects.toMatchObject({
+      code: ResponseCode.UPLOAD_FAILED,
+    });
+  });
+
+  it('rejects when s3 is missing S3_BUCKET / S3_ACCESS_KEY_ID', async () => {
+    const config: TwikooConfig = { IMAGE_CDN: 's3' };
+    await expect(uploadImage(dataUrl, 'a.png', config, r2Env())).rejects.toMatchObject({
+      code: ResponseCode.UPLOAD_FAILED,
+      message: expect.stringContaining('S3') as unknown as string,
+    });
+  });
+
+  it('rejects when r2 is selected but R2_PUBLIC_URL is unset', async () => {
+    const config: TwikooConfig = { IMAGE_CDN: 'r2' };
+    const env = { R2: r2Env().R2 } as Pick<Env, 'R2' | 'R2_PUBLIC_URL'>;
+    await expect(uploadImage(dataUrl, 'a.png', config, env)).rejects.toMatchObject({
+      code: ResponseCode.UPLOAD_FAILED,
+      message: expect.stringContaining('R2') as unknown as string,
+    });
+  });
+});
+
+describe('uploadImage > provider-level error responses wrap as UPLOAD_FAILED', () => {
+  const lskyConfig: TwikooConfig = {
+    IMAGE_CDN: 'lskypro',
+    IMAGE_CDN_URL: 'https://lsky.example',
+    IMAGE_CDN_TOKEN: 'tk',
+  };
+
+  it('lskypro surfaces upstream message when status: false', async () => {
+    vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce(
+      okResponse({ status: false, message: 'token expired' }),
+    );
+    await expect(uploadImage(dataUrl, 'a.png', lskyConfig, r2Env())).rejects.toMatchObject({
+      code: ResponseCode.UPLOAD_FAILED,
+      message: 'token expired',
+    });
+  });
+
+  it('chevereto wraps non-200 status_code with the upstream error message', async () => {
+    vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce(
+      okResponse({ status_code: 400, error: { message: 'invalid api key' } }),
+    );
+    const config: TwikooConfig = {
+      IMAGE_CDN: 'chevereto',
+      IMAGE_CDN_URL: 'https://chev.example',
+      IMAGE_CDN_TOKEN: 'tk',
+    };
+    await expect(uploadImage(dataUrl, 'a.png', config, r2Env())).rejects.toMatchObject({
+      code: ResponseCode.UPLOAD_FAILED,
+      message: expect.stringContaining('invalid api key') as unknown as string,
+    });
+  });
+
+  it('easyimage rejects when API code is not 200', async () => {
+    vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce(
+      okResponse({ code: 500, message: 'internal' }),
+    );
+    const config: TwikooConfig = {
+      IMAGE_CDN: 'easyimage',
+      IMAGE_CDN_URL: 'https://easy.example/api/index.php',
+      IMAGE_CDN_TOKEN: 'tk',
+    };
+    await expect(uploadImage(dataUrl, 'a.png', config, r2Env())).rejects.toMatchObject({
+      code: ResponseCode.UPLOAD_FAILED,
+      message: expect.stringContaining('CODE: 500') as unknown as string,
+    });
+  });
+
+  it('piclist surfaces upstream message when success: false', async () => {
+    vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce(
+      okResponse({ success: false, message: 'quota exceeded' }),
+    );
+    const config: TwikooConfig = {
+      IMAGE_CDN: 'piclist',
+      IMAGE_CDN_URL: 'https://piclist.example',
+      IMAGE_CDN_TOKEN: 'tk',
+    };
+    await expect(uploadImage(dataUrl, 'a.png', config, r2Env())).rejects.toMatchObject({
+      code: ResponseCode.UPLOAD_FAILED,
+      message: 'quota exceeded',
+    });
+  });
+
+  it('see surfaces upstream message when success: false', async () => {
+    vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce(
+      okResponse({ success: false, message: 'rate limited' }),
+    );
+    const config: TwikooConfig = { IMAGE_CDN: 'see', IMAGE_CDN_TOKEN: 'tk' };
+    await expect(uploadImage(dataUrl, 'a.png', config, r2Env())).rejects.toMatchObject({
+      code: ResponseCode.UPLOAD_FAILED,
+      message: 'rate limited',
+    });
+  });
+
+  it('s3 wraps a non-2xx PUT response', async () => {
+    vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce(new Response('forbidden', { status: 403 }));
+    const config: TwikooConfig = {
+      IMAGE_CDN: 's3',
+      S3_BUCKET: 'my-bucket',
+      S3_REGION: 'us-east-1',
+      S3_ACCESS_KEY_ID: 'AKIAIOSFODNN7EXAMPLE',
+      S3_SECRET_ACCESS_KEY: 'wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY',
+    };
+    await expect(uploadImage(dataUrl, 'a.png', config, r2Env())).rejects.toMatchObject({
+      code: ResponseCode.UPLOAD_FAILED,
+    });
+  });
+});
