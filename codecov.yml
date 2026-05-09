@@ -1,6 +1,6 @@
-# `lib/` + `db/` are both above 90% statement coverage. Patch coverage is now
-# enforced at 70% so new code lands with tests; project stays informational
-# until handlers / dispatch / worker catch up.
+# `lib/`, `db/`, and `handlers/` all have unit suites. Patch coverage is
+# enforced at 80% so new code lands with tests; project stays informational
+# until dispatch / worker catch up.
 coverage:
   status:
     project:
@@ -10,4 +10,4 @@ coverage:
         informational: true
     patch:
       default:
-        target: 70%
+        target: 80%
