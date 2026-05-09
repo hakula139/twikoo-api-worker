@@ -27,9 +27,7 @@ describe('emailTest', () => {
   });
 
   it('throws when the upstream helper reports an error message', async () => {
-    vi.mocked(twikoo.emailTest).mockResolvedValueOnce({
-      message: 'auth failed',
-    } as unknown as Awaited<ReturnType<typeof twikoo.emailTest>>);
+    vi.mocked(twikoo.emailTest).mockResolvedValueOnce({ message: 'auth failed' });
     const adminUid = 'admin-uid';
     const ctx = buildMailCtx(adminUid, adminUid);
 
@@ -40,9 +38,7 @@ describe('emailTest', () => {
   });
 
   it('returns an empty envelope when the upstream helper reports success', async () => {
-    vi.mocked(twikoo.emailTest).mockResolvedValueOnce({ result: 'ok' } as unknown as Awaited<
-      ReturnType<typeof twikoo.emailTest>
-    >);
+    vi.mocked(twikoo.emailTest).mockResolvedValueOnce({ result: { sent: true } });
     const adminUid = 'admin-uid';
     const ctx = buildMailCtx(adminUid, adminUid);
 
@@ -52,9 +48,7 @@ describe('emailTest', () => {
   });
 
   it('shadows admin-config secrets with env bindings via configWithSecrets', async () => {
-    vi.mocked(twikoo.emailTest).mockResolvedValueOnce(
-      {} as unknown as Awaited<ReturnType<typeof twikoo.emailTest>>,
-    );
+    vi.mocked(twikoo.emailTest).mockResolvedValueOnce({});
     const adminUid = 'admin-uid';
     const ctx = buildMailCtx(adminUid, adminUid, {
       SMTP_PASS: 'env-secret',

@@ -10,10 +10,7 @@ import { emailTest as emailTestFn } from '@/twikoo';
 export const emailTest: Handler<'EMAIL_TEST'> = async (payload, ctx) => {
   requireAdmin(ctx);
 
-  const result = (await emailTestFn(payload, configWithSecrets(ctx), true)) as {
-    result?: unknown;
-    message?: string;
-  };
+  const result = await emailTestFn(payload, configWithSecrets(ctx), true);
   if (result.message) {
     throw new TwikooError(ResponseCode.FAIL, result.message);
   }

@@ -12,8 +12,9 @@ import { buildCtx } from '../../helpers/ctx';
 describe('getConfig', () => {
   it('strips QQ_API_KEY from the public config response', async () => {
     vi.mocked(twikoo.getConfig).mockResolvedValueOnce({
+      code: 0,
       config: { SITE_NAME: 'X', QQ_API_KEY: 'sk-secret' },
-    } as Awaited<ReturnType<typeof twikoo.getConfig>>);
+    });
 
     const ctx = buildCtx({ uid: mkUid('') });
     const result = (await getConfig({}, ctx)) as { config: Record<string, unknown> };
@@ -42,12 +43,10 @@ describe('getConfig', () => {
   });
 
   it('handles upstream responses without a `config` key', async () => {
-    vi.mocked(twikoo.getConfig).mockResolvedValueOnce(
-      {} as Awaited<ReturnType<typeof twikoo.getConfig>>,
-    );
+    vi.mocked(twikoo.getConfig).mockResolvedValueOnce({ code: 0 });
     const ctx = buildCtx();
 
-    await expect(getConfig({}, ctx)).resolves.toEqual({});
+    await expect(getConfig({}, ctx)).resolves.toEqual({ code: 0 });
   });
 });
 

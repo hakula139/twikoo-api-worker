@@ -81,14 +81,16 @@ describe('login', () => {
 describe('getPasswordStatus', () => {
   it('forwards config + VERSION to the upstream helper and strips the inner code', async () => {
     vi.mocked(twikoo.getPasswordStatus).mockResolvedValueOnce({
-      status: 'has_password',
       code: 0,
-    } as unknown as Awaited<ReturnType<typeof twikoo.getPasswordStatus>>);
+      status: true,
+      credentials: false,
+      version: '1.0.0-test',
+    });
     const ctx = buildCtx({ config: { ADMIN_PASS: md5('p') } });
 
     const result = await getPasswordStatus({}, ctx);
 
     expect(twikoo.getPasswordStatus).toHaveBeenCalledWith(ctx.config, twikoo.VERSION);
-    expect(result).toEqual({ status: 'has_password' });
+    expect(result).toEqual({ status: true, credentials: false, version: '1.0.0-test' });
   });
 });
