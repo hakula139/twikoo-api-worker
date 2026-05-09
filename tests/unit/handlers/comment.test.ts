@@ -3,8 +3,8 @@ import type { JsonString, RequestCtx, TwikooConfig } from '@/types';
 
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-import { commentGet, commentSubmit } from '@/handlers/comment';
-import { TwikooError } from '@/lib/errors';
+import { commentGet, commentSubmit, getCommentsCount, getRecentComments } from '@/handlers/comment';
+import { ResponseCode, TwikooError } from '@/lib/errors';
 import { mkCommentId, mkIp, mkUid } from '@/types';
 import { buildCtx } from '../../helpers/ctx';
 
@@ -132,5 +132,58 @@ describe('commentGet > malformed votes JSON', () => {
     expect(result.count).toBe(1);
     const data = result.data as Array<{ ups?: unknown }>;
     expect(data).toHaveLength(1);
+  });
+});
+
+describe('getCommentsCount > urls validation', () => {
+  const buildCountCtx = (): RequestCtx => {
+    const db = {
+      comment: {
+        countByUrls: vi.fn(async () => new Map<string, number>()),
+      },
+    };
+    return buildCtx({ db: db as unknown as RequestCtx['db'] });
+  };
+
+  it('rejects when urls is a string instead of an array', async () => {
+    const ctx = buildCountCtx();
+    try {
+      await getCommentsCount({ urls: 'https://x' as unknown as string[] }, ctx);
+      throw new Error('expected getCommentsCount to throw');
+    } catch (e) {
+      expect(e).toBeInstanceOf(TwikooError);
+      expect((e as TwikooError).code).toBe(ResponseCode.FAIL);
+    }
+  });
+
+  it('rejects when urls contains a non-string element', async () => {
+    const ctx = buildCountCtx();
+    await expect(
+      getCommentsCount({ urls: ['/a', 1 as unknown as string] }, ctx),
+    ).rejects.toBeInstanceOf(TwikooError);
+  });
+});
+
+describe('getRecentComments > urls validation', () => {
+  const buildRecentCtx = (): RequestCtx => {
+    const db = {
+      comment: {
+        recent: vi.fn(async () => [] as Comment[]),
+      },
+    };
+    return buildCtx({ db: db as unknown as RequestCtx['db'] });
+  };
+
+  it('accepts an omitted urls field', async () => {
+    const ctx = buildRecentCtx();
+    const result = await getRecentComments({}, ctx);
+    expect(result.data).toEqual([]);
+  });
+
+  it('rejects when urls is present but not an array of strings', async () => {
+    const ctx = buildRecentCtx();
+    await expect(
+      getRecentComments({ urls: 'https://x' as unknown as string[] }, ctx),
+    ).rejects.toBeInstanceOf(TwikooError);
   });
 });
