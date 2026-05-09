@@ -5,7 +5,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { ResponseCode, TwikooError } from '@/lib/errors';
 import { enforceFrequencyLimit } from '@/lib/rate-limit';
 import { mkIp } from '@/types';
-import { buildCtx } from '../../helpers/ctx';
+import { buildCtx } from '@tests/helpers/ctx';
 
 interface Counts {
   perIp: number;

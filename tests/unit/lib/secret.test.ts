@@ -4,7 +4,7 @@ import { describe, expect, it } from 'vitest';
 
 import { ResponseCode, TwikooError } from '@/lib/errors';
 import { configWithSecrets, requireSecret, secret } from '@/lib/secret';
-import { buildCtx } from '../../helpers/ctx';
+import { buildCtx } from '@tests/helpers/ctx';
 
 const ctxOf = (env: Partial<Env>, config: TwikooConfig) => buildCtx({ env: env as Env, config });
 

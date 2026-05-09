@@ -7,7 +7,7 @@ import { ResponseCode, TwikooError } from '@/lib/errors';
 import * as twikoo from '@/twikoo';
 import { md5 } from '@/twikoo';
 import { mkUid } from '@/types';
-import { buildCtx } from '../../helpers/ctx';
+import { buildCtx } from '@tests/helpers/ctx';
 
 const buildAuthCtx = (uid: string, config: TwikooConfig) => {
   const writePatch = vi.fn(async () => undefined);

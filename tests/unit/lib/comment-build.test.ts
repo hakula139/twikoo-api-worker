@@ -7,7 +7,7 @@ import { buildComment, postSubmit } from '@/lib/comment-build';
 import { ResponseCode, TwikooError } from '@/lib/errors';
 import { md5, sha256 } from '@/twikoo';
 import { mkCommentId, mkUid } from '@/types';
-import { buildCtx } from '../../helpers/ctx';
+import { buildCtx } from '@tests/helpers/ctx';
 
 const submitPayload = (
   overrides: Partial<EventPayloads['COMMENT_SUBMIT']> = {},

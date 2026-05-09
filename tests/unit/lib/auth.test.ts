@@ -6,7 +6,7 @@ import { isAdmin, requireAdmin } from '@/lib/auth';
 import { ResponseCode, TwikooError } from '@/lib/errors';
 import { md5 } from '@/twikoo';
 import { mkUid } from '@/types';
-import { buildCtx } from '../../helpers/ctx';
+import { buildCtx } from '@tests/helpers/ctx';
 
 const ctxOf = (uid: string, config: TwikooConfig) => buildCtx({ uid: mkUid(uid), config });
 

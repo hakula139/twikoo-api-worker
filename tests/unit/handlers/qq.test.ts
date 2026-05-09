@@ -3,7 +3,7 @@ import type { RequestCtx } from '@/types';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { getQqNick } from '@/handlers/qq';
-import { buildCtx } from '../../helpers/ctx';
+import { buildCtx } from '@tests/helpers/ctx';
 
 const QQ_NICK_API = 'https://v1.nsuuu.com/api/qqname';
 

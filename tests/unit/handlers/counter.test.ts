@@ -3,7 +3,7 @@ import type { RequestCtx } from '@/types';
 import { describe, expect, it, vi } from 'vitest';
 
 import { counterGet } from '@/handlers/counter';
-import { buildCtx } from '../../helpers/ctx';
+import { buildCtx } from '@tests/helpers/ctx';
 
 describe('counterGet', () => {
   const buildCounterCtx = (timeValue: number) => {

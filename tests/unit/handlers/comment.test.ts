@@ -6,7 +6,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { commentGet, commentSubmit, getCommentsCount, getRecentComments } from '@/handlers/comment';
 import { ResponseCode, TwikooError } from '@/lib/errors';
 import { mkCommentId, mkIp, mkUid } from '@/types';
-import { buildCtx } from '../../helpers/ctx';
+import { buildCtx } from '@tests/helpers/ctx';
 
 interface FakeDb {
   saved: NewComment[];
