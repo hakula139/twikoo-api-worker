@@ -141,31 +141,33 @@ const toJsonArray = (v: unknown): JsonString<string[]> => {
   return '[]' as JsonString<string[]>;
 };
 
+const str = (v: unknown): string => (typeof v === 'string' ? v : '');
+
 // Coerce heterogeneous upstream shapes into NewComment with safe defaults.
 const normalizeRow = (raw: ImportedRow): NewComment => {
   const now = Date.now();
   return {
     _id: typeof raw._id === 'string' && raw._id ? mkCommentId(raw._id) : newCommentId(),
-    uid: (raw.uid as string | undefined) ?? '',
-    nick: (raw.nick as string | undefined) ?? '',
-    mail: (raw.mail as string | undefined) ?? '',
-    mailMd5: (raw.mailMd5 as string | undefined) ?? '',
-    link: (raw.link as string | undefined) ?? '',
-    ua: (raw.ua as string | undefined) ?? '',
-    ip: (raw.ip as string | undefined) ?? '',
-    ipRegion: (raw.ipRegion as string | undefined) ?? '',
+    uid: str(raw.uid),
+    nick: str(raw.nick),
+    mail: str(raw.mail),
+    mailMd5: str(raw.mailMd5),
+    link: str(raw.link),
+    ua: str(raw.ua),
+    ip: str(raw.ip),
+    ipRegion: str(raw.ipRegion),
     master: toBit(raw.master),
-    url: (raw.url as string | undefined) ?? '',
-    href: (raw.href as string | undefined) ?? '',
-    comment: (raw.comment as string | undefined) ?? '',
-    pid: (raw.pid as string | undefined) ?? '',
-    rid: (raw.rid as string | undefined) ?? '',
+    url: str(raw.url),
+    href: str(raw.href),
+    comment: str(raw.comment),
+    pid: str(raw.pid),
+    rid: str(raw.rid),
     isSpam: toBit(raw.isSpam),
     created: typeof raw.created === 'number' ? raw.created : now,
     updated: typeof raw.updated === 'number' ? raw.updated : now,
     ups: toJsonArray(raw.ups),
     downs: toJsonArray(raw.downs),
     top: toBit(raw.top),
-    avatar: (raw.avatar as string | undefined) ?? '',
+    avatar: str(raw.avatar),
   };
 };

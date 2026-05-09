@@ -1,9 +1,5 @@
 import type { TwikooConfig } from '@/types';
 
-// Admin-config values arrive as `unknown` (open index signature). These
-// helpers narrow each access at the call site, instead of repeating the
-// `typeof v === 'string' && v.length > 0` dance.
-
 export const stringConfig = (config: TwikooConfig, key: string): string | undefined => {
   const v = config[key];
   return typeof v === 'string' && v.length > 0 ? v : undefined;

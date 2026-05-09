@@ -12,9 +12,8 @@ export const enforceTurnstile = async (
   if (ctx.config.CAPTCHA_PROVIDER !== 'Turnstile') {
     return;
   }
-  // Only the secret is needed for siteverify; the site key is a frontend-only
-  // hint that GET_CONFIG hands to the widget. Guarding the backend on it
-  // failed every captcha when the admin left the site-key field blank.
+  // siteverify needs only the secret; the site key is a frontend-only hint.
+  // Don't guard the backend on it — admins leave that field blank.
   const turnstileSecret = secret(ctx, 'TURNSTILE_SECRET_KEY');
   if (!turnstileSecret) {
     logger.error('Turnstile is enabled but TURNSTILE_SECRET_KEY is unset.');

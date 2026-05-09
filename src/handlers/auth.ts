@@ -13,9 +13,8 @@ import {
 export const getPasswordStatus: Handler<'GET_PASSWORD_STATUS'> = async (_payload, ctx) =>
   stripCode(await getPasswordStatusFn(ctx.config, VERSION));
 
-// Initial setup is open: any caller can set the password if none exists. Once
-// set, only the current admin can rotate it. Upstream's `credentials` keyfile
-// branch (Tencent CloudBase ticket signing) is dropped — Workers don't have it.
+// Initial setup is open; once set, only the current admin can rotate.
+// Upstream's CloudBase ticket-signing branch is dropped (no Workers equivalent).
 export const setPassword: Handler<'SET_PASSWORD'> = async (payload, ctx) => {
   validate(payload, ['password']);
 
@@ -27,9 +26,8 @@ export const setPassword: Handler<'SET_PASSWORD'> = async (payload, ctx) => {
   return {};
 };
 
-// Don't return `ticket`: it would route the widget through tcb signIn, which
-// crashes when envId is a plain URL. lib/auth.isAdmin recovers the admin role
-// from later accessToken headers.
+// Don't return `ticket` — it routes the widget through tcb signIn (crashes on
+// URL envId). isAdmin recovers the role from later accessToken headers.
 export const login: Handler<'LOGIN'> = async (payload, ctx) => {
   validate(payload, ['password']);
 
