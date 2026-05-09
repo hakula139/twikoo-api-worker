@@ -46,9 +46,16 @@ describe('uploadImage — r2 path', () => {
     const config: TwikooConfig = { IMAGE_CDN: 'r2' };
     const result = await uploadImage(dataUrl, '../../etc/passwd', config, r2Env());
     const key = result.url.replace('https://r2.example.test/', '');
-    expect(key).not.toContain('..');
     expect(key).not.toContain('/');
-    expect(key).toMatch(/passwd$/);
+    expect(key).not.toContain('..');
+    expect(key).toMatch(/^\d+-passwd$/);
+  });
+
+  it('falls back to "upload" when the filename collapses to empty', async () => {
+    const config: TwikooConfig = { IMAGE_CDN: 'r2' };
+    const result = await uploadImage(dataUrl, '/', config, r2Env());
+    const key = result.url.replace('https://r2.example.test/', '');
+    expect(key).toMatch(/^\d+-upload$/);
   });
 
   it('wraps generic errors as TwikooError(UPLOAD_FAILED)', async () => {

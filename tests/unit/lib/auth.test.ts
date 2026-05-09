@@ -5,25 +5,26 @@ import { describe, expect, it } from 'vitest';
 import { isAdmin, requireAdmin } from '@/lib/auth';
 import { ResponseCode, TwikooError } from '@/lib/errors';
 import { md5 } from '@/twikoo';
+import { mkUid } from '@/types';
 import { buildCtx } from '../../helpers/ctx';
 
-const ctxOf = (uid: string, config: TwikooConfig) => buildCtx({ uid, config });
+const ctxOf = (uid: string, config: TwikooConfig) => buildCtx({ uid: mkUid(uid), config });
 
 describe('isAdmin', () => {
   it('matches when md5(uid) equals the stored ADMIN_PASS', () => {
     const uid = 'secret-token';
     const config: TwikooConfig = { ADMIN_PASS: md5(uid) };
-    expect(isAdmin(uid, config)).toBe(true);
+    expect(isAdmin(mkUid(uid), config)).toBe(true);
   });
 
   it('rejects a uid whose hash does not match', () => {
     const config: TwikooConfig = { ADMIN_PASS: md5('admin') };
-    expect(isAdmin('not-admin', config)).toBe(false);
+    expect(isAdmin(mkUid('not-admin'), config)).toBe(false);
   });
 
   it('returns false when ADMIN_PASS is unset, even if uid hashes match an empty string', () => {
-    expect(isAdmin('', {})).toBe(false);
-    expect(isAdmin('anything', { ADMIN_PASS: '' })).toBe(false);
+    expect(isAdmin(mkUid(''), {})).toBe(false);
+    expect(isAdmin(mkUid('anything'), { ADMIN_PASS: '' })).toBe(false);
   });
 });
 

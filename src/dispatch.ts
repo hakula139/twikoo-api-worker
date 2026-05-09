@@ -16,6 +16,7 @@ import { extractGeo } from './lib/geo';
 import { isPlainObject } from './lib/guards';
 import { corsHeaders, isOriginAllowed, jsonResponse } from './lib/http';
 import { logger } from './twikoo';
+import { mkIp, mkUid } from './types';
 
 const stringField = (body: Record<string, unknown>, key: string): string =>
   typeof body[key] === 'string' ? body[key] : '';
@@ -72,14 +73,14 @@ export const dispatch = async (
 
   const event = stringField(body, 'event');
   const accessToken = stringField(body, 'accessToken');
-  const uid = accessToken || request.headers.get('x-twikoo-recaptcha-v3') || '';
+  const uid = mkUid(accessToken || request.headers.get('x-twikoo-recaptcha-v3') || '');
   const { ip, region } = extractGeo(request);
 
   const requestCtx: RequestCtx = {
     config,
     db,
     env,
-    ip,
+    ip: mkIp(ip),
     origin,
     region,
     request,

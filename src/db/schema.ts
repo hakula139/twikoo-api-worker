@@ -1,3 +1,5 @@
+import type { CommentId, JsonString } from '../types';
+
 import { index, integer, sqliteTable, text } from 'drizzle-orm/sqlite-core';
 
 // SQLite booleans ride on INTEGER; `Bit` narrows the surface to 0/1.
@@ -7,7 +9,7 @@ export type Bit = 0 | 1;
 export const comment = sqliteTable(
   'comment',
   {
-    _id: text('_id').notNull().primaryKey(),
+    _id: text('_id').notNull().primaryKey().$type<CommentId>(),
     uid: text('uid').notNull(),
     nick: text('nick').notNull(),
     mail: text('mail').notNull(),
@@ -25,8 +27,8 @@ export const comment = sqliteTable(
     isSpam: integer('isSpam').notNull().$type<Bit>(),
     created: integer('created').notNull(),
     updated: integer('updated').notNull(),
-    ups: text('ups').notNull().default('[]'),
-    downs: text('downs').notNull().default('[]'),
+    ups: text('ups').notNull().default('[]').$type<JsonString<string[]>>(),
+    downs: text('downs').notNull().default('[]').$type<JsonString<string[]>>(),
     top: integer('top').notNull().$type<Bit>(),
     avatar: text('avatar').notNull(),
   },

@@ -1,11 +1,12 @@
 import type { Bit, NewComment } from '@/db';
-import type { Handler } from '@/types';
+import type { Handler, JsonString } from '@/types';
 
 import { XMLParser } from 'fast-xml-parser';
 
 import { requireAdmin } from '@/lib/auth';
 import { ResponseCode, TwikooError } from '@/lib/errors';
 import { newCommentId } from '@/lib/id';
+import { mkCommentId } from '@/types';
 import {
   commentImportArtalk,
   commentImportArtalk2,
@@ -130,21 +131,21 @@ const wrapElementsAsArrays = (value: unknown): unknown => {
 
 const toBit = (v: unknown): Bit => (v === 1 || v === '1' || v === true || v === 'true' ? 1 : 0);
 
-const toJsonArray = (v: unknown): string => {
+const toJsonArray = (v: unknown): JsonString<string[]> => {
   if (typeof v === 'string') {
-    return v || '[]';
+    return (v || '[]') as JsonString<string[]>;
   }
   if (Array.isArray(v)) {
-    return JSON.stringify(v);
+    return JSON.stringify(v) as JsonString<string[]>;
   }
-  return '[]';
+  return '[]' as JsonString<string[]>;
 };
 
 // Coerce heterogeneous upstream shapes into NewComment with safe defaults.
 const normalizeRow = (raw: ImportedRow): NewComment => {
   const now = Date.now();
   return {
-    _id: typeof raw._id === 'string' && raw._id ? raw._id : newCommentId(),
+    _id: typeof raw._id === 'string' && raw._id ? mkCommentId(raw._id) : newCommentId(),
     uid: (raw.uid as string | undefined) ?? '',
     nick: (raw.nick as string | undefined) ?? '',
     mail: (raw.mail as string | undefined) ?? '',

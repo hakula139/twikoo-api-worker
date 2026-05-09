@@ -2,6 +2,7 @@ import type { DrizzleD1Database } from 'drizzle-orm/d1';
 
 import type { SQL } from 'drizzle-orm';
 
+import type { CommentId } from '../types';
 import type { Bit, Comment, NewComment } from './schema';
 
 import { and, asc, count, desc, eq, gt, inArray, lt, or, sql } from 'drizzle-orm';
@@ -33,7 +34,7 @@ export class CommentDB {
 
   // ── Reads ──
 
-  async byId(id: string): Promise<Comment | undefined> {
+  async byId(id: CommentId): Promise<Comment | undefined> {
     const [row] = await this.db.select().from(comment).where(eq(comment._id, id)).limit(1);
     return row;
   }
@@ -160,7 +161,7 @@ export class CommentDB {
     }
   }
 
-  async delete(id: string): Promise<void> {
+  async delete(id: CommentId): Promise<void> {
     await this.db.delete(comment).where(eq(comment._id, id));
   }
 
@@ -168,7 +169,7 @@ export class CommentDB {
   // voting the same direction twice retracts that vote. Pure SQL because two
   // concurrent voters racing through read-modify-write would lose each other.
   // Returns false if no row matched.
-  async toggleVote(id: string, uid: string, type: 'up' | 'down'): Promise<boolean> {
+  async toggleVote(id: CommentId, uid: string, type: 'up' | 'down'): Promise<boolean> {
     const target = type === 'up' ? comment.ups : comment.downs;
     const opposite = type === 'up' ? comment.downs : comment.ups;
     const result = await this.db.run(sql`
@@ -188,11 +189,11 @@ export class CommentDB {
     return result.meta.changes > 0;
   }
 
-  async updateSpam(id: string, isSpam: Bit, updated: number): Promise<void> {
+  async updateSpam(id: CommentId, isSpam: Bit, updated: number): Promise<void> {
     await this.db.update(comment).set({ isSpam, updated }).where(eq(comment._id, id));
   }
 
-  async update(id: string, fields: Partial<NewComment>): Promise<void> {
+  async update(id: CommentId, fields: Partial<NewComment>): Promise<void> {
     await this.db.update(comment).set(fields).where(eq(comment._id, id));
   }
 
