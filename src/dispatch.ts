@@ -4,7 +4,7 @@ import type { Env, EventName, EventPayloads, RequestCtx, TwikooResponse } from '
 
 import { DB } from './db';
 import { handlers, isEventName } from './handlers';
-import { CONFIG_CORRUPTED, loadConfig } from './lib/ctx';
+import { loadConfig } from './lib/ctx';
 import { ResponseCode, TwikooError } from './lib/errors';
 import { extractGeo } from './lib/geo';
 import { isPlainObject } from './lib/guards';
@@ -43,9 +43,13 @@ export const dispatch = async (
   }
 
   const loaded = await loadConfig(env, db);
-  if (loaded === CONFIG_CORRUPTED) {
-    // Avoid logging the raw row, since it normally contains ADMIN_PASS and SMTP_PASS.
-    logger.error('Config row is not valid JSON or not an object.');
+  if (loaded.kind === 'corrupted') {
+    // Avoid logging the raw row since it normally contains ADMIN_PASS and SMTP_PASS.
+    // Length and parse error are safe and the only useful triage signal.
+    logger.error(
+      { length: loaded.length, parseError: loaded.parseError },
+      'Config row is not valid JSON or not an object.',
+    );
     return jsonResponse(
       {
         code: ResponseCode.CONFIG_NOT_EXIST,
@@ -54,7 +58,7 @@ export const dispatch = async (
       corsHeaders(origin),
     );
   }
-  const config = loaded;
+  const config = loaded.config;
   const headers = corsHeaders(origin, config);
 
   // Reject before DB writes — without short-circuit, the browser still drops

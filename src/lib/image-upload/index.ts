@@ -42,9 +42,8 @@ const KNOWN_IMAGE_CDNS = [
 const isKnownImageCdn = (s: string): s is KnownImageCdn =>
   (KNOWN_IMAGE_CDNS as readonly string[]).includes(s);
 
-// Top-level dispatch (matches upstream's IMAGE_CDN routing, plus 'r2').
-// Each provider validates its own config preconditions, so this function only
-// catches the unset / unrecognized cases.
+// Matches upstream's IMAGE_CDN routing, plus 'r2'. Per-provider preconditions
+// are validated by each provider; this layer catches only unset/unrecognized.
 export const uploadImage = async (
   photo: string,
   fileName: string,
@@ -105,8 +104,7 @@ export const uploadImage = async (
       }
     }
 
-    // URL-as-CDN: any https:// imageService routes through LskyPro using the
-    // URL as the API base.
+    // Treat any URL-shaped IMAGE_CDN as an LskyPro base URL.
     if (isUrl(imageService)) {
       return await uploadLskyPro(photo, fileName, config, imageService);
     }

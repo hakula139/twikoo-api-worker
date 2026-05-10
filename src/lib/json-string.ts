@@ -4,9 +4,9 @@ import type { JsonString } from '@/types';
 // Use this at every JsonString construction site so the brand stays earned.
 export const toJsonString = <T>(value: T): JsonString<T> => JSON.stringify(value) as JsonString<T>;
 
-// Wrapper around JSON.parse that returns undefined on a parse failure
-// rather than throwing.
-export const parseJsonString = <T>(s: JsonString<T> | string): T | undefined => {
+// Used at trust boundaries where a corrupt blob shouldn't crash the request.
+// Returns undefined on parse failure; callers must validate the shape of T.
+export const parseJsonString = <T>(s: string): T | undefined => {
   try {
     return JSON.parse(s) as T;
   } catch {
@@ -14,6 +14,5 @@ export const parseJsonString = <T>(s: JsonString<T> | string): T | undefined => 
   }
 };
 
-// Common sentinel: '[]' as JsonString<string[]>. Cached so callers don't
-// re-stringify on every read.
+// Cached so callers don't re-stringify '[]' on every read.
 export const EMPTY_STRING_ARRAY_JSON: JsonString<string[]> = toJsonString<string[]>([]);

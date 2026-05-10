@@ -42,9 +42,9 @@ export type JsonString<T> = string & { readonly __json: T };
 // Single-row blob in the `config` table. Lists every key the worker reads
 // directly. Upstream twikoo-func sets/reads its own keys under the index
 // signature. Boolean-flavored keys (SHOW_REGION, TOP_DISABLED) are stored as
-// 'true' / 'false' strings by the admin UI, so read via boolConfig instead of
-// directly. Numeric-flavored keys (COMMENT_PAGE_SIZE, LIMIT_PER_MINUTE*,
-// NSFW_THRESHOLD) likewise: read via numberConfig.
+// 'true' / 'false' strings by the admin UI, so read them via boolConfig.
+// Numeric-flavored keys (COMMENT_PAGE_SIZE, LIMIT_PER_MINUTE*, NSFW_THRESHOLD)
+// are also stored as strings, so read them via numberConfig.
 export interface TwikooConfig {
   ADMIN_PASS?: string;
   AKISMET_KEY?: string;

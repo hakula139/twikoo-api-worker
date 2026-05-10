@@ -6,9 +6,8 @@ import { configWithSecrets, secret } from '@/lib/secret';
 import { logger, sendNotice } from '@/twikoo';
 import { mkCommentId } from '@/types';
 
-// Side effects after a comment is persisted: Akismet rescore + email notice.
-// Each phase has its own try/catch so a failure in one doesn't short-circuit
-// the other. Both run best-effort under ctx.waitUntil.
+// Each phase has its own try/catch so an Akismet outage doesn't short-circuit
+// the email notice (and vice versa). Runs best-effort under ctx.waitUntil.
 export const postSubmit = async (saved: NewComment, ctx: RequestCtx): Promise<void> => {
   // Mutate `saved` in place so sendNotice sees fresh isSpam, since upstream
   // suppresses spam notifications when NOTIFY_SPAM='false'.

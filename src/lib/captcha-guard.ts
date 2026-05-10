@@ -15,9 +15,10 @@ export const enforceTurnstile = async (
   }
   if (provider !== 'Turnstile') {
     // The upstream config UI exposes other providers (hCaptcha, reCAPTCHA, ...)
-    // that this worker doesn't implement. Surface the bad config instead of
-    // silently letting comments through with no captcha at all.
-    logger.warn(
+    // that this worker doesn't implement. Log at the same severity as the
+    // missing-secret branch below since the consequence is identical: a
+    // misconfigured production captcha lets comments through unverified.
+    logger.error(
       `CAPTCHA_PROVIDER="${provider}" is not supported by this worker. Allowing through without captcha.`,
     );
     return;

@@ -126,7 +126,7 @@ describe('commentImportForAdmin', () => {
       },
     ]);
     const { ctx, saveMany } = buildImportCtx(ADMIN);
-    await commentImportForAdmin({ source: 'twikoo', file: '[]' }, ctx);
+    const result = await commentImportForAdmin({ source: 'twikoo', file: '[]' }, ctx);
     const rows = saveMany.mock.calls[0]?.[0] as NewComment[] | undefined;
     const row = rows?.[0];
     expect(row?.nick).toBe('');
@@ -137,6 +137,8 @@ describe('commentImportForAdmin', () => {
     expect(row?.ups).toBe('[]');
     expect(row?.downs).toBe('["u1","u2"]');
     expect(typeof row?.created).toBe('number');
+    // The drop must surface in the import log so the admin sees it.
+    expect(result.log).toMatch(/row r1 ups dropped/);
   });
 
   it('keeps a pre-stringified string-array verbatim instead of re-encoding', async () => {
@@ -144,10 +146,23 @@ describe('commentImportForAdmin', () => {
       { _id: 'r1', ups: '["a","b"]', downs: '[123]' },
     ]);
     const { ctx, saveMany } = buildImportCtx(ADMIN);
-    await commentImportForAdmin({ source: 'twikoo', file: '[]' }, ctx);
+    const result = await commentImportForAdmin({ source: 'twikoo', file: '[]' }, ctx);
     const row = (saveMany.mock.calls[0]?.[0] as NewComment[] | undefined)?.[0];
     expect(row?.ups).toBe('["a","b"]');
     // downs parses to [123] (numbers, not strings) so the brand is denied.
     expect(row?.downs).toBe('[]');
+    expect(result.log).toMatch(/row r1 downs dropped/);
+    expect(result.log).not.toMatch(/row r1 ups dropped/);
+  });
+
+  it('logs how many non-string entries were dropped from a live array', async () => {
+    vi.mocked(twikoo.commentImportTwikoo).mockResolvedValueOnce([
+      { _id: 'r1', ups: ['a', 1, 'b', null] },
+    ]);
+    const { ctx, saveMany } = buildImportCtx(ADMIN);
+    const result = await commentImportForAdmin({ source: 'twikoo', file: '[]' }, ctx);
+    const row = (saveMany.mock.calls[0]?.[0] as NewComment[] | undefined)?.[0];
+    expect(row?.ups).toBe('["a","b"]');
+    expect(result.log).toMatch(/row r1 ups dropped 2 non-string entries/);
   });
 });

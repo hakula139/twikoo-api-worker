@@ -36,16 +36,16 @@ describe('enforceTurnstile', () => {
     expect(fetchSpy).not.toHaveBeenCalled();
   });
 
-  it('warns and allows through when CAPTCHA_PROVIDER is an unrecognized value', async () => {
+  it('logs error and allows through when CAPTCHA_PROVIDER is an unrecognized value', async () => {
     const fetchSpy = vi.spyOn(globalThis, 'fetch');
-    const warnSpy = vi.spyOn(logger, 'warn').mockImplementation(() => undefined);
+    const errorSpy = vi.spyOn(logger, 'error').mockImplementation(() => undefined);
     const ctx = buildCtx({ config: { CAPTCHA_PROVIDER: 'hCaptcha' } });
 
     await enforceTurnstile(submitPayload(), ctx);
 
     expect(fetchSpy).not.toHaveBeenCalled();
-    expect(warnSpy).toHaveBeenCalledTimes(1);
-    expect(String(warnSpy.mock.calls[0]?.[0])).toContain('hCaptcha');
+    expect(errorSpy).toHaveBeenCalledTimes(1);
+    expect(String(errorSpy.mock.calls[0]?.[0])).toContain('hCaptcha');
   });
 
   it('throws FAIL when CAPTCHA_PROVIDER=Turnstile but no secret is configured', async () => {
