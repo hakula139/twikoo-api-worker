@@ -18,7 +18,32 @@ import { uploadSee } from './see';
 
 export type { R2Env, UploadResult } from './types';
 
-// Top-level dispatch (matches upstream's IMAGE_CDN routing, plus 'r2').
+type KnownImageCdn =
+  | '7bu'
+  | 'see'
+  | 'lskypro'
+  | 'piclist'
+  | 'easyimage'
+  | 'chevereto'
+  | 's3'
+  | 'r2';
+
+const KNOWN_IMAGE_CDNS = [
+  '7bu',
+  'see',
+  'lskypro',
+  'piclist',
+  'easyimage',
+  'chevereto',
+  's3',
+  'r2',
+] as const satisfies readonly KnownImageCdn[];
+
+const isKnownImageCdn = (s: string): s is KnownImageCdn =>
+  (KNOWN_IMAGE_CDNS as readonly string[]).includes(s);
+
+// Matches upstream's IMAGE_CDN routing, plus 'r2'. Per-provider preconditions
+// are validated by each provider; this layer catches only unset/unrecognized.
 export const uploadImage = async (
   photo: string,
   fileName: string,
@@ -27,16 +52,17 @@ export const uploadImage = async (
 ): Promise<UploadResult> => {
   try {
     const imageService = stringConfig(config, 'IMAGE_CDN') ?? '';
+    if (!imageService) {
+      throw new Error('未配置图片上传服务');
+    }
 
-    if (imageService === 's3') {
-      if (!stringConfig(config, 'S3_BUCKET') || !stringConfig(config, 'S3_ACCESS_KEY_ID')) {
-        throw new Error('未配置 S3 图床参数（S3_BUCKET、S3_ACCESS_KEY_ID、S3_SECRET_ACCESS_KEY）');
-      }
-    } else if (imageService === 'r2') {
-      if (!env.R2 || !env.R2_PUBLIC_URL) {
-        throw new Error('R2 binding 或 R2_PUBLIC_URL 未配置');
-      }
-    } else if (!imageService || !stringConfig(config, 'IMAGE_CDN_TOKEN')) {
+    // Non-S3 / non-R2 providers historically require IMAGE_CDN_TOKEN to be
+    // set. Preserve that contract so a missing token fails fast.
+    if (
+      imageService !== 's3' &&
+      imageService !== 'r2' &&
+      !stringConfig(config, 'IMAGE_CDN_TOKEN')
+    ) {
       throw new Error('未配置图片上传服务');
     }
 
@@ -47,42 +73,40 @@ export const uploadImage = async (
       }
     }
 
-    if (imageService === '7bu') {
-      return await uploadLskyPro(photo, fileName, config, 'https://7bu.top');
+    if (isKnownImageCdn(imageService)) {
+      switch (imageService) {
+        case '7bu':
+          return await uploadLskyPro(photo, fileName, config, 'https://7bu.top');
+        case 'see':
+          return await uploadSee(photo, fileName, config, 'https://s.ee/api/v1/file/upload');
+        case 'lskypro':
+          return await uploadLskyPro(
+            photo,
+            fileName,
+            config,
+            stringConfig(config, 'IMAGE_CDN_URL') ?? '',
+          );
+        case 'piclist':
+          return await uploadPicList(
+            photo,
+            fileName,
+            config,
+            stringConfig(config, 'IMAGE_CDN_URL') ?? '',
+          );
+        case 'easyimage':
+          return await uploadEasyImage(photo, fileName, config);
+        case 'chevereto':
+          return await uploadChevereto(photo, fileName, config);
+        case 's3':
+          return await uploadS3(photo, fileName, config);
+        case 'r2':
+          return await uploadR2(photo, fileName, env);
+      }
     }
-    if (imageService === 'see') {
-      return await uploadSee(photo, fileName, config, 'https://s.ee/api/v1/file/upload');
-    }
+
+    // Treat any URL-shaped IMAGE_CDN as an LskyPro base URL.
     if (isUrl(imageService)) {
       return await uploadLskyPro(photo, fileName, config, imageService);
-    }
-    if (imageService === 'lskypro') {
-      return await uploadLskyPro(
-        photo,
-        fileName,
-        config,
-        stringConfig(config, 'IMAGE_CDN_URL') ?? '',
-      );
-    }
-    if (imageService === 'piclist') {
-      return await uploadPicList(
-        photo,
-        fileName,
-        config,
-        stringConfig(config, 'IMAGE_CDN_URL') ?? '',
-      );
-    }
-    if (imageService === 'easyimage') {
-      return await uploadEasyImage(photo, fileName, config);
-    }
-    if (imageService === 'chevereto') {
-      return await uploadChevereto(photo, fileName, config);
-    }
-    if (imageService === 's3') {
-      return await uploadS3(photo, fileName, config);
-    }
-    if (imageService === 'r2') {
-      return await uploadR2(photo, fileName, env);
     }
     throw new Error('不支持的图片上传服务');
   } catch (e) {

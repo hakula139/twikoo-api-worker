@@ -3,7 +3,7 @@ import type { TwikooConfig } from '@/types';
 import type { UploadResult } from './types';
 
 import { stringConfig } from '../config-read';
-import { decodePhoto, stripTrailingSlash } from './helpers';
+import { multipartFromPhoto, stripTrailingSlash } from './helpers';
 
 interface CheveretoResponse {
   status_code?: number;
@@ -25,10 +25,8 @@ export const uploadChevereto = async (
     throw new Error('未配置 Chevereto API Key (IMAGE_CDN_TOKEN)');
   }
 
-  const { blob } = decodePhoto(photo);
-  const formData = new FormData();
+  const formData = multipartFromPhoto(photo, fileName, 'source');
   formData.append('key', token);
-  formData.append('source', blob, fileName);
   formData.append('format', 'json');
 
   const response = await fetch(`${stripTrailingSlash(siteUrl)}/api/1/upload`, {

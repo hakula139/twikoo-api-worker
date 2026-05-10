@@ -19,8 +19,8 @@ export const getPasswordStatus: Handler<'GET_PASSWORD_STATUS'> = async (_payload
 // plaintext password) via `wrangler secret put`; dispatch merges it into
 // ctx.config.ADMIN_PASS so admin auth works from request one.
 export const setPassword: Handler<'SET_PASSWORD'> = async (payload, ctx) => {
-  validate(payload, ['password']);
   requireAdmin(ctx);
+  validate(payload, ['password']);
 
   await ctx.db.config.writePatch({ ADMIN_PASS: md5(payload.password) });
   return {};

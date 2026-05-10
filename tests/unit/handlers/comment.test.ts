@@ -16,6 +16,7 @@ import {
   getRecentComments,
 } from '@/handlers/comment';
 import { ResponseCode, TwikooError } from '@/lib/errors';
+import * as twikoo from '@/twikoo';
 import { md5 } from '@/twikoo';
 import { mkCommentId, mkIp, mkUid } from '@/types';
 import { buildCtx } from '@tests/helpers/ctx';
@@ -125,6 +126,69 @@ describe('commentGet > malformed votes JSON', () => {
     const logged = String(warnSpy.mock.calls[0]?.[0] ?? '');
     expect(logged).toContain('...');
     expect(logged).not.toContain(longBad);
+  });
+});
+
+describe('commentGet > config-driven branches', () => {
+  const buildGetCtx = (
+    rows: Comment[],
+    config: TwikooConfig = {},
+  ): { ctx: RequestCtx; list: ReturnType<typeof vi.fn> } => {
+    const list = vi
+      .fn<(...args: unknown[]) => Promise<Comment[]>>()
+      .mockResolvedValueOnce(rows)
+      .mockResolvedValue([]);
+    const db = {
+      comment: {
+        count: vi.fn(async () => rows.length),
+        list,
+        replies: vi.fn(async () => [] as Comment[]),
+      },
+    };
+    return {
+      ctx: buildCtx({ uid: mkUid('guest-uid'), config, db: db as unknown as RequestCtx['db'] }),
+      list,
+    };
+  };
+
+  it('skips the top-pinned query when TOP_DISABLED=true', async () => {
+    const { ctx, list } = buildGetCtx([baseRow], { TOP_DISABLED: 'true' });
+    await commentGet({ url: '/post' }, ctx);
+    // Single call (head/main only); the second call for the top query is suppressed.
+    expect(list).toHaveBeenCalledTimes(1);
+  });
+
+  it('runs the top-pinned query when TOP_DISABLED is unset and `before` is absent', async () => {
+    const { ctx, list } = buildGetCtx([baseRow]);
+    await commentGet({ url: '/post' }, ctx);
+    expect(list).toHaveBeenCalledTimes(2);
+  });
+
+  // Stand in for upstream's strip: when commentGet calls parseComment with
+  // SHOW_REGION='false', the real impl drops ipRegion. We mimic that here so
+  // the worker's own SHOW_REGION-true patch path becomes observable.
+  const stripIpRegion = (rows: readonly unknown[]): unknown[] =>
+    rows.map((r) => {
+      const { ipRegion: _ipRegion, ...rest } = r as Comment;
+      return { ...rest, id: rest._id };
+    });
+
+  it('patches ipRegion onto each dto when SHOW_REGION=true', async () => {
+    const row: Comment = { ...baseRow, ipRegion: 'Beijing' };
+    vi.mocked(twikoo.parseComment).mockImplementation(stripIpRegion);
+    const { ctx } = buildGetCtx([row], { SHOW_REGION: 'true' });
+    const result = await commentGet({ url: '/post' }, ctx);
+    const data = result.data as Array<{ ipRegion?: string }>;
+    expect(data[0]?.ipRegion).toBe('Beijing');
+  });
+
+  it('does not patch ipRegion when SHOW_REGION is unset', async () => {
+    const row: Comment = { ...baseRow, ipRegion: 'Beijing' };
+    vi.mocked(twikoo.parseComment).mockImplementation(stripIpRegion);
+    const { ctx } = buildGetCtx([row]);
+    const result = await commentGet({ url: '/post' }, ctx);
+    const data = result.data as Array<{ ipRegion?: string }>;
+    expect(data[0]?.ipRegion).toBeUndefined();
   });
 });
 

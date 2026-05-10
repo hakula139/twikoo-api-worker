@@ -6,6 +6,7 @@ import { XMLParser } from 'fast-xml-parser';
 import { requireAdmin } from '@/lib/auth';
 import { ResponseCode, TwikooError } from '@/lib/errors';
 import { newCommentId } from '@/lib/id';
+import { EMPTY_STRING_ARRAY_JSON, parseJsonString, toJsonString } from '@/lib/json-string';
 import { mkCommentId } from '@/types';
 import {
   commentImportArtalk,
@@ -58,7 +59,7 @@ export const commentImportForAdmin: Handler<'COMMENT_IMPORT_FOR_ADMIN'> = async 
   }
 
   if (imported && imported.length > 0) {
-    const rows = imported.map(normalizeRow);
+    const rows = imported.map((row) => normalizeRow(row, append));
     await ctx.db.comment.saveMany(rows);
     append(`导入成功 ${rows.length} 条评论`);
   } else if (imported) {
@@ -131,23 +132,41 @@ const wrapElementsAsArrays = (value: unknown): unknown => {
 
 const toBit = (v: unknown): Bit => (v === 1 || v === '1' || v === true || v === 'true' ? 1 : 0);
 
-const toJsonArray = (v: unknown): JsonString<string[]> => {
-  if (typeof v === 'string') {
-    return (v || '[]') as JsonString<string[]>;
-  }
+const toJsonArray = (
+  v: unknown,
+  field: string,
+  rowId: string,
+  warn: (msg: string) => void,
+): JsonString<string[]> => {
   if (Array.isArray(v)) {
-    return JSON.stringify(v) as JsonString<string[]>;
+    const strings = v.filter((e): e is string => typeof e === 'string');
+    if (strings.length !== v.length) {
+      warn(`row ${rowId} ${field} dropped ${v.length - strings.length} non-string entries`);
+    }
+    return toJsonString<string[]>(strings);
   }
-  return '[]' as JsonString<string[]>;
+  if (typeof v === 'string' && v) {
+    // Validate the string parses to a string-array before granting the brand,
+    // since otherwise the corruption is silently round-tripped to D1.
+    const parsed = parseJsonString<unknown>(v);
+    if (Array.isArray(parsed) && parsed.every((e): e is string => typeof e === 'string')) {
+      return v as JsonString<string[]>;
+    }
+    warn(`row ${rowId} ${field} dropped: not a string array`);
+  }
+  return EMPTY_STRING_ARRAY_JSON;
 };
 
 const str = (v: unknown): string => (typeof v === 'string' ? v : '');
 
 // Coerce heterogeneous upstream shapes into NewComment with safe defaults.
-const normalizeRow = (raw: ImportedRow): NewComment => {
+// `warn` is wired through so toJsonArray can surface dropped vote arrays into
+// the import log instead of letting corruption silently coerce to '[]'.
+const normalizeRow = (raw: ImportedRow, warn: (msg: string) => void): NewComment => {
   const now = Date.now();
+  const _id = typeof raw._id === 'string' && raw._id ? mkCommentId(raw._id) : newCommentId();
   return {
-    _id: typeof raw._id === 'string' && raw._id ? mkCommentId(raw._id) : newCommentId(),
+    _id,
     uid: str(raw.uid),
     nick: str(raw.nick),
     mail: str(raw.mail),
@@ -165,8 +184,8 @@ const normalizeRow = (raw: ImportedRow): NewComment => {
     isSpam: toBit(raw.isSpam),
     created: typeof raw.created === 'number' ? raw.created : now,
     updated: typeof raw.updated === 'number' ? raw.updated : now,
-    ups: toJsonArray(raw.ups),
-    downs: toJsonArray(raw.downs),
+    ups: toJsonArray(raw.ups, 'ups', _id, warn),
+    downs: toJsonArray(raw.downs, 'downs', _id, warn),
     top: toBit(raw.top),
     avatar: str(raw.avatar),
   };

@@ -3,7 +3,7 @@ import type { TwikooConfig } from '@/types';
 import type { UploadResult } from './types';
 
 import { stringConfig } from '../config-read';
-import { decodePhoto } from './helpers';
+import { multipartFromPhoto } from './helpers';
 
 interface SeeResponse {
   success: boolean;
@@ -18,9 +18,7 @@ export const uploadSee = async (
   config: TwikooConfig,
   imageCdn: string,
 ): Promise<UploadResult> => {
-  const { blob } = decodePhoto(photo);
-  const formData = new FormData();
-  formData.append('smfile', blob, fileName);
+  const formData = multipartFromPhoto(photo, fileName, 'smfile');
 
   const response = await fetch(imageCdn, {
     method: 'POST',
