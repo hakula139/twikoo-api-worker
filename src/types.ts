@@ -40,8 +40,11 @@ export const mkCommentId = (s: string): CommentId => s as CommentId;
 export type JsonString<T> = string & { readonly __json: T };
 
 // Single-row blob in the `config` table. Lists every key the worker reads
-// directly. Upstream twikoo-func sets/reads its own keys (NOTIFY_*, IMAGE_*,
-// SMTP_*, etc.) — the open index signature covers those.
+// directly; upstream twikoo-func sets/reads its own keys under the index
+// signature. Boolean-flavored keys (SHOW_REGION, TOP_DISABLED) are stored as
+// 'true' / 'false' strings by the admin UI — read via boolConfig, never
+// directly. Numeric-flavored keys (COMMENT_PAGE_SIZE, LIMIT_PER_MINUTE*,
+// NSFW_THRESHOLD) likewise — read via numberConfig.
 export interface TwikooConfig {
   ADMIN_PASS?: string;
   AKISMET_KEY?: string;
@@ -66,14 +69,12 @@ export interface TwikooConfig {
   S3_REGION?: string;
   S3_SECRET_ACCESS_KEY?: string;
   SENDER_EMAIL?: string;
-  SHOW_REGION?: string | boolean;
   SITE_URL?: string;
   SMTP_PASS?: string;
   SMTP_USER?: string;
-  TOP_DISABLED?: boolean;
   TURNSTILE_SECRET_KEY?: string;
   TURNSTILE_SITE_KEY?: string;
-  [key: string]: unknown;
+  [key: string]: string | boolean | number | undefined;
 }
 
 export interface RequestCtx {

@@ -6,6 +6,7 @@ import { mkCommentId } from '@/types';
 import { isAdmin, requireAdmin } from '@/lib/auth';
 import { enforceTurnstile } from '@/lib/captcha-guard';
 import { buildComment, postSubmit } from '@/lib/comment-build';
+import { boolConfig, numberConfig } from '@/lib/config-read';
 import { ResponseCode, TwikooError } from '@/lib/errors';
 import { formatIpRegion } from '@/lib/geo';
 import { isPlainObject, isStringArray } from '@/lib/guards';
@@ -68,7 +69,7 @@ export const commentGet: Handler<'COMMENT_GET'> = async (payload, ctx) => {
   const beforeRaw = Number(payload.before);
   const before = Number.isFinite(beforeRaw) && beforeRaw > 0 ? beforeRaw : MAX_TIMESTAMP_MILLIS;
   const showAll = isAdmin(ctx.uid, ctx.config);
-  const pageSize = Number(ctx.config.COMMENT_PAGE_SIZE) || 8;
+  const pageSize = numberConfig(ctx.config, 'COMMENT_PAGE_SIZE', 8);
   const sort: CommentSort = payload.sort && isCommentSort(payload.sort) ? payload.sort : 'newest';
 
   const total = await ctx.db.comment.count(urls, showAll, ctx.uid);
@@ -97,7 +98,7 @@ export const commentGet: Handler<'COMMENT_GET'> = async (payload, ctx) => {
   const main = more ? probed.slice(0, pageSize) : probed;
 
   const top =
-    ctx.config.TOP_DISABLED || payload.before
+    boolConfig(ctx.config, 'TOP_DISABLED') || payload.before
       ? []
       : await ctx.db.comment.list(urls, showAll, ctx.uid, MAX_TIMESTAMP_MILLIS, 1, MAX_QUERY_LIMIT);
 
@@ -115,8 +116,7 @@ export const commentGet: Handler<'COMMENT_GET'> = async (payload, ctx) => {
   const configForParse = { ...ctx.config, SHOW_REGION: 'false' };
   const parsed = parseComment(all.map(decodeVotes), ctx.uid, configForParse) as ParsedComment[];
 
-  const showRegion = !!ctx.config.SHOW_REGION && ctx.config.SHOW_REGION !== 'false';
-  if (showRegion) {
+  if (boolConfig(ctx.config, 'SHOW_REGION')) {
     const byId = new Map(all.map((c) => [c._id, c]));
     const patch = (dto: ParsedComment): void => {
       const original = byId.get(mkCommentId(dto.id));
