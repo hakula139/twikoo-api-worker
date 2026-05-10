@@ -5,10 +5,10 @@ import { isPlainObject } from './guards';
 
 // Discriminated result so the dispatcher can distinguish corruption from a
 // legitimate empty config (no row yet) and still carry diagnostic context
-// (length, parse error) for triage. The raw row is intentionally not
-// propagated since it normally contains ADMIN_PASS and SMTP_PASS.
+// for triage. The raw row is intentionally not propagated since it normally
+// contains ADMIN_PASS and SMTP_PASS.
 export type LoadConfigResult =
-  | { kind: 'ok'; config: TwikooConfig }
+  | { kind: 'ok'; config: TwikooConfig; droppedKeys: readonly string[] }
   | { kind: 'corrupted'; length: number; parseError: unknown };
 
 // Reads the config row, parses it, and applies the ADMIN_PASS_HASH bootstrap.
@@ -19,10 +19,7 @@ export type LoadConfigResult =
 export const loadConfig = async (env: Env, db: DB): Promise<LoadConfigResult> => {
   const raw = await db.config.read();
   if (!raw) {
-    return {
-      kind: 'ok',
-      config: env.ADMIN_PASS_HASH ? { ADMIN_PASS: env.ADMIN_PASS_HASH } : {},
-    };
+    return { kind: 'ok', config: bootstrap({}, env), droppedKeys: [] };
   }
   let parsed: unknown;
   try {
@@ -37,9 +34,34 @@ export const loadConfig = async (env: Env, db: DB): Promise<LoadConfigResult> =>
       parseError: new Error(`expected JSON object, got ${typeof parsed}`),
     };
   }
-  const config = { ...parsed } as TwikooConfig;
+  const { config, droppedKeys } = pruneConfig(parsed);
+  return { kind: 'ok', config: bootstrap(config, env), droppedKeys };
+};
+
+// Drop entries whose value violates TwikooConfig's index signature
+// (string | boolean | number | undefined). A nested object or array under any
+// key would silently break consumers that rely on the typed accessors, so
+// surface the dropped keys to the dispatcher for logging.
+const pruneConfig = (
+  parsed: Record<string, unknown>,
+): { config: TwikooConfig; droppedKeys: readonly string[] } => {
+  const config: TwikooConfig = {};
+  const droppedKeys: string[] = [];
+  for (const [key, value] of Object.entries(parsed)) {
+    // JSON.parse never produces `undefined`, so checking the three valued
+    // primitives covers the index signature.
+    if (typeof value === 'string' || typeof value === 'boolean' || typeof value === 'number') {
+      config[key] = value;
+    } else {
+      droppedKeys.push(key);
+    }
+  }
+  return { config, droppedKeys };
+};
+
+const bootstrap = (config: TwikooConfig, env: Env): TwikooConfig => {
   if (!config.ADMIN_PASS && env.ADMIN_PASS_HASH) {
     config.ADMIN_PASS = env.ADMIN_PASS_HASH;
   }
-  return { kind: 'ok', config };
+  return config;
 };

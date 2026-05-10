@@ -58,10 +58,16 @@ export const dispatch = async (
       corsHeaders(origin),
     );
   }
+  if (loaded.droppedKeys.length > 0) {
+    logger.error(
+      { droppedKeys: loaded.droppedKeys },
+      'Config row had keys with unsupported value types; pruned at the boundary.',
+    );
+  }
   const config = loaded.config;
   const headers = corsHeaders(origin, config);
 
-  // Reject before DB writes — without short-circuit, the browser still drops
+  // Reject before DB writes. Without short-circuit, the browser still drops
   // the response on a CORS miss, but the handler has already persisted state.
   if (!isOriginAllowed(origin, config)) {
     return jsonResponse({ code: ResponseCode.FORBIDDEN, message: 'Origin not allowed.' }, headers);
