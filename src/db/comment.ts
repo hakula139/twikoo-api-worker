@@ -27,26 +27,24 @@ const orderClause = (sort: CommentSort): SQL[] => {
   return [desc(comment.created)];
 };
 
-export class CommentDB {
-  constructor(private readonly db: DrizzleD1Database) {}
-
+export const createCommentDb = (db: DrizzleD1Database) => ({
   // ── Reads ──
 
   async byId(id: CommentId): Promise<Comment | undefined> {
-    const [row] = await this.db.select().from(comment).where(eq(comment._id, id)).limit(1);
+    const [row] = await db.select().from(comment).where(eq(comment._id, id)).limit(1);
     return row;
-  }
+  },
 
   async count(urls: string[], showAll: boolean, uid: string): Promise<number> {
     if (urls.length === 0) {
       return 0;
     }
-    const [row] = await this.db
+    const [row] = await db
       .select({ count: count() })
       .from(comment)
       .where(and(inArray(comment.url, urls), eq(comment.rid, ''), visibility(showAll, uid)));
     return row?.count ?? 0;
-  }
+  },
 
   async list(
     urls: string[],
@@ -60,7 +58,7 @@ export class CommentDB {
     if (urls.length === 0) {
       return [];
     }
-    return this.db
+    return db
       .select()
       .from(comment)
       .where(
@@ -74,17 +72,17 @@ export class CommentDB {
       )
       .orderBy(...orderClause(sort))
       .limit(limit);
-  }
+  },
 
   async replies(urls: string[], showAll: boolean, uid: string, rids: string[]): Promise<Comment[]> {
     if (rids.length === 0 || urls.length === 0) {
       return [];
     }
-    return this.db
+    return db
       .select()
       .from(comment)
       .where(and(inArray(comment.url, urls), visibility(showAll, uid), inArray(comment.rid, rids)));
-  }
+  },
 
   // Returns a `url → count` map; callers fan out url variants via `getUrlsQuery`
   // and collapse the variant counts back per requested url.
@@ -92,7 +90,7 @@ export class CommentDB {
     if (urls.length === 0) {
       return new Map();
     }
-    const rows = await this.db
+    const rows = await db
       .select({ url: comment.url, count: count() })
       .from(comment)
       .where(
@@ -104,14 +102,14 @@ export class CommentDB {
       )
       .groupBy(comment.url);
     return new Map(rows.map((r) => [r.url, r.count]));
-  }
+  },
 
   async recent(
     urls: string[] | undefined,
     includeReply: boolean,
     limit: number,
   ): Promise<Comment[]> {
-    return this.db
+    return db
       .select()
       .from(comment)
       .where(
@@ -123,29 +121,29 @@ export class CommentDB {
       )
       .orderBy(desc(comment.created))
       .limit(limit);
-  }
+  },
 
   async countSince(since: number): Promise<number> {
-    const [row] = await this.db
+    const [row] = await db
       .select({ count: count() })
       .from(comment)
       .where(gt(comment.created, since));
     return row?.count ?? 0;
-  }
+  },
 
   async countSinceByIp(since: number, ip: string): Promise<number> {
-    const [row] = await this.db
+    const [row] = await db
       .select({ count: count() })
       .from(comment)
       .where(and(gt(comment.created, since), eq(comment.ip, ip)));
     return row?.count ?? 0;
-  }
+  },
 
   // ── Writes ──
 
   async save(c: NewComment): Promise<void> {
-    await this.db.insert(comment).values(c);
-  }
+    await db.insert(comment).values(c);
+  },
 
   // D1 caps each statement at 100 bound parameters. Schema currently has
   // 22 columns, so 4 rows per chunk = 88 binds. Bump down to 3 if the row
@@ -156,20 +154,20 @@ export class CommentDB {
     }
     const CHUNK = 4;
     for (let i = 0; i < rows.length; i += CHUNK) {
-      await this.db.insert(comment).values(rows.slice(i, i + CHUNK));
+      await db.insert(comment).values(rows.slice(i, i + CHUNK));
     }
-  }
+  },
 
   async delete(id: CommentId): Promise<void> {
-    await this.db.delete(comment).where(eq(comment._id, id));
-  }
+    await db.delete(comment).where(eq(comment._id, id));
+  },
 
   // Atomic toggle in pure SQL since concurrent voters racing through
   // read-modify-write would lose each other. Returns false if no row matched.
   async toggleVote(id: CommentId, uid: string, type: 'up' | 'down'): Promise<boolean> {
     const target = type === 'up' ? comment.ups : comment.downs;
     const opposite = type === 'up' ? comment.downs : comment.ups;
-    const result = await this.db.run(sql`
+    const result = await db.run(sql`
       UPDATE ${comment} SET
         ${sql.raw(target.name)} = IIF(
           EXISTS (SELECT 1 FROM json_each(${target}) WHERE value = ${uid}),
@@ -184,37 +182,39 @@ export class CommentDB {
       WHERE ${comment._id} = ${id}
     `);
     return result.meta.changes > 0;
-  }
+  },
 
   async updateSpam(id: CommentId, isSpam: Bit, updated: number): Promise<void> {
-    await this.db.update(comment).set({ isSpam, updated }).where(eq(comment._id, id));
-  }
+    await db.update(comment).set({ isSpam, updated }).where(eq(comment._id, id));
+  },
 
   async update(id: CommentId, fields: Partial<NewComment>): Promise<void> {
-    await this.db.update(comment).set(fields).where(eq(comment._id, id));
-  }
+    await db.update(comment).set(fields).where(eq(comment._id, id));
+  },
 
   // ── Admin views & export ──
 
   async countForAdmin(filter: AdminFilter): Promise<number> {
-    const [row] = await this.db.select({ count: count() }).from(comment).where(adminWhere(filter));
+    const [row] = await db.select({ count: count() }).from(comment).where(adminWhere(filter));
     return row?.count ?? 0;
-  }
+  },
 
   async listForAdmin(filter: AdminFilter, limit: number, offset: number): Promise<Comment[]> {
-    return this.db
+    return db
       .select()
       .from(comment)
       .where(adminWhere(filter))
       .orderBy(desc(comment.created))
       .limit(limit)
       .offset(offset);
-  }
+  },
 
   async exportAll(): Promise<Comment[]> {
-    return this.db.select().from(comment);
-  }
-}
+    return db.select().from(comment);
+  },
+});
+
+export type CommentDB = ReturnType<typeof createCommentDb>;
 
 export interface AdminFilter {
   isSpam?: Bit;
