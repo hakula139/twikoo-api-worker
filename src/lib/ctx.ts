@@ -13,7 +13,7 @@ export type LoadConfigResult = TwikooConfig | typeof CONFIG_CORRUPTED;
 // Reads the config row, parses it, and applies the ADMIN_PASS_HASH bootstrap.
 // Bootstrap path: SET_PASSWORD is admin-only, so an empty config row would
 // be unrecoverable. ADMIN_PASS_HASH (md5 of plaintext) seeds the admin
-// identity from a wrangler secret; once an admin rotates via SET_PASSWORD,
+// identity from a wrangler secret. Once an admin rotates via SET_PASSWORD,
 // the D1 value shadows env on subsequent requests.
 export const loadConfig = async (env: Env, db: DB): Promise<LoadConfigResult> => {
   const raw = await db.config.read();

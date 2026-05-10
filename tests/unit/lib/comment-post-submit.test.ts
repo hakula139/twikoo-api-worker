@@ -4,6 +4,7 @@ import type { RequestCtx } from '@/types';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { postSubmit } from '@/lib/comment-post-submit';
+import * as twikoo from '@/twikoo';
 import { mkCommentId } from '@/types';
 import { buildCtx } from '@tests/helpers/ctx';
 
@@ -101,5 +102,30 @@ describe('postSubmit', () => {
 
     await expect(postSubmit(baseSaved(), ctx)).resolves.toBeUndefined();
     expect(updateSpam).not.toHaveBeenCalled();
+  });
+
+  it('swallows sendNotice errors so postSubmit always resolves', async () => {
+    vi.mocked(twikoo.sendNotice).mockRejectedValueOnce(new Error('mailer down'));
+    const updateSpam = vi.fn(async () => undefined);
+    const ctx = buildPostCtx({ byIdRows: new Map(), updateSpam });
+
+    await expect(postSubmit(baseSaved(), ctx)).resolves.toBeUndefined();
+  });
+
+  it('wires sendNotice to look up parent comments via ctx.db.comment.byId', async () => {
+    const parent = baseSaved({ _id: mkCommentId('parent-1') });
+    let captured: unknown;
+    vi.mocked(twikoo.sendNotice).mockImplementationOnce(async (_curr, _config, getParent) => {
+      captured = await getParent({ pid: 'parent-1' });
+      // Empty pid should short-circuit to undefined without hitting byId.
+      const undef = await getParent({});
+      expect(undef).toBeUndefined();
+    });
+    const updateSpam = vi.fn(async () => undefined);
+    const ctx = buildPostCtx({ byIdRows: new Map([['parent-1', parent]]), updateSpam });
+
+    await postSubmit(baseSaved(), ctx);
+
+    expect(captured).toBe(parent);
   });
 });

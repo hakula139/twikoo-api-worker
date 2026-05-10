@@ -44,7 +44,7 @@ export const dispatch = async (
 
   const loaded = await loadConfig(env, db);
   if (loaded === CONFIG_CORRUPTED) {
-    // Avoid logging the raw row — it normally contains ADMIN_PASS and SMTP_PASS.
+    // Avoid logging the raw row, since it normally contains ADMIN_PASS and SMTP_PASS.
     logger.error('Config row is not valid JSON or not an object.');
     return jsonResponse(
       {

@@ -18,7 +18,7 @@ export const enforceTurnstile = async (
     // that this worker doesn't implement. Surface the bad config instead of
     // silently letting comments through with no captcha at all.
     logger.warn(
-      `CAPTCHA_PROVIDER="${provider}" is not supported by this worker; allowing through without captcha.`,
+      `CAPTCHA_PROVIDER="${provider}" is not supported by this worker. Allowing through without captcha.`,
     );
     return;
   }

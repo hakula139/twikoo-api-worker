@@ -148,7 +148,7 @@ export class CommentDB {
   }
 
   // D1 caps each statement at 100 bound parameters. Schema currently has
-  // 22 columns, so 4 rows per chunk = 88 binds; bump down to 3 if the row
+  // 22 columns, so 4 rows per chunk = 88 binds. Bump down to 3 if the row
   // grows past 25 columns or D1 lowers the cap.
   async saveMany(rows: NewComment[]): Promise<void> {
     if (rows.length === 0) {

@@ -137,8 +137,8 @@ const toJsonArray = (v: unknown): JsonString<string[]> => {
     return toJsonString<string[]>(v.filter((e): e is string => typeof e === 'string'));
   }
   if (typeof v === 'string' && v) {
-    // Validate the string parses to a string-array before granting the brand;
-    // otherwise the corruption is silently round-tripped to D1.
+    // Validate the string parses to a string-array before granting the brand,
+    // since otherwise the corruption is silently round-tripped to D1.
     const parsed = parseJsonString<unknown>(v);
     if (Array.isArray(parsed) && parsed.every((e): e is string => typeof e === 'string')) {
       return v as JsonString<string[]>;

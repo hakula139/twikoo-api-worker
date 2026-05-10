@@ -24,7 +24,7 @@ export const isUrl = (s: string): boolean => /^https?:\/\//.test(s);
 export const stripTrailingSlash = (s: string): string => s.replace(/\/$/, '');
 
 // Build a multipart FormData with the decoded photo under `field`. Used by
-// every non-r2/s3 provider to package the image for the upstream HTTP API.
+// every non-R2 / non-S3 provider to package the image for the upstream HTTP API.
 export const multipartFromPhoto = (photo: string, fileName: string, field: string): FormData => {
   const { blob } = decodePhoto(photo);
   const fd = new FormData();

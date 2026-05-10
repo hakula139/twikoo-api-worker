@@ -7,10 +7,10 @@ import { logger, sendNotice } from '@/twikoo';
 import { mkCommentId } from '@/types';
 
 // Side effects after a comment is persisted: Akismet rescore + email notice.
-// Each phase is wrapped in its own try/catch so a failure in one doesn't
-// short-circuit the other; both run best-effort under ctx.waitUntil.
+// Each phase has its own try/catch so a failure in one doesn't short-circuit
+// the other. Both run best-effort under ctx.waitUntil.
 export const postSubmit = async (saved: NewComment, ctx: RequestCtx): Promise<void> => {
-  // Mutate `saved` in place so sendNotice sees fresh isSpam — upstream
+  // Mutate `saved` in place so sendNotice sees fresh isSpam, since upstream
   // suppresses spam notifications when NOTIFY_SPAM='false'.
   try {
     const akismetKey = secret(ctx, 'AKISMET_KEY') ?? '';
@@ -37,7 +37,7 @@ export const postSubmit = async (saved: NewComment, ctx: RequestCtx): Promise<vo
   }
 
   try {
-    // sendNotice consumes the upstream comment shape; our row is compatible.
+    // sendNotice consumes the upstream comment shape, which our row matches.
     const getParentComment = async (curr: unknown): Promise<unknown> => {
       const parentId = (curr as { pid?: string }).pid;
       return parentId ? ctx.db.comment.byId(mkCommentId(parentId)) : undefined;

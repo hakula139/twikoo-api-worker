@@ -43,7 +43,7 @@ const isKnownImageCdn = (s: string): s is KnownImageCdn =>
   (KNOWN_IMAGE_CDNS as readonly string[]).includes(s);
 
 // Top-level dispatch (matches upstream's IMAGE_CDN routing, plus 'r2').
-// Each provider validates its own config preconditions; this function only
+// Each provider validates its own config preconditions, so this function only
 // catches the unset / unrecognized cases.
 export const uploadImage = async (
   photo: string,
@@ -58,7 +58,7 @@ export const uploadImage = async (
     }
 
     // Non-S3 / non-R2 providers historically require IMAGE_CDN_TOKEN to be
-    // set; preserve that contract so a missing token fails fast.
+    // set. Preserve that contract so a missing token fails fast.
     if (
       imageService !== 's3' &&
       imageService !== 'r2' &&
