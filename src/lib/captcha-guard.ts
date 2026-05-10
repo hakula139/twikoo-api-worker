@@ -9,7 +9,17 @@ export const enforceTurnstile = async (
   payload: EventPayloads['COMMENT_SUBMIT'],
   ctx: RequestCtx,
 ): Promise<void> => {
-  if (ctx.config.CAPTCHA_PROVIDER !== 'Turnstile') {
+  const provider = ctx.config.CAPTCHA_PROVIDER;
+  if (!provider) {
+    return;
+  }
+  if (provider !== 'Turnstile') {
+    // The upstream config UI exposes other providers (hCaptcha, reCAPTCHA, ...)
+    // that this worker doesn't implement. Surface the bad config instead of
+    // silently letting comments through with no captcha at all.
+    logger.warn(
+      `CAPTCHA_PROVIDER="${provider}" is not supported by this worker; allowing through without captcha.`,
+    );
     return;
   }
   // siteverify needs only the secret; the site key is a frontend-only hint.

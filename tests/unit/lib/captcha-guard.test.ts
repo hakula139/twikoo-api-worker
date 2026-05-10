@@ -4,6 +4,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { enforceTurnstile } from '@/lib/captcha-guard';
 import { ResponseCode, TwikooError } from '@/lib/errors';
+import { logger } from '@/twikoo';
 import { buildCtx } from '@tests/helpers/ctx';
 
 const okSiteverify = (success: boolean, errorCodes?: string[]): Response =>
@@ -33,6 +34,18 @@ describe('enforceTurnstile', () => {
     await enforceTurnstile(submitPayload(), ctx);
 
     expect(fetchSpy).not.toHaveBeenCalled();
+  });
+
+  it('warns and allows through when CAPTCHA_PROVIDER is an unrecognized value', async () => {
+    const fetchSpy = vi.spyOn(globalThis, 'fetch');
+    const warnSpy = vi.spyOn(logger, 'warn').mockImplementation(() => undefined);
+    const ctx = buildCtx({ config: { CAPTCHA_PROVIDER: 'hCaptcha' } });
+
+    await enforceTurnstile(submitPayload(), ctx);
+
+    expect(fetchSpy).not.toHaveBeenCalled();
+    expect(warnSpy).toHaveBeenCalledTimes(1);
+    expect(String(warnSpy.mock.calls[0]?.[0])).toContain('hCaptcha');
   });
 
   it('throws FAIL when CAPTCHA_PROVIDER=Turnstile but no secret is configured', async () => {
