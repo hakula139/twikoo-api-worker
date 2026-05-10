@@ -27,7 +27,7 @@ vi.mock('@/twikoo', () => ({
   logger: console,
   md5: (s: string) => `md5(${s})`,
   normalizeMail: (m: string) => m.toLowerCase(),
-  parseComment: (rows: unknown) => rows,
+  parseComment: vi.fn((rows: unknown) => rows),
   preCheckSpam: () => false,
   sendNotice: vi.fn(async () => undefined),
   sha256: (s: string) => `sha256(${s})`,

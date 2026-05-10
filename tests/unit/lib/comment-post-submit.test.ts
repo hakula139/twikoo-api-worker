@@ -73,6 +73,18 @@ describe('postSubmit', () => {
     expect(isSpam).toBe(1);
   });
 
+  it('leaves isSpam=0 and skips updateSpam when Akismet says clean', async () => {
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(new Response('false', { status: 200 }));
+    const updateSpam = vi.fn(async () => undefined);
+    const ctx = buildPostCtx({ byIdRows: new Map(), updateSpam }, { AKISMET_KEY: 'ak-key' });
+    const saved = baseSaved();
+
+    await postSubmit(saved, ctx);
+
+    expect(saved.isSpam).toBe(0);
+    expect(updateSpam).not.toHaveBeenCalled();
+  });
+
   it('skips Akismet when the key is unset', async () => {
     const fetchSpy = vi.spyOn(globalThis, 'fetch');
     const updateSpam = vi.fn(async () => undefined);
