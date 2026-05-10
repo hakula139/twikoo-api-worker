@@ -67,7 +67,7 @@ describe('integration: GET_COMMENTS_COUNT', () => {
     ]);
   });
 
-  it('rejects a non-array `urls` payload (PR #33 guard)', async () => {
+  it('rejects a non-array `urls` payload', async () => {
     await seedConfig({});
     const { body } = await postEvent('GET_COMMENTS_COUNT', { urls: 'https://x/' });
     expect(body.code).toBe(ResponseCode.FAIL);
@@ -131,7 +131,7 @@ describe('integration: COMMENT_GET', () => {
   });
 });
 
-describe('integration: COMMENT_SUBMIT (PR #43 normal payload)', () => {
+describe('integration: COMMENT_SUBMIT', () => {
   it('persists a comment with the upstream {id} response shape', async () => {
     await seedConfig({});
 
@@ -175,7 +175,7 @@ describe('integration: COMMENT_SUBMIT (PR #43 normal payload)', () => {
   });
 });
 
-describe('integration: COMMENT_LIKE toggle (PR #42 vote path)', () => {
+describe('integration: COMMENT_LIKE toggle', () => {
   it('adds the uid to ups on first call and removes it on the second', async () => {
     await seedConfig({});
     const id = await seedComment({ url: '/post/' });

@@ -27,7 +27,7 @@ afterEach(async () => {
   vi.restoreAllMocks();
 });
 
-describe('integration: LOGIN (PR #39 / #40 admin-login smoke)', () => {
+describe('integration: LOGIN', () => {
   it('returns SUCCESS when md5(password) matches ADMIN_PASS', async () => {
     await seedConfig({ ADMIN_PASS: `md5(${ADMIN_PASS_PLAINTEXT})` });
 
@@ -53,7 +53,7 @@ describe('integration: LOGIN (PR #39 / #40 admin-login smoke)', () => {
   });
 });
 
-describe('integration: SET_PASSWORD lockdown (PR #33)', () => {
+describe('integration: SET_PASSWORD lockdown', () => {
   it('rejects unauthenticated callers with NEED_LOGIN even on a fresh deploy', async () => {
     await seedConfig({});
 
@@ -63,7 +63,7 @@ describe('integration: SET_PASSWORD lockdown (PR #33)', () => {
   });
 });
 
-describe('integration: COMMENT_GET_FOR_ADMIN sort options (PR #45)', () => {
+describe('integration: COMMENT_GET_FOR_ADMIN sort options', () => {
   let ids: { a: string; b: string; c: string };
 
   beforeEach(async () => {
@@ -127,7 +127,7 @@ describe('integration: COMMENT_GET_FOR_ADMIN sort options (PR #45)', () => {
   });
 });
 
-describe('integration: COMMENT_SET_FOR_ADMIN boolean flags (PR #41)', () => {
+describe('integration: COMMENT_SET_FOR_ADMIN boolean flags', () => {
   it('hides a comment via { isSpam: true } from the widget', async () => {
     await seedAdmin();
     const id = await seedComment({ url: '/post/', isSpam: 0 });
@@ -199,7 +199,7 @@ describe('integration: COMMENT_DELETE_FOR_ADMIN', () => {
   });
 });
 
-describe('integration: COMMENT_EXPORT_FOR_ADMIN (PR #39 / #40 admin-export smoke)', () => {
+describe('integration: COMMENT_EXPORT_FOR_ADMIN', () => {
   it('exports the comment collection for an admin caller', async () => {
     await seedAdmin();
     const id = await seedComment({ url: '/post/', comment: 'export me' });

@@ -52,7 +52,7 @@ describe('integration: worker entry', () => {
 });
 
 describe('integration: dispatch hardening', () => {
-  it('rejects with FAIL + CORS when Content-Length exceeds the cap (PR #43)', async () => {
+  it('rejects with FAIL + CORS when Content-Length exceeds the cap', async () => {
     const { body, headers } = await postRaw('{}', {
       'Content-Length': String(MAX_BODY_BYTES + 1),
     });
@@ -82,7 +82,7 @@ describe('integration: dispatch hardening', () => {
     });
   });
 
-  it('emits one {event, code, uid, duration_ms} log per dispatch (PR #44)', async () => {
+  it('emits one {event, code, uid, duration_ms} log per dispatch', async () => {
     await seedConfig({});
 
     const { body } = await postEvent(
