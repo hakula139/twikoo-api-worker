@@ -4,7 +4,7 @@ import type { MockInstance } from 'vitest';
 import { ResponseCode } from '@/lib/errors';
 import { logger } from '@/twikoo';
 import { applyTestSchema, resetTestDb } from '@tests/helpers/db';
-import { postEvent, postRaw, seedConfig, sendRequest } from './helpers';
+import { fetchComments, postEvent, postRaw, seedConfig, sendRequest } from './helpers';
 
 let infoSpy: MockInstance;
 
@@ -67,6 +67,27 @@ describe('integration: dispatch hardening', () => {
       await seedConfig({});
       const { body } = await postEvent('GET_FUNC_VERSION');
       expect(body.code).toBe(ResponseCode.SUCCESS);
+    });
+  });
+
+  describe('CORS rejection short-circuits writes', () => {
+    it('returns FORBIDDEN and skips the handler when Origin is not allowlisted', async () => {
+      await seedConfig({ CORS_ALLOW_ORIGIN: 'https://allowed.example' });
+
+      const { body } = await postEvent(
+        'COMMENT_SUBMIT',
+        {
+          url: '/post/',
+          ua: 'integration-ua',
+          comment: 'should not persist',
+        },
+        { 'Origin': 'https://attacker.example', 'x-twikoo-recaptcha-v3': 'attacker' },
+      );
+
+      expect(body.code).toBe(ResponseCode.FORBIDDEN);
+      // The origin gate has to fire before handler dispatch — otherwise the
+      // browser drops the response client-side but the row is already saved.
+      expect(await fetchComments('/post/')).toHaveLength(0);
     });
   });
 
