@@ -6,8 +6,6 @@ import { eq, sql } from 'drizzle-orm';
 
 import { counter } from './schema';
 
-export type { Counter } from './schema';
-
 export class CounterDB {
   constructor(private readonly db: DrizzleD1Database) {}
 

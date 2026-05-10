@@ -17,7 +17,7 @@ export const ResponseCode = {
   FORBIDDEN: 1403,
 } as const;
 
-export type ResponseCodeName = keyof typeof ResponseCode;
+type ResponseCodeName = keyof typeof ResponseCode;
 
 export type ResponseCodeValue = (typeof ResponseCode)[ResponseCodeName];
 

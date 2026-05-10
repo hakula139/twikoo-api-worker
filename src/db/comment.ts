@@ -9,8 +9,6 @@ import { and, asc, count, desc, eq, gt, inArray, lt, or, sql } from 'drizzle-orm
 
 import { comment } from './schema';
 
-export type { Bit, Comment, NewComment } from './schema';
-
 export type CommentSort = 'newest' | 'oldest' | 'popular';
 
 // `showAll` lets admin views see every row; otherwise only non-spam OR own comments.

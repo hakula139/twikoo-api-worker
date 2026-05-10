@@ -23,7 +23,7 @@ interface MailTransport {
   sendMail(msg: MailMessage): Promise<Response>;
 }
 
-export interface NodemailerShim {
+interface NodemailerShim {
   createTransport(config: unknown): MailTransport;
 }
 

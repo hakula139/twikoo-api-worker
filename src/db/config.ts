@@ -4,8 +4,6 @@ import type { Config } from './schema';
 
 import { config } from './schema';
 
-export type { Config } from './schema';
-
 export class ConfigDB {
   constructor(private readonly db: DrizzleD1Database) {}
 

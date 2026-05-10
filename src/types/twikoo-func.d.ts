@@ -7,10 +7,6 @@ declare module 'twikoo-func/utils/lib' {
   }): void;
   export function getMd5(): (input: string) => string;
   export function getSha256(): (input: string) => string;
-  export function getCheerio(): unknown;
-  export function getXml2js(): {
-    parseStringPromise: (xml: string) => Promise<unknown>;
-  };
 }
 
 declare module 'twikoo-func/utils' {
@@ -72,13 +68,6 @@ declare module 'twikoo-func/utils/notify' {
   ): Promise<{ result?: unknown; message?: string }>;
 }
 
-declare module 'twikoo-func/utils/image' {
-  export function uploadImage(
-    event: unknown,
-    config: unknown,
-  ): Promise<{ code: number; data?: unknown; message?: string }>;
-}
-
 declare module 'twikoo-func/utils/import' {
   export function jsonParse(content: string): unknown;
   export function commentImportValine(db: unknown, log: (msg: string) => void): Promise<unknown[]>;
@@ -96,12 +85,4 @@ declare module 'twikoo-func/utils/logger' {
     error(...args: unknown[]): void;
   };
   export default logger;
-}
-
-declare module 'twikoo-func/utils/constants' {
-  const constants: {
-    RES_CODE: Record<string, number>;
-    MAX_REQUEST_TIMES: number;
-  };
-  export default constants;
 }

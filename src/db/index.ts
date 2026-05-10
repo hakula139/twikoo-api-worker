@@ -6,9 +6,8 @@ import { CommentDB } from './comment';
 import { ConfigDB } from './config';
 import { CounterDB } from './counter';
 
-export type { AdminFilter, Bit, Comment, CommentSort, NewComment } from './comment';
-export type { Config } from './config';
-export type { Counter } from './counter';
+export type { AdminFilter, CommentSort } from './comment';
+export type { Bit, Comment, Config, Counter, NewComment } from './schema';
 
 export class DB {
   readonly comment: CommentDB;
