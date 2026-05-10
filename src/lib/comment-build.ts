@@ -1,10 +1,11 @@
 import type { NewComment } from '@/db';
-import type { EventPayloads, JsonString, RequestCtx } from '@/types';
+import type { EventPayloads, RequestCtx } from '@/types';
 
 import { isAdmin } from '@/lib/auth';
 import { checkAkismet } from '@/lib/akismet';
 import { ResponseCode, TwikooError } from '@/lib/errors';
 import { newCommentId } from '@/lib/id';
+import { EMPTY_STRING_ARRAY_JSON } from '@/lib/json-string';
 import { sanitizeHtml } from '@/lib/sanitize';
 import { configWithSecrets, secret } from '@/lib/secret';
 import {
@@ -81,8 +82,8 @@ export const buildComment = async (
     isSpam: !isAdminUser && preCheckSpam(payload, ctx.config) ? 1 : 0,
     created: timestamp,
     updated: timestamp,
-    ups: '[]' as JsonString<string[]>,
-    downs: '[]' as JsonString<string[]>,
+    ups: EMPTY_STRING_ARRAY_JSON,
+    downs: EMPTY_STRING_ARRAY_JSON,
     top: 0,
     avatar,
   };

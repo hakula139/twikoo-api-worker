@@ -140,8 +140,10 @@ export interface EventPayloads {
 
 export type EventName = keyof EventPayloads;
 
-// Returning `{}` is treated as SUCCESS.
-export type Handler<E extends EventName = EventName> = (
+// Returning `{}` is treated as SUCCESS. The event name is required so callers
+// can't accidentally drop into the `payload: never` shape that a default would
+// produce.
+export type Handler<E extends EventName> = (
   payload: EventPayloads[E],
   ctx: RequestCtx,
 ) => Promise<Partial<TwikooResponse>>;

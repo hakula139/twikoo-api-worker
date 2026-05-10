@@ -6,6 +6,7 @@ import { XMLParser } from 'fast-xml-parser';
 import { requireAdmin } from '@/lib/auth';
 import { ResponseCode, TwikooError } from '@/lib/errors';
 import { newCommentId } from '@/lib/id';
+import { EMPTY_STRING_ARRAY_JSON, parseJsonString, toJsonString } from '@/lib/json-string';
 import { mkCommentId } from '@/types';
 import {
   commentImportArtalk,
@@ -132,13 +133,18 @@ const wrapElementsAsArrays = (value: unknown): unknown => {
 const toBit = (v: unknown): Bit => (v === 1 || v === '1' || v === true || v === 'true' ? 1 : 0);
 
 const toJsonArray = (v: unknown): JsonString<string[]> => {
-  if (typeof v === 'string') {
-    return (v || '[]') as JsonString<string[]>;
-  }
   if (Array.isArray(v)) {
-    return JSON.stringify(v) as JsonString<string[]>;
+    return toJsonString<string[]>(v.filter((e): e is string => typeof e === 'string'));
   }
-  return '[]' as JsonString<string[]>;
+  if (typeof v === 'string' && v) {
+    // Validate the string parses to a string-array before granting the brand;
+    // otherwise the corruption is silently round-tripped to D1.
+    const parsed = parseJsonString<unknown>(v);
+    if (Array.isArray(parsed) && parsed.every((e): e is string => typeof e === 'string')) {
+      return v as JsonString<string[]>;
+    }
+  }
+  return EMPTY_STRING_ARRAY_JSON;
 };
 
 const str = (v: unknown): string => (typeof v === 'string' ? v : '');

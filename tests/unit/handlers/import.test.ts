@@ -132,8 +132,22 @@ describe('commentImportForAdmin', () => {
     expect(row?.nick).toBe('');
     expect(row?.master).toBe(1);
     expect(row?.isSpam).toBe(1);
-    expect(row?.ups).toBe('not-an-array');
+    // toJsonArray rejects strings that don't parse to a string[] so corrupt
+    // upstream values can't round-trip into D1 with the JsonString brand.
+    expect(row?.ups).toBe('[]');
     expect(row?.downs).toBe('["u1","u2"]');
     expect(typeof row?.created).toBe('number');
+  });
+
+  it('keeps a pre-stringified string-array verbatim instead of re-encoding', async () => {
+    vi.mocked(twikoo.commentImportTwikoo).mockResolvedValueOnce([
+      { _id: 'r1', ups: '["a","b"]', downs: '[123]' },
+    ]);
+    const { ctx, saveMany } = buildImportCtx(ADMIN);
+    await commentImportForAdmin({ source: 'twikoo', file: '[]' }, ctx);
+    const row = (saveMany.mock.calls[0]?.[0] as NewComment[] | undefined)?.[0];
+    expect(row?.ups).toBe('["a","b"]');
+    // downs parses to [123] (numbers, not strings) so the brand is denied.
+    expect(row?.downs).toBe('[]');
   });
 });
