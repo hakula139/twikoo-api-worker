@@ -75,4 +75,46 @@ describe('dispatch', () => {
     const body = await res.json<{ code: number; message: string }>();
     expect(body.code).toBe(ResponseCode.EVENT_NOT_EXIST);
   });
+
+  describe('body size cap', () => {
+    const MAX_BODY_BYTES = 10 * 1024 * 1024;
+
+    const postWithLength = (body: string, length: number): Request =>
+      new Request('https://twikoo.example/api', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Origin': 'https://blog.example',
+          'Content-Length': String(length),
+        },
+        body,
+      });
+
+    it('rejects when Content-Length exceeds the cap', async () => {
+      const res = await dispatch(postWithLength('{}', MAX_BODY_BYTES + 1), env, execCtx);
+      expect(res.status).toBe(200);
+      expect(res.headers.get('Access-Control-Allow-Origin')).toBeTruthy();
+      const body = await res.json<{ code: number; message: string }>();
+      expect(body.code).toBe(ResponseCode.FAIL);
+      expect(body.message).toMatch(/too large/i);
+    });
+
+    it('accepts when Content-Length is at the cap', async () => {
+      // Real body stays small; we only assert the cap check passes the request
+      // through to the parse / dispatch path (which then 404s on event).
+      const res = await dispatch(
+        postWithLength('{"event":"GET_FUNC_VERSION"}', MAX_BODY_BYTES),
+        env,
+        execCtx,
+      );
+      const body = await res.json<{ code: number; message: string }>();
+      expect(body.code).not.toBe(ResponseCode.FAIL);
+    });
+
+    it('falls through to parse when Content-Length is absent', async () => {
+      const res = await dispatch(post('{not-json'), env, execCtx);
+      const body = await res.json<{ code: number; message: string }>();
+      expect(body.message).toMatch(/JSON/);
+    });
+  });
 });

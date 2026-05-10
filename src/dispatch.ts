@@ -15,6 +15,10 @@ import { mkIp, mkUid } from './types';
 const stringField = (body: Record<string, unknown>, key: string): string =>
   typeof body[key] === 'string' ? body[key] : '';
 
+// Generous enough for base64 image uploads (~5 MB raw → ~6.7 MB encoded)
+// and small bulk imports, while still well below the Workers runtime cap.
+const MAX_BODY_BYTES = 10 * 1024 * 1024;
+
 export const dispatch = async (
   request: Request,
   env: Env,
@@ -22,6 +26,17 @@ export const dispatch = async (
 ): Promise<Response> => {
   const origin = request.headers.get('Origin');
   const db = buildDb(env.DB);
+
+  // Pre-check Content-Length so we never materialize an oversize body. The
+  // header may be absent (chunked transfer, some HTTP/2 framing) — that's
+  // fine, the runtime cap remains the backstop.
+  const contentLength = request.headers.get('Content-Length');
+  if (contentLength !== null && Number(contentLength) > MAX_BODY_BYTES) {
+    return jsonResponse(
+      { code: ResponseCode.FAIL, message: 'Request body too large.' },
+      corsHeaders(origin),
+    );
+  }
 
   let body: Record<string, unknown>;
   try {
