@@ -8,8 +8,7 @@ interface JsonResponseBody {
 
 const ORIGIN = 'https://blog.example';
 
-// `exports.default.fetch` runs the worker entry in the same isolate as the
-// test, so the global `vi.mock('@/twikoo')` from setup.ts still applies.
+// Runs in the same isolate, so `vi.mock('@/twikoo')` from setup.ts still applies.
 const callWorker = (init: RequestInit, headers?: HeadersInit): Promise<Response> => {
   const merged = new Headers(headers);
   if (!merged.has('Origin')) {
@@ -48,16 +47,14 @@ export const postRaw = async (
 export const sendRequest = (init: RequestInit, headers?: HeadersInit): Promise<Response> =>
   callWorker(init, headers);
 
-// Seeds the single `config` row with the provided JSON object. Replaces any
-// prior row so tests can set their own config without per-test cleanup.
 export const seedConfig = async (config: Record<string, unknown>): Promise<void> => {
   await env.DB.prepare('INSERT OR REPLACE INTO config (id, value) VALUES (?, ?)')
     .bind(0, JSON.stringify(config))
     .run();
 };
 
-// Mocked `md5(s)` returns `md5(${s})`, so writing `ADMIN_PASS` as
-// `md5(<token>)` and sending `accessToken: '<token>'` makes the bearer admin.
+// Mocked `md5(s)` returns `md5(${s})`, so seeding ADMIN_PASS=md5(<token>) and
+// sending accessToken=<token> makes the bearer admin without a real hash.
 export const ADMIN_TOKEN = 'integration-admin';
 export const ADMIN_PASS_PLAINTEXT = 'integration-password';
 

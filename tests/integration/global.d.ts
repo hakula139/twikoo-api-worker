@@ -1,9 +1,7 @@
 import type * as Worker from '@/worker';
 
-// Wires `exports.default.fetch(...)` from `cloudflare:workers` to the
-// integration tests. Without this augmentation, `exports` resolves to `{}`
-// so `default` is unknown. See vitest-pool-workers docs for the migration
-// off the deprecated `SELF` binding.
+// Types `exports.default` from `cloudflare:workers` so integration tests can
+// call the worker entry through it. Without this, `exports` resolves to `{}`.
 declare global {
   namespace Cloudflare {
     interface GlobalProps {

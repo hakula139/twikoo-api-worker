@@ -64,7 +64,6 @@ describe('integration: SET_PASSWORD lockdown (PR #33)', () => {
 });
 
 describe('integration: COMMENT_GET_FOR_ADMIN sort options (PR #45)', () => {
-  // Two created timestamps in known order, with `popular` keyed by ups length.
   const seedRows = async (): Promise<{ a: string; b: string; c: string }> => {
     const t = Date.now() - 60_000;
     const a = await seedComment({ url: '/post/', comment: 'A', created: t, ups: '["x","y"]' });

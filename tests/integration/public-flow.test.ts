@@ -113,8 +113,8 @@ describe('integration: COMMENT_GET', () => {
 
   it('hides spam from anonymous viewers', async () => {
     await seedConfig({});
-    // Distinct authors so the visibility OR (`isSpam = 0 OR uid = viewer`)
-    // doesn't accidentally match — viewer uid is empty here.
+    // Distinct non-empty authors so the visibility `OR uid = viewer` clause
+    // (viewer uid is empty here) doesn't accidentally match either row.
     await seedComment({ url: '/post/', comment: 'visible', uid: 'author-1' });
     await seedComment({ url: '/post/', comment: 'spam', uid: 'author-2', isSpam: 1 });
 
