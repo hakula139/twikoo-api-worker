@@ -1,10 +1,12 @@
 import type { Env } from '@/types';
 
 import { env as rawEnv } from 'cloudflare:test';
-import { afterEach, beforeAll, describe, expect, it } from 'vitest';
+import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
+import type { MockInstance } from 'vitest';
 
 import { dispatch } from '@/dispatch';
 import { ResponseCode } from '@/lib/errors';
+import { logger } from '@/twikoo';
 import { applyTestSchema, resetTestDb } from '@tests/helpers/db';
 
 const env = rawEnv as unknown as Env;
@@ -26,12 +28,21 @@ const writeConfigRow = async (raw: string): Promise<void> => {
   await env.DB.prepare('INSERT INTO config (id, value) VALUES (?, ?)').bind(0, raw).run();
 };
 
+let infoSpy: MockInstance;
+
 beforeAll(async () => {
   await applyTestSchema();
 });
 
+beforeEach(() => {
+  // Silence the per-request log line; the per-request log suite below reads
+  // back the captured calls.
+  infoSpy = vi.spyOn(logger, 'info').mockImplementation(() => undefined);
+});
+
 afterEach(async () => {
   await resetTestDb();
+  vi.restoreAllMocks();
 });
 
 describe('dispatch', () => {
@@ -115,6 +126,46 @@ describe('dispatch', () => {
       const res = await dispatch(post('{not-json'), env, execCtx);
       const body = await res.json<{ code: number; message: string }>();
       expect(body.message).toMatch(/JSON/);
+    });
+  });
+
+  describe('per-request log line', () => {
+    it('emits one log per request tagged with event, code, uid, and duration_ms', async () => {
+      await writeConfigRow('{}');
+
+      await dispatch(post('{"event":"NOT_A_REAL_EVENT"}'), env, execCtx);
+
+      expect(infoSpy).toHaveBeenCalledTimes(1);
+      expect(infoSpy).toHaveBeenCalledWith(
+        expect.objectContaining({
+          event: 'NOT_A_REAL_EVENT',
+          code: ResponseCode.EVENT_NOT_EXIST,
+          uid: '',
+        }),
+        'request',
+      );
+      const fields = infoSpy.mock.calls[0]?.[0] as { duration_ms: unknown } | undefined;
+      expect(fields?.duration_ms).toBeTypeOf('number');
+    });
+
+    it('still logs when the body fails to parse (event and uid stay empty)', async () => {
+      await dispatch(post('{not-json'), env, execCtx);
+
+      expect(infoSpy).toHaveBeenCalledWith(
+        expect.objectContaining({ event: '', code: ResponseCode.FAIL, uid: '' }),
+        'request',
+      );
+    });
+
+    it('captures the uid from the request body', async () => {
+      await writeConfigRow('{}');
+
+      await dispatch(post('{"event":"NOT_A_REAL_EVENT","accessToken":"user-abc"}'), env, execCtx);
+
+      expect(infoSpy).toHaveBeenCalledWith(
+        expect.objectContaining({ event: 'NOT_A_REAL_EVENT', uid: 'user-abc' }),
+        'request',
+      );
     });
   });
 });
