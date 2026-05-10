@@ -1,7 +1,11 @@
+import type { Bit } from '@/db/schema';
+import type { ResponseCodeValue } from '@/lib/errors';
+import type { EventName } from '@/types';
+
 import { env, exports } from 'cloudflare:workers';
 
 interface JsonResponseBody {
-  code: number;
+  code: ResponseCodeValue;
   message?: string;
   [key: string]: unknown;
 }
@@ -22,8 +26,10 @@ const callWorker = (init: RequestInit, headers?: HeadersInit): Promise<Response>
   );
 };
 
-export const postEvent = async <E extends string>(
-  event: E,
+// `string & {}` keeps autocomplete on the known event names while still
+// admitting deliberate negative-path strings like 'NOT_AN_EVENT'.
+export const postEvent = async (
+  event: EventName | (string & {}),
   payload: Record<string, unknown> = {},
   headers?: HeadersInit,
 ): Promise<{ status: number; body: JsonResponseBody; headers: Headers }> => {
@@ -76,8 +82,8 @@ export interface CommentRowSeed {
   created?: number;
   ups?: string;
   downs?: string;
-  isSpam?: 0 | 1;
-  top?: 0 | 1;
+  isSpam?: Bit;
+  top?: Bit;
   rid?: string;
   pid?: string;
 }
