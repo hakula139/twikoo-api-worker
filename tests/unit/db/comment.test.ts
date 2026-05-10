@@ -411,4 +411,40 @@ describe('CommentDB admin views', () => {
     const rows = await db.comment.listForAdmin({ keyword: '%path\\\\file%' }, 10, 0);
     expect(rows.map((r) => r._id)).toEqual(['lit']);
   });
+
+  it('listForAdmin defaults to newest order on the created column', async () => {
+    await seed([
+      newComment({ _id: mkCommentId('old'), created: 100 }),
+      newComment({ _id: mkCommentId('new'), created: 300 }),
+      newComment({ _id: mkCommentId('mid'), created: 200 }),
+    ]);
+
+    const db = dbInstance();
+    const rows = await db.comment.listForAdmin({}, 10, 0);
+    expect(rows.map((r) => r._id)).toEqual(['new', 'mid', 'old']);
+  });
+
+  it('listForAdmin honors sort=oldest', async () => {
+    await seed([
+      newComment({ _id: mkCommentId('old'), created: 100 }),
+      newComment({ _id: mkCommentId('new'), created: 300 }),
+      newComment({ _id: mkCommentId('mid'), created: 200 }),
+    ]);
+
+    const db = dbInstance();
+    const rows = await db.comment.listForAdmin({}, 10, 0, 'oldest');
+    expect(rows.map((r) => r._id)).toEqual(['old', 'mid', 'new']);
+  });
+
+  it('listForAdmin honors sort=popular by ups array length', async () => {
+    await seed([
+      newComment({ _id: mkCommentId('hi'), ups: '["u1","u2","u3"]' as JsonString<string[]> }),
+      newComment({ _id: mkCommentId('lo'), ups: '[]' as JsonString<string[]> }),
+      newComment({ _id: mkCommentId('mid'), ups: '["u1"]' as JsonString<string[]> }),
+    ]);
+
+    const db = dbInstance();
+    const rows = await db.comment.listForAdmin({}, 10, 0, 'popular');
+    expect(rows.map((r) => r._id)).toEqual(['hi', 'mid', 'lo']);
+  });
 });

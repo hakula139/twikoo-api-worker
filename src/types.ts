@@ -107,7 +107,13 @@ export interface EventPayloads {
   COMMENT_DELETE_FOR_USER: { id: string };
   COMMENT_EXPORT_FOR_ADMIN: { collection?: string };
   COMMENT_GET: { url: string; before?: number; sort?: string };
-  COMMENT_GET_FOR_ADMIN: { per: number; page: number; type?: string; keyword?: string };
+  COMMENT_GET_FOR_ADMIN: {
+    per: number;
+    page: number;
+    type?: string;
+    keyword?: string;
+    sort?: string;
+  };
   COMMENT_IMPORT_FOR_ADMIN: { source: string; file: string };
   COMMENT_LIKE: { id: string; type?: string };
   COMMENT_SET_FOR_ADMIN: { id: string; set: Record<string, unknown> };
