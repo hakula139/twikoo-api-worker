@@ -64,7 +64,10 @@ describe('integration: SET_PASSWORD lockdown (PR #33)', () => {
 });
 
 describe('integration: COMMENT_GET_FOR_ADMIN sort options (PR #45)', () => {
-  const seedRows = async (): Promise<{ a: string; b: string; c: string }> => {
+  let ids: { a: string; b: string; c: string };
+
+  beforeEach(async () => {
+    await seedAdmin();
     const t = Date.now() - 60_000;
     const a = await seedComment({ url: '/post/', comment: 'A', created: t, ups: '["x","y"]' });
     const b = await seedComment({
@@ -74,8 +77,8 @@ describe('integration: COMMENT_GET_FOR_ADMIN sort options (PR #45)', () => {
       ups: '["x"]',
     });
     const c = await seedComment({ url: '/post/', comment: 'C', created: t + 2_000, ups: '[]' });
-    return { a, b, c };
-  };
+    ids = { a, b, c };
+  });
 
   const fetchAdminList = async (
     sort: string | undefined,
@@ -93,46 +96,31 @@ describe('integration: COMMENT_GET_FOR_ADMIN sort options (PR #45)', () => {
   };
 
   it('omitting `sort` yields newest-first (default loads behave like the old widget)', async () => {
-    await seedAdmin();
-    const { a, b, c } = await seedRows();
-
     const result = await fetchAdminList(undefined);
 
     expect(result.count).toBe(3);
-    expect(result.data.map((r) => r._id)).toEqual([c, b, a]);
+    expect(result.data.map((r) => r._id)).toEqual([ids.c, ids.b, ids.a]);
   });
 
   it('sort=oldest reverses the order', async () => {
-    await seedAdmin();
-    const { a, b, c } = await seedRows();
-
     const result = await fetchAdminList('oldest');
 
-    expect(result.data.map((r) => r._id)).toEqual([a, b, c]);
+    expect(result.data.map((r) => r._id)).toEqual([ids.a, ids.b, ids.c]);
   });
 
   it('sort=popular ranks by ups length, breaking ties on created desc', async () => {
-    await seedAdmin();
-    const { a, b, c } = await seedRows();
-
     const result = await fetchAdminList('popular');
 
-    expect(result.data.map((r) => r._id)).toEqual([a, b, c]);
+    expect(result.data.map((r) => r._id)).toEqual([ids.a, ids.b, ids.c]);
   });
 
   it('an unrecognized sort value falls back to newest', async () => {
-    await seedAdmin();
-    const { a, b, c } = await seedRows();
-
     const result = await fetchAdminList('garbage');
 
-    expect(result.data.map((r) => r._id)).toEqual([c, b, a]);
+    expect(result.data.map((r) => r._id)).toEqual([ids.c, ids.b, ids.a]);
   });
 
   it('non-admin callers get NEED_LOGIN', async () => {
-    await seedAdmin();
-    await seedRows();
-
     const { body } = await postEvent('COMMENT_GET_FOR_ADMIN', { per: 10, page: 1 });
 
     expect(body.code).toBe(ResponseCode.NEED_LOGIN);
