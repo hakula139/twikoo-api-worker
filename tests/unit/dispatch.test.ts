@@ -5,7 +5,8 @@ import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vite
 import type { MockInstance } from 'vitest';
 
 import { dispatch } from '@/dispatch';
-import { ResponseCode } from '@/lib/errors';
+import { ResponseCode, TwikooError } from '@/lib/errors';
+import * as twikoo from '@/twikoo';
 import { logger } from '@/twikoo';
 import { applyTestSchema, resetTestDb } from '@tests/helpers/db';
 
@@ -126,6 +127,77 @@ describe('dispatch', () => {
       const res = await dispatch(post('{not-json'), env, execCtx);
       const body = await res.json<{ code: number; message: string }>();
       expect(body.message).toMatch(/JSON/);
+    });
+  });
+
+  describe('rejection and error paths', () => {
+    let errorSpy: MockInstance;
+
+    beforeEach(() => {
+      errorSpy = vi.spyOn(logger, 'error').mockImplementation(() => undefined);
+    });
+
+    it('logs dropped config keys when the row has values with unsupported types', async () => {
+      await writeConfigRow('{"OK":"x","BAD":{"a":1}}');
+
+      await dispatch(post('{"event":"NOT_A_REAL_EVENT"}'), env, execCtx);
+
+      expect(errorSpy).toHaveBeenCalledWith(
+        expect.objectContaining({ droppedKeys: ['BAD'] }),
+        'Config row had keys with unsupported value types; pruned at the boundary.',
+      );
+    });
+
+    it('returns FORBIDDEN when the origin is not on CORS_ALLOW_ORIGIN', async () => {
+      await writeConfigRow('{"CORS_ALLOW_ORIGIN":"https://allowed.example"}');
+
+      const res = await dispatch(post('{"event":"GET_FUNC_VERSION"}'), env, execCtx);
+
+      const body = await res.json<{ code: number; message: string }>();
+      expect(body.code).toBe(ResponseCode.FORBIDDEN);
+    });
+
+    it('relays a TwikooError thrown by a handler with its original code', async () => {
+      await writeConfigRow('{}');
+      vi.mocked(twikoo.getFuncVersion).mockImplementationOnce(() => {
+        throw new TwikooError(ResponseCode.PASS_NOT_MATCH, '密码错误');
+      });
+
+      const res = await dispatch(post('{"event":"GET_FUNC_VERSION"}'), env, execCtx);
+
+      const body = await res.json<{ code: number; message: string }>();
+      expect(body.code).toBe(ResponseCode.PASS_NOT_MATCH);
+      expect(body.message).toBe('密码错误');
+    });
+
+    it('preserves the message of a generic Error thrown by a handler', async () => {
+      await writeConfigRow('{}');
+      vi.mocked(twikoo.getFuncVersion).mockImplementationOnce(() => {
+        throw new Error('upstream timeout');
+      });
+
+      const res = await dispatch(post('{"event":"GET_FUNC_VERSION"}'), env, execCtx);
+
+      const body = await res.json<{ code: number; message: string }>();
+      expect(body.code).toBe(ResponseCode.FAIL);
+      expect(body.message).toBe('upstream timeout');
+      const sawUnhandled = errorSpy.mock.calls.some(
+        (args) => args[0] === 'Unhandled handler error:',
+      );
+      expect(sawUnhandled).toBe(true);
+    });
+
+    it('falls back to "Internal error." when the thrown Error has no message', async () => {
+      await writeConfigRow('{}');
+      vi.mocked(twikoo.getFuncVersion).mockImplementationOnce(() => {
+        throw new Error('');
+      });
+
+      const res = await dispatch(post('{"event":"GET_FUNC_VERSION"}'), env, execCtx);
+
+      const body = await res.json<{ code: number; message: string }>();
+      expect(body.code).toBe(ResponseCode.FAIL);
+      expect(body.message).toBe('Internal error.');
     });
   });
 
