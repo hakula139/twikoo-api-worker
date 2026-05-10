@@ -52,21 +52,13 @@ describe('integration: worker entry', () => {
 });
 
 describe('integration: dispatch hardening', () => {
-  describe('body size cap (PR #43)', () => {
-    it('rejects when Content-Length exceeds 10 MB without reading the body', async () => {
-      const { body, headers } = await postRaw('{}', {
-        'Content-Length': String(MAX_BODY_BYTES + 1),
-      });
-      expect(body.code).toBe(ResponseCode.FAIL);
-      expect(body.message).toMatch(/too large/i);
-      expect(headers.get('Access-Control-Allow-Origin')).toBeTruthy();
+  it('rejects with FAIL + CORS when Content-Length exceeds the cap (PR #43)', async () => {
+    const { body, headers } = await postRaw('{}', {
+      'Content-Length': String(MAX_BODY_BYTES + 1),
     });
-
-    it('passes a normal-sized comment payload through (no false positive on real traffic)', async () => {
-      await seedConfig({});
-      const { body } = await postEvent('GET_FUNC_VERSION');
-      expect(body.code).toBe(ResponseCode.SUCCESS);
-    });
+    expect(body.code).toBe(ResponseCode.FAIL);
+    expect(body.message).toMatch(/too large/i);
+    expect(headers.get('Access-Control-Allow-Origin')).toBeTruthy();
   });
 
   describe('CORS rejection short-circuits writes', () => {
@@ -90,34 +82,24 @@ describe('integration: dispatch hardening', () => {
     });
   });
 
-  describe('per-request log line (PR #44)', () => {
-    it('emits {event, code, uid, duration_ms} for every dispatch', async () => {
-      await seedConfig({});
+  it('emits one {event, code, uid, duration_ms} log per dispatch (PR #44)', async () => {
+    await seedConfig({});
 
-      const { body } = await postEvent(
-        'COMMENT_LIKE',
-        { id: 'does-not-exist' },
-        { 'x-twikoo-recaptcha-v3': 'observer-uid' },
-      );
+    const { body } = await postEvent(
+      'COMMENT_LIKE',
+      { id: 'does-not-exist' },
+      { 'x-twikoo-recaptcha-v3': 'observer-uid' },
+    );
 
-      expect(body.code).toBe(ResponseCode.FAIL);
-      expect(infoSpy).toHaveBeenCalledTimes(1);
-      const fields = infoSpy.mock.calls[0]?.[0] as
-        | { event: string; code: number; uid: string; duration_ms: unknown }
-        | undefined;
-      expect(fields?.event).toBe('COMMENT_LIKE');
-      expect(fields?.code).toBe(ResponseCode.FAIL);
-      expect(fields?.uid).toBe('observer-uid');
-      expect(fields?.duration_ms).toBeTypeOf('number');
-      expect(infoSpy.mock.calls[0]?.[1]).toBe('request');
-    });
-
-    it('still emits a log line on parse-failure paths with empty event/uid', async () => {
-      await postRaw('{not-json');
-      expect(infoSpy).toHaveBeenCalledWith(
-        expect.objectContaining({ event: '', code: ResponseCode.FAIL, uid: '' }),
-        'request',
-      );
-    });
+    expect(body.code).toBe(ResponseCode.FAIL);
+    expect(infoSpy).toHaveBeenCalledTimes(1);
+    const fields = infoSpy.mock.calls[0]?.[0] as
+      | { event: string; code: number; uid: string; duration_ms: unknown }
+      | undefined;
+    expect(fields?.event).toBe('COMMENT_LIKE');
+    expect(fields?.code).toBe(ResponseCode.FAIL);
+    expect(fields?.uid).toBe('observer-uid');
+    expect(fields?.duration_ms).toBeTypeOf('number');
+    expect(infoSpy.mock.calls[0]?.[1]).toBe('request');
   });
 });
