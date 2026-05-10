@@ -155,6 +155,21 @@ describe('commentImportForAdmin', () => {
     expect(result.log).not.toMatch(/row r1 ups dropped/);
   });
 
+  it('drops a string that parses to a non-array JSON value', async () => {
+    // Distinct from the 'not-an-array' case (parse failure): here the JSON parses
+    // successfully but yields a non-array, so the brand still has to be denied.
+    vi.mocked(twikoo.commentImportTwikoo).mockResolvedValueOnce([
+      { _id: 'r1', ups: '42', downs: '{"a":1}' },
+    ]);
+    const { ctx, saveMany } = buildImportCtx(ADMIN);
+    const result = await commentImportForAdmin({ source: 'twikoo', file: '[]' }, ctx);
+    const row = (saveMany.mock.calls[0]?.[0] as NewComment[] | undefined)?.[0];
+    expect(row?.ups).toBe('[]');
+    expect(row?.downs).toBe('[]');
+    expect(result.log).toMatch(/row r1 ups dropped: not a string array/);
+    expect(result.log).toMatch(/row r1 downs dropped: not a string array/);
+  });
+
   it('logs how many non-string entries were dropped from a live array', async () => {
     vi.mocked(twikoo.commentImportTwikoo).mockResolvedValueOnce([
       { _id: 'r1', ups: ['a', 1, 'b', null] },
