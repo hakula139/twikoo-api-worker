@@ -3,7 +3,7 @@ import type { TwikooConfig } from '@/types';
 import type { UploadResult } from './types';
 
 import { stringConfig } from '../config-read';
-import { decodePhoto } from './helpers';
+import { multipartFromPhoto } from './helpers';
 
 interface EasyImageResponse {
   code?: number;
@@ -29,10 +29,8 @@ export const uploadEasyImage = async (
     throw new Error('未配置 EasyImage2.0 的 Token (IMAGE_CDN_TOKEN)');
   }
 
-  const { blob } = decodePhoto(photo);
-  const formData = new FormData();
+  const formData = multipartFromPhoto(photo, fileName, 'image');
   formData.append('token', token);
-  formData.append('image', blob, fileName);
 
   const response = await fetch(apiUrl, {
     method: 'POST',
