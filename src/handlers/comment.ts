@@ -5,7 +5,8 @@ import { mkCommentId } from '@/types';
 
 import { isAdmin, requireAdmin } from '@/lib/auth';
 import { enforceTurnstile } from '@/lib/captcha-guard';
-import { buildComment, postSubmit } from '@/lib/comment-build';
+import { buildComment } from '@/lib/comment-build';
+import { postSubmit } from '@/lib/comment-post-submit';
 import { boolConfig, numberConfig } from '@/lib/config-read';
 import { ResponseCode, TwikooError } from '@/lib/errors';
 import { formatIpRegion } from '@/lib/geo';

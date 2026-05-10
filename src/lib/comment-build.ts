@@ -2,12 +2,10 @@ import type { NewComment } from '@/db';
 import type { EventPayloads, RequestCtx } from '@/types';
 
 import { isAdmin } from '@/lib/auth';
-import { checkAkismet } from '@/lib/akismet';
 import { ResponseCode, TwikooError } from '@/lib/errors';
 import { newCommentId } from '@/lib/id';
 import { EMPTY_STRING_ARRAY_JSON } from '@/lib/json-string';
 import { sanitizeHtml } from '@/lib/sanitize';
-import { configWithSecrets, secret } from '@/lib/secret';
 import {
   addQQMailSuffix,
   equalsMail,
@@ -16,10 +14,8 @@ import {
   md5,
   normalizeMail,
   preCheckSpam,
-  sendNotice,
   sha256,
 } from '@/twikoo';
-import { mkCommentId } from '@/types';
 
 const QQ_AVATAR_API = 'https://aq.qq.com/cn2/get_img/get_face';
 
@@ -87,46 +83,4 @@ export const buildComment = async (
     top: 0,
     avatar,
   };
-};
-
-export const postSubmit = async (saved: NewComment, ctx: RequestCtx): Promise<void> => {
-  // Mutate `saved` in place so sendNotice sees fresh isSpam — upstream
-  // suppresses spam notifications when NOTIFY_SPAM='false'.
-  try {
-    const akismetKey = secret(ctx, 'AKISMET_KEY') ?? '';
-    if (akismetKey && akismetKey !== 'MANUAL_REVIEW') {
-      const blog = ctx.config.SITE_URL || `https://${new URL(ctx.request.url).host}`;
-      const isSpam = await checkAkismet({
-        apiKey: akismetKey,
-        blog,
-        userIp: saved.ip,
-        userAgent: saved.ua,
-        permalink: saved.href,
-        author: saved.nick,
-        authorEmail: saved.mail,
-        authorUrl: saved.link,
-        content: saved.comment,
-      });
-      if (isSpam) {
-        saved.isSpam = 1;
-        await ctx.db.comment.updateSpam(saved._id, 1, Date.now());
-      }
-    }
-  } catch (error) {
-    logger.error({ stage: 'akismet', id: saved._id, url: saved.url, error }, 'postSubmit failed');
-  }
-
-  try {
-    // sendNotice consumes the upstream comment shape; our row is compatible.
-    const getParentComment = async (curr: unknown): Promise<unknown> => {
-      const parentId = (curr as { pid?: string }).pid;
-      return parentId ? ctx.db.comment.byId(mkCommentId(parentId)) : undefined;
-    };
-    await sendNotice(saved, configWithSecrets(ctx), getParentComment);
-  } catch (error) {
-    logger.error(
-      { stage: 'sendNotice', id: saved._id, url: saved.url, error },
-      'postSubmit failed',
-    );
-  }
 };
