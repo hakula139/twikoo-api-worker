@@ -1,16 +1,10 @@
 import type { ExecutionContext } from '@cloudflare/workers-types';
 
-import type {
-  Env,
-  EventName,
-  EventPayloads,
-  RequestCtx,
-  TwikooConfig,
-  TwikooResponse,
-} from './types';
+import type { Env, EventName, EventPayloads, RequestCtx, TwikooResponse } from './types';
 
 import { DB } from './db';
 import { handlers, isEventName } from './handlers';
+import { CONFIG_CORRUPTED, loadConfig } from './lib/ctx';
 import { ResponseCode, TwikooError } from './lib/errors';
 import { extractGeo } from './lib/geo';
 import { isPlainObject } from './lib/guards';
@@ -48,13 +42,10 @@ export const dispatch = async (
     );
   }
 
-  const configRaw = await db.config.read();
-  let config: TwikooConfig;
-  try {
-    config = configRaw ? (JSON.parse(configRaw) as TwikooConfig) : {};
-  } catch (error) {
+  const loaded = await loadConfig(env, db);
+  if (loaded === CONFIG_CORRUPTED) {
     // Avoid logging the raw row — it normally contains ADMIN_PASS and SMTP_PASS.
-    logger.error(`Config row is not valid JSON (length=${configRaw.length}):`, error);
+    logger.error('Config row is not valid JSON or not an object.');
     return jsonResponse(
       {
         code: ResponseCode.CONFIG_NOT_EXIST,
@@ -63,13 +54,7 @@ export const dispatch = async (
       corsHeaders(origin),
     );
   }
-  // Bootstrap path: SET_PASSWORD is admin-only, so an empty config row would
-  // be unrecoverable. ADMIN_PASS_HASH (md5 of plaintext) seeds the admin
-  // identity from a wrangler secret; once an admin rotates via SET_PASSWORD,
-  // the D1 value shadows env on subsequent requests.
-  if (!config.ADMIN_PASS && env.ADMIN_PASS_HASH) {
-    config.ADMIN_PASS = env.ADMIN_PASS_HASH;
-  }
+  const config = loaded;
   const headers = corsHeaders(origin, config);
 
   // Reject before DB writes — without short-circuit, the browser still drops
