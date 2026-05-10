@@ -60,7 +60,7 @@ export const seedConfig = async (config: Record<string, unknown>): Promise<void>
 };
 
 // Mocked `md5(s)` returns `md5(${s})`, so seeding ADMIN_PASS=md5(<token>) and
-// sending accessToken=<token> makes the bearer admin without a real hash.
+// sending the same <token> as the auth header bypasses real hashing.
 export const ADMIN_TOKEN = 'integration-admin';
 export const ADMIN_PASS_PLAINTEXT = 'integration-password';
 
