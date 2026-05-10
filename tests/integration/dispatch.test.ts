@@ -1,6 +1,7 @@
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { MockInstance } from 'vitest';
 
+import { MAX_BODY_BYTES } from '@/dispatch';
 import { ResponseCode } from '@/lib/errors';
 import { logger } from '@/twikoo';
 import { applyTestSchema, resetTestDb } from '@tests/helpers/db';
@@ -52,8 +53,6 @@ describe('integration: worker entry', () => {
 
 describe('integration: dispatch hardening', () => {
   describe('body size cap (PR #43)', () => {
-    const MAX_BODY_BYTES = 10 * 1024 * 1024;
-
     it('rejects when Content-Length exceeds 10 MB without reading the body', async () => {
       const { body, headers } = await postRaw('{}', {
         'Content-Length': String(MAX_BODY_BYTES + 1),
