@@ -360,10 +360,25 @@ describe('commentGetForAdmin', () => {
     expect(listForAdmin.mock.calls[0]?.[0]).toMatchObject({ keyword: '%50\\%\\_off\\\\%' });
   });
 
-  it('passes per/page through as limit/offset', async () => {
+  it('passes per/page through as limit/offset and defaults sort to newest', async () => {
     const { ctx, listForAdmin } = buildAdminCtx(ADMIN);
     await commentGetForAdmin({ per: 20, page: 3 }, ctx);
-    expect(listForAdmin).toHaveBeenCalledWith(expect.anything(), 20, 40);
+    expect(listForAdmin).toHaveBeenCalledWith(expect.anything(), 20, 40, 'newest');
+  });
+
+  it.each<'newest' | 'oldest' | 'popular'>(['newest', 'oldest', 'popular'])(
+    'passes sort=%s through to listForAdmin',
+    async (sort) => {
+      const { ctx, listForAdmin } = buildAdminCtx(ADMIN);
+      await commentGetForAdmin({ per: 10, page: 1, sort }, ctx);
+      expect(listForAdmin).toHaveBeenCalledWith(expect.anything(), 10, 0, sort);
+    },
+  );
+
+  it('falls back to newest for an unrecognized sort value', async () => {
+    const { ctx, listForAdmin } = buildAdminCtx(ADMIN);
+    await commentGetForAdmin({ per: 10, page: 1, sort: 'random' }, ctx);
+    expect(listForAdmin).toHaveBeenCalledWith(expect.anything(), 10, 0, 'newest');
   });
 
   it('reformats stored ipRegion (pipe-delimited → · separated) on the way out', async () => {

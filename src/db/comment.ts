@@ -199,12 +199,17 @@ export const createCommentDb = (db: DrizzleD1Database) => ({
     return row?.count ?? 0;
   },
 
-  async listForAdmin(filter: AdminFilter, limit: number, offset: number): Promise<Comment[]> {
+  async listForAdmin(
+    filter: AdminFilter,
+    limit: number,
+    offset: number,
+    sort: CommentSort = 'newest',
+  ): Promise<Comment[]> {
     return db
       .select()
       .from(comment)
       .where(adminWhere(filter))
-      .orderBy(desc(comment.created))
+      .orderBy(...orderClause(sort))
       .limit(limit)
       .offset(offset);
   },

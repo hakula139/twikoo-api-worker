@@ -236,10 +236,11 @@ export const commentGetForAdmin: Handler<'COMMENT_GET_FOR_ADMIN'> = async (paylo
   const per = Math.max(1, Number(payload.per) || 0);
   const page = Math.max(1, Number(payload.page) || 0);
   const filter = buildAdminFilter(payload);
+  const sort: CommentSort = payload.sort && isCommentSort(payload.sort) ? payload.sort : 'newest';
 
   const [count, rows] = await Promise.all([
     ctx.db.comment.countForAdmin(filter),
-    ctx.db.comment.listForAdmin(filter, per, per * (page - 1)),
+    ctx.db.comment.listForAdmin(filter, per, per * (page - 1), sort),
   ]);
 
   // Skip upstream parseCommentForAdmin (Node-only ip2region lookup); reformat
