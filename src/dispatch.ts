@@ -18,7 +18,7 @@ const stringField = (body: Record<string, unknown>, key: string): string =>
 
 // Generous enough for base64 image uploads (~5 MB raw → ~6.7 MB encoded)
 // and small bulk imports, while still well below the Workers runtime cap.
-const MAX_BODY_BYTES = 10 * 1024 * 1024;
+export const MAX_BODY_BYTES = 10 * 1024 * 1024;
 
 export const dispatch = async (
   request: Request,

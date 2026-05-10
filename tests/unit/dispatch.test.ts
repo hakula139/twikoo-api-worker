@@ -4,7 +4,7 @@ import { env as rawEnv } from 'cloudflare:test';
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { MockInstance } from 'vitest';
 
-import { dispatch } from '@/dispatch';
+import { MAX_BODY_BYTES, dispatch } from '@/dispatch';
 import { ResponseCode, TwikooError } from '@/lib/errors';
 import * as twikoo from '@/twikoo';
 import { logger } from '@/twikoo';
@@ -89,8 +89,6 @@ describe('dispatch', () => {
   });
 
   describe('body size cap', () => {
-    const MAX_BODY_BYTES = 10 * 1024 * 1024;
-
     const postWithLength = (body: string, length: number): Request =>
       new Request('https://twikoo.example/api', {
         method: 'POST',
