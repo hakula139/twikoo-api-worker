@@ -1,4 +1,4 @@
-import type { Comment, NewComment } from '@/db';
+import type { NewComment } from '@/db';
 import type { EventPayloads, JsonString, RequestCtx } from '@/types';
 
 import { isAdmin } from '@/lib/auth';
@@ -88,7 +88,7 @@ export const buildComment = async (
   };
 };
 
-export const postSubmit = async (saved: Comment, ctx: RequestCtx): Promise<void> => {
+export const postSubmit = async (saved: NewComment, ctx: RequestCtx): Promise<void> => {
   // Mutate `saved` in place so sendNotice sees fresh isSpam — upstream
   // suppresses spam notifications when NOTIFY_SPAM='false'.
   try {

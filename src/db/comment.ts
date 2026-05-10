@@ -147,9 +147,9 @@ export class CommentDB {
     await this.db.insert(comment).values(c);
   }
 
-  // D1 caps each statement at 100 bound parameters (per Cloudflare docs).
-  // 22 columns × CHUNK ≤ 100 → CHUNK = 4 keeps headroom against future
-  // columns.
+  // D1 caps each statement at 100 bound parameters. Schema currently has
+  // 22 columns, so 4 rows per chunk = 88 binds; bump down to 3 if the row
+  // grows past 25 columns or D1 lowers the cap.
   async saveMany(rows: NewComment[]): Promise<void> {
     if (rows.length === 0) {
       return;

@@ -212,7 +212,7 @@ export const commentSubmit: Handler<'COMMENT_SUBMIT'> = async (payload, ctx) => 
   const newComment = await buildComment(payload, ctx);
 
   await ctx.db.comment.save(newComment);
-  ctx.waitUntil(postSubmit(newComment as Comment, ctx));
+  ctx.waitUntil(postSubmit(newComment, ctx));
 
   return { id: newComment._id };
 };
