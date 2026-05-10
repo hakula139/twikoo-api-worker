@@ -252,40 +252,34 @@ export const commentGetForAdmin: Handler<'COMMENT_GET_FOR_ADMIN'> = async (paylo
   return { count, data };
 };
 
-// Admin can only mutate moderation/content fields; identity, vote arrays, and
-// timestamps stay immutable through this path.
-const ADMIN_MUTABLE_FIELDS = ['comment', 'isSpam', 'top'] as const;
-
-const pickAdminUpdate = (raw: unknown): Partial<NewComment> => {
-  if (!isPlainObject(raw)) {
-    throw new TwikooError(ResponseCode.FAIL, '`set` must be an object.');
-  }
-  const out: Partial<NewComment> = {};
-  for (const key of ADMIN_MUTABLE_FIELDS) {
-    if (!(key in raw)) {
-      continue;
-    }
-    const value = raw[key];
-    if (key === 'comment' && typeof value === 'string') {
-      out.comment = value;
-    } else if (key === 'isSpam' && (value === 0 || value === 1)) {
-      out.isSpam = value;
-    } else if (key === 'top' && (value === 0 || value === 1)) {
-      out.top = value;
-    } else {
-      throw new TwikooError(ResponseCode.FAIL, `Invalid value for ${key}`);
-    }
-  }
-  return out;
-};
-
+// Only the three fields read below are writable. Identity, vote arrays,
+// timestamps, and any other set keys are silently dropped.
 export const commentSetForAdmin: Handler<'COMMENT_SET_FOR_ADMIN'> = async (payload, ctx) => {
   requireAdmin(ctx);
   validate(payload, ['id', 'set']);
 
-  const set = pickAdminUpdate(payload.set);
+  const set = payload.set;
+  if (!isPlainObject(set)) {
+    throw new TwikooError(ResponseCode.FAIL, '`set` must be an object.');
+  }
 
-  await ctx.db.comment.update(mkCommentId(payload.id), { ...set, updated: Date.now() });
+  const fields: Partial<NewComment> = { updated: Date.now() };
+  if ('comment' in set) {
+    if (typeof set.comment !== 'string') {
+      throw new TwikooError(ResponseCode.FAIL, 'Invalid value for comment');
+    }
+    fields.comment = set.comment;
+  }
+  // Upstream widget toggles via `!current.flag`, so collapse to truthiness
+  // and accept any shape the widget might evolve to send.
+  if ('isSpam' in set) {
+    fields.isSpam = set.isSpam ? 1 : 0;
+  }
+  if ('top' in set) {
+    fields.top = set.top ? 1 : 0;
+  }
+
+  await ctx.db.comment.update(mkCommentId(payload.id), fields);
   return { updated: 1 };
 };
 

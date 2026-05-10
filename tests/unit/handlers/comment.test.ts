@@ -430,11 +430,43 @@ describe('commentSetForAdmin', () => {
     expect(fields.updated).toBeGreaterThanOrEqual(before);
   });
 
-  it('rejects out-of-range values for boolean-like fields', async () => {
+  it('hides + un-pins (isSpam: true, top: false) via truthiness', async () => {
+    const { ctx, update } = buildSetCtx(ADMIN);
+    await commentSetForAdmin({ id: 'c1', set: { isSpam: true, top: false } }, ctx);
+    const fields = update.mock.calls[0]?.[1] as Record<string, unknown> | undefined;
+    expect(fields?.isSpam).toBe(1);
+    expect(fields?.top).toBe(0);
+  });
+
+  it('un-hides + pins (isSpam: false, top: true) via truthiness', async () => {
+    const { ctx, update } = buildSetCtx(ADMIN);
+    await commentSetForAdmin({ id: 'c1', set: { isSpam: false, top: true } }, ctx);
+    const fields = update.mock.calls[0]?.[1] as Record<string, unknown> | undefined;
+    expect(fields?.isSpam).toBe(0);
+    expect(fields?.top).toBe(1);
+  });
+
+  it('coerces non-canonical truthy values to 1 (no longer rejected)', async () => {
+    const { ctx, update } = buildSetCtx(ADMIN);
+    await commentSetForAdmin({ id: 'c1', set: { isSpam: 2 } }, ctx);
+    const fields = update.mock.calls[0]?.[1] as Record<string, unknown> | undefined;
+    expect(fields?.isSpam).toBe(1);
+  });
+
+  it('writes only updated when the set is comment-only (skips isSpam / top branches)', async () => {
+    const { ctx, update } = buildSetCtx(ADMIN);
+    await commentSetForAdmin({ id: 'c1', set: { comment: 'edited' } }, ctx);
+    const fields = update.mock.calls[0]?.[1] as Record<string, unknown> | undefined;
+    expect(fields?.comment).toBe('edited');
+    expect(fields).not.toHaveProperty('isSpam');
+    expect(fields).not.toHaveProperty('top');
+  });
+
+  it('rejects a non-string comment field', async () => {
     const { ctx } = buildSetCtx(ADMIN);
-    await expect(commentSetForAdmin({ id: 'c1', set: { isSpam: 2 } }, ctx)).rejects.toMatchObject({
-      code: ResponseCode.FAIL,
-    });
+    await expect(commentSetForAdmin({ id: 'c1', set: { comment: 42 } }, ctx)).rejects.toMatchObject(
+      { code: ResponseCode.FAIL },
+    );
   });
 });
 
