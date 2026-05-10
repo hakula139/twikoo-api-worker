@@ -99,16 +99,23 @@ describe('integration: GET_RECENT_COMMENTS', () => {
 });
 
 describe('integration: COMMENT_GET', () => {
-  it('returns parsed rows + count for a public thread', async () => {
+  it('returns the seeded rows in newest-first order with the right count', async () => {
     await seedConfig({});
-    await seedComment({ url: '/post/', comment: '<p>first</p>' });
-    await seedComment({ url: '/post/', comment: '<p>second</p>' });
+    const t = Date.now() - 60_000;
+    const first = await seedComment({ url: '/post/', comment: '<p>first</p>', created: t });
+    const second = await seedComment({
+      url: '/post/',
+      comment: '<p>second</p>',
+      created: t + 1_000,
+    });
 
     const { body } = await postEvent('COMMENT_GET', { url: '/post/' });
 
     expect(body.code).toBe(ResponseCode.SUCCESS);
     expect(body.count).toBe(2);
-    expect(Array.isArray(body.data)).toBe(true);
+    // Mocked `parseComment` is identity, so rows expose the schema's `_id`.
+    const data = body.data as Array<{ _id: string }>;
+    expect(data.map((c) => c._id)).toEqual([second, first]);
   });
 
   it('hides spam from anonymous viewers', async () => {
@@ -241,14 +248,19 @@ describe('integration: COMMENT_DELETE_FOR_USER', () => {
 });
 
 describe('integration: COUNTER_GET', () => {
-  it('increments the counter and returns the latest time', async () => {
+  it('increments time and updates title via the onConflictDoUpdate clause', async () => {
     await seedConfig({});
 
     const first = await postEvent('COUNTER_GET', { url: '/post/', title: 'Hello' });
     expect(first.body.code).toBe(ResponseCode.SUCCESS);
     expect(first.body.time).toBe(1);
 
-    const second = await postEvent('COUNTER_GET', { url: '/post/', title: 'Hello' });
+    const second = await postEvent('COUNTER_GET', { url: '/post/', title: 'Hello v2' });
     expect(second.body.time).toBe(2);
+
+    const row = await env.DB.prepare('SELECT title, time FROM counter WHERE url = ?')
+      .bind('/post/')
+      .first<{ title: string; time: number }>();
+    expect(row).toEqual({ title: 'Hello v2', time: 2 });
   });
 });

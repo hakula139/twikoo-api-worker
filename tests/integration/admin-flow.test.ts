@@ -223,7 +223,7 @@ describe('integration: COMMENT_EXPORT_FOR_ADMIN (PR #39 / #40 admin-export smoke
     expect(data.map((r) => r._id)).toContain(id);
   });
 
-  it('exports the config collection on request', async () => {
+  it('exports the config collection with the seeded values round-tripped', async () => {
     await seedAdmin({ NSFW_THRESHOLD: '0.8' });
 
     const { body } = await postEvent(
@@ -233,7 +233,11 @@ describe('integration: COMMENT_EXPORT_FOR_ADMIN (PR #39 / #40 admin-export smoke
     );
 
     expect(body.code).toBe(ResponseCode.SUCCESS);
-    expect(Array.isArray(body.data)).toBe(true);
+    const data = body.data as Array<{ id: number; value: string }>;
+    expect(data).toHaveLength(1);
+    const parsed = JSON.parse(data[0]?.value ?? '{}') as Record<string, unknown>;
+    expect(parsed.NSFW_THRESHOLD).toBe('0.8');
+    expect(parsed.ADMIN_PASS).toBe(`md5(${ADMIN_TOKEN})`);
   });
 
   it('rejects an unsupported collection name', async () => {
