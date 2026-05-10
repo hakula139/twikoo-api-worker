@@ -4,7 +4,9 @@ import { applyD1Migrations } from 'cloudflare:test';
 import { env } from 'cloudflare:workers';
 import { drizzle } from 'drizzle-orm/d1';
 
-import { DB } from '@/db';
+import type { DB } from '@/db';
+
+import { buildDb } from '@/db';
 import schemaSql from '../fixtures/schema.sql?raw';
 
 // `drizzle-kit export` writes plain DDL with `;` statement terminators.
@@ -32,4 +34,4 @@ export const resetTestDb = async (): Promise<void> => {
 
 export const drizzleClient = (): DrizzleD1Database => drizzle(env.DB);
 
-export const dbInstance = (): DB => new DB(env.DB);
+export const dbInstance = (): DB => buildDb(env.DB);

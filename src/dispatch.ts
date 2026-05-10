@@ -2,7 +2,7 @@ import type { ExecutionContext } from '@cloudflare/workers-types';
 
 import type { Env, EventName, EventPayloads, RequestCtx, TwikooResponse } from './types';
 
-import { DB } from './db';
+import { buildDb } from './db';
 import { handlers, isEventName } from './handlers';
 import { loadConfig } from './lib/ctx';
 import { ResponseCode, TwikooError } from './lib/errors';
@@ -21,7 +21,7 @@ export const dispatch = async (
   ctx: ExecutionContext,
 ): Promise<Response> => {
   const origin = request.headers.get('Origin');
-  const db = new DB(env.DB);
+  const db = buildDb(env.DB);
 
   let body: Record<string, unknown>;
   try {
