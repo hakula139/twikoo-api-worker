@@ -197,6 +197,37 @@ describe('integration: COMMENT_LIKE toggle (PR #42 vote path)', () => {
     expect(JSON.parse(back?.ups ?? '[]')).toEqual([]);
   });
 
+  it('routes type=down through the downs column without touching ups', async () => {
+    await seedConfig({});
+    const id = await seedComment({ url: '/post/' });
+
+    const { body } = await postEvent(
+      'COMMENT_LIKE',
+      { id, type: 'down' },
+      { 'x-twikoo-recaptcha-v3': 'voter-2' },
+    );
+    expect(body.code).toBe(ResponseCode.SUCCESS);
+
+    const row = await env.DB.prepare('SELECT ups, downs FROM comment WHERE _id = ?')
+      .bind(id)
+      .first<{ ups: string; downs: string }>();
+    expect(JSON.parse(row?.ups ?? '[]')).toEqual([]);
+    expect(JSON.parse(row?.downs ?? '[]')).toEqual(['voter-2']);
+  });
+
+  it('rejects an unrecognized vote type with FAIL', async () => {
+    await seedConfig({});
+    const id = await seedComment({ url: '/post/' });
+
+    const { body } = await postEvent(
+      'COMMENT_LIKE',
+      { id, type: 'sideways' },
+      { 'x-twikoo-recaptcha-v3': 'voter-3' },
+    );
+    expect(body.code).toBe(ResponseCode.FAIL);
+    expect(body.message).toMatch(/Invalid like type/);
+  });
+
   it('rejects with FAIL when the comment does not exist', async () => {
     await seedConfig({});
     const { body } = await postEvent(
