@@ -18,16 +18,6 @@ import { uploadSee } from './see';
 
 export type { R2Env, UploadResult } from './types';
 
-type KnownImageCdn =
-  | '7bu'
-  | 'see'
-  | 'lskypro'
-  | 'piclist'
-  | 'easyimage'
-  | 'chevereto'
-  | 's3'
-  | 'r2';
-
 const KNOWN_IMAGE_CDNS = [
   '7bu',
   'see',
@@ -37,7 +27,8 @@ const KNOWN_IMAGE_CDNS = [
   'chevereto',
   's3',
   'r2',
-] as const satisfies readonly KnownImageCdn[];
+] as const;
+type KnownImageCdn = (typeof KNOWN_IMAGE_CDNS)[number];
 
 const isKnownImageCdn = (s: string): s is KnownImageCdn =>
   (KNOWN_IMAGE_CDNS as readonly string[]).includes(s);
@@ -73,42 +64,44 @@ export const uploadImage = async (
       }
     }
 
-    if (isKnownImageCdn(imageService)) {
-      switch (imageService) {
-        case '7bu':
-          return await uploadLskyPro(photo, fileName, config, 'https://7bu.top');
-        case 'see':
-          return await uploadSee(photo, fileName, config, 'https://s.ee/api/v1/file/upload');
-        case 'lskypro':
-          return await uploadLskyPro(
-            photo,
-            fileName,
-            config,
-            stringConfig(config, 'IMAGE_CDN_URL') ?? '',
-          );
-        case 'piclist':
-          return await uploadPicList(
-            photo,
-            fileName,
-            config,
-            stringConfig(config, 'IMAGE_CDN_URL') ?? '',
-          );
-        case 'easyimage':
-          return await uploadEasyImage(photo, fileName, config);
-        case 'chevereto':
-          return await uploadChevereto(photo, fileName, config);
-        case 's3':
-          return await uploadS3(photo, fileName, config);
-        case 'r2':
-          return await uploadR2(photo, fileName, env);
-      }
-    }
-
-    // Treat any URL-shaped IMAGE_CDN as an LskyPro base URL.
+    // Treat any URL-shaped IMAGE_CDN as an LskyPro base URL. Hoisted above the
+    // known-CDN switch so the switch can cover its narrow union exhaustively.
     if (isUrl(imageService)) {
       return await uploadLskyPro(photo, fileName, config, imageService);
     }
-    throw new Error('不支持的图片上传服务');
+
+    if (!isKnownImageCdn(imageService)) {
+      throw new Error('不支持的图片上传服务');
+    }
+
+    switch (imageService) {
+      case '7bu':
+        return await uploadLskyPro(photo, fileName, config, 'https://7bu.top');
+      case 'see':
+        return await uploadSee(photo, fileName, config, 'https://s.ee/api/v1/file/upload');
+      case 'lskypro':
+        return await uploadLskyPro(
+          photo,
+          fileName,
+          config,
+          stringConfig(config, 'IMAGE_CDN_URL') ?? '',
+        );
+      case 'piclist':
+        return await uploadPicList(
+          photo,
+          fileName,
+          config,
+          stringConfig(config, 'IMAGE_CDN_URL') ?? '',
+        );
+      case 'easyimage':
+        return await uploadEasyImage(photo, fileName, config);
+      case 'chevereto':
+        return await uploadChevereto(photo, fileName, config);
+      case 's3':
+        return await uploadS3(photo, fileName, config);
+      case 'r2':
+        return await uploadR2(photo, fileName, env);
+    }
   } catch (e) {
     // Preserve typed errors (e.g. NSFW_REJECTED); wrap everything else.
     if (e instanceof TwikooError) {

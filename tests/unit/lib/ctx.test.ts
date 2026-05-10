@@ -13,17 +13,17 @@ const buildDb = (raw: string): DB =>
 describe('loadConfig', () => {
   it('returns {} for an empty config row with no ADMIN_PASS_HASH bootstrap', async () => {
     const result = await loadConfig({} as Env, buildDb(''));
-    expect(result).toEqual({ kind: 'ok', config: {} });
+    expect(result).toEqual({ kind: 'ok', config: {}, droppedKeys: [] });
   });
 
   it('returns { ADMIN_PASS } from ADMIN_PASS_HASH when the row is empty', async () => {
     const result = await loadConfig({ ADMIN_PASS_HASH: 'abcd' } as Env, buildDb(''));
-    expect(result).toEqual({ kind: 'ok', config: { ADMIN_PASS: 'abcd' } });
+    expect(result).toEqual({ kind: 'ok', config: { ADMIN_PASS: 'abcd' }, droppedKeys: [] });
   });
 
   it('parses a valid config row', async () => {
     const result = await loadConfig({} as Env, buildDb('{"SITE_URL":"https://x"}'));
-    expect(result).toEqual({ kind: 'ok', config: { SITE_URL: 'https://x' } });
+    expect(result).toEqual({ kind: 'ok', config: { SITE_URL: 'https://x' }, droppedKeys: [] });
   });
 
   it('does not mutate the parsed object on the bootstrap merge path', async () => {
@@ -60,6 +60,7 @@ describe('loadConfig', () => {
     expect(result).toEqual({
       kind: 'ok',
       config: { SITE_URL: 'https://x', ADMIN_PASS: 'fallback' },
+      droppedKeys: [],
     });
   });
 
@@ -72,5 +73,26 @@ describe('loadConfig', () => {
       throw new Error('expected ok');
     }
     expect(result.config.ADMIN_PASS).toBe('stored');
+  });
+
+  it('prunes keys whose values violate the index signature', async () => {
+    const raw = JSON.stringify({
+      SITE_URL: 'https://x',
+      COMMENT_PAGE_SIZE: 10,
+      SHOW_REGION: true,
+      NULL_KEY: null,
+      NESTED_OBJ: { foo: 'bar' },
+      NESTED_ARR: [1, 2, 3],
+    });
+    const result = await loadConfig({} as Env, buildDb(raw));
+    if (result.kind !== 'ok') {
+      throw new Error('expected ok');
+    }
+    expect(result.config).toEqual({
+      SITE_URL: 'https://x',
+      COMMENT_PAGE_SIZE: 10,
+      SHOW_REGION: true,
+    });
+    expect([...result.droppedKeys].sort()).toEqual(['NESTED_ARR', 'NESTED_OBJ', 'NULL_KEY']);
   });
 });

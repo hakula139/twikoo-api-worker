@@ -164,7 +164,7 @@ export class CommentDB {
     await this.db.delete(comment).where(eq(comment._id, id));
   }
 
-  // Atomic toggle in pure SQL — concurrent voters racing through
+  // Atomic toggle in pure SQL since concurrent voters racing through
   // read-modify-write would lose each other. Returns false if no row matched.
   async toggleVote(id: CommentId, uid: string, type: 'up' | 'down'): Promise<boolean> {
     const target = type === 'up' ? comment.ups : comment.downs;

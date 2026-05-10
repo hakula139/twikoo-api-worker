@@ -23,8 +23,8 @@ export const enforceTurnstile = async (
     );
     return;
   }
-  // siteverify needs only the secret; the site key is a frontend-only hint.
-  // Don't guard the backend on it — admins leave that field blank.
+  // siteverify needs only the secret. The site key is a frontend-only hint
+  // that admins leave blank, so don't guard the backend on it.
   const turnstileSecret = secret(ctx, 'TURNSTILE_SECRET_KEY');
   if (!turnstileSecret) {
     logger.error('Turnstile is enabled but TURNSTILE_SECRET_KEY is unset.');

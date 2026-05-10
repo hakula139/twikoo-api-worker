@@ -35,7 +35,7 @@ export const mkUid = (s: string): Uid => s as Uid;
 export const mkIp = (s: string): Ip => s as Ip;
 export const mkCommentId = (s: string): CommentId => s as CommentId;
 
-// JSON-encoded payload of T. Forces a parse step before structural ops —
+// JSON-encoded payload of T. Forces a parse step before structural ops, so
 // `comment.ups.split(',')` on a `JsonString<string[]>` is a compile error.
 export type JsonString<T> = string & { readonly __json: T };
 
