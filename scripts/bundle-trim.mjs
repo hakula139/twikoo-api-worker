@@ -1,14 +1,11 @@
-// Workers free-tier bundles cap at 1 MiB. `twikoo-func` pulls in three
-// Node-only modules the runtime can't execute; null out their entry points so
-// esbuild tree-shakes the rest. The lookup walks pnpm's `.pnpm/` hoist layout.
-// CI enforces a 950 KiB compressed cap (.github/workflows/ci.yml). If a new
-// twikoo-func release pulls in another Node-only dep, add it to PACKAGES below
-// — the CI gate is the alarm.
+// `twikoo-func` pulls in Node-only modules the runtime cannot execute.
+// Nulling their entry points lets esbuild remove them across pnpm's hoist layout.
+// Keep this list in sync; CI's 950 KiB gzip gate catches regressions.
 
 import { existsSync, globSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 
-const PACKAGES = ['jsdom', 'nodemailer', 'tencentcloud-sdk-nodejs'];
+const PACKAGES = ['jsdom', 'nodemailer'];
 
 const entryPathsFromPkg = (pkgJson) => {
   const entries = new Set();

@@ -1,6 +1,6 @@
 import type { Env } from '@/types';
 
-import { env as rawEnv } from 'cloudflare:test';
+import { createExecutionContext, env as rawEnv } from 'cloudflare:test';
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { MockInstance } from 'vitest';
 
@@ -12,11 +12,7 @@ import { applyTestSchema, resetTestDb } from '@tests/helpers/db';
 
 const env = rawEnv as unknown as Env;
 
-const execCtx: ExecutionContext = {
-  waitUntil: () => undefined,
-  passThroughOnException: () => undefined,
-  props: {},
-};
+const execCtx = () => createExecutionContext();
 
 const post = (body: string): Request =>
   new Request('https://twikoo.example/api', {
@@ -48,7 +44,7 @@ afterEach(async () => {
 
 describe('dispatch', () => {
   it('returns FAIL with a CORS-safe body when the request body is not JSON', async () => {
-    const res = await dispatch(post('{not-json'), env, execCtx);
+    const res = await dispatch(post('{not-json'), env, execCtx());
     expect(res.status).toBe(200);
     expect(res.headers.get('Access-Control-Allow-Origin')).toBeTruthy();
     const body = await res.json<{ code: number; message: string }>();
@@ -57,7 +53,7 @@ describe('dispatch', () => {
   });
 
   it('returns FAIL when the request body parses to a non-object', async () => {
-    const res = await dispatch(post('[1,2,3]'), env, execCtx);
+    const res = await dispatch(post('[1,2,3]'), env, execCtx());
     const body = await res.json<{ code: number; message: string }>();
     expect(body.code).toBe(ResponseCode.FAIL);
   });
@@ -65,7 +61,7 @@ describe('dispatch', () => {
   it('maps a corrupted config row to CONFIG_NOT_EXIST with CORS headers', async () => {
     await writeConfigRow('{not-json');
 
-    const res = await dispatch(post('{"event":"GET_FUNC_VERSION"}'), env, execCtx);
+    const res = await dispatch(post('{"event":"GET_FUNC_VERSION"}'), env, execCtx());
 
     expect(res.status).toBe(200);
     expect(res.headers.get('Access-Control-Allow-Origin')).toBeTruthy();
@@ -76,14 +72,14 @@ describe('dispatch', () => {
 
   it('also maps a non-object config row (JSON array) to CONFIG_NOT_EXIST', async () => {
     await writeConfigRow('[1,2,3]');
-    const res = await dispatch(post('{"event":"GET_FUNC_VERSION"}'), env, execCtx);
+    const res = await dispatch(post('{"event":"GET_FUNC_VERSION"}'), env, execCtx());
     const body = await res.json<{ code: number; message: string }>();
     expect(body.code).toBe(ResponseCode.CONFIG_NOT_EXIST);
   });
 
   it('returns EVENT_NOT_EXIST for an unknown event when config is healthy', async () => {
     await writeConfigRow('{}');
-    const res = await dispatch(post('{"event":"NOT_A_REAL_EVENT"}'), env, execCtx);
+    const res = await dispatch(post('{"event":"NOT_A_REAL_EVENT"}'), env, execCtx());
     const body = await res.json<{ code: number; message: string }>();
     expect(body.code).toBe(ResponseCode.EVENT_NOT_EXIST);
   });
@@ -101,7 +97,7 @@ describe('dispatch', () => {
       });
 
     it('rejects when Content-Length exceeds the cap', async () => {
-      const res = await dispatch(postWithLength('{}', MAX_BODY_BYTES + 1), env, execCtx);
+      const res = await dispatch(postWithLength('{}', MAX_BODY_BYTES + 1), env, execCtx());
       expect(res.status).toBe(200);
       expect(res.headers.get('Access-Control-Allow-Origin')).toBeTruthy();
       const body = await res.json<{ code: number; message: string }>();
@@ -115,14 +111,14 @@ describe('dispatch', () => {
       const res = await dispatch(
         postWithLength('{"event":"GET_FUNC_VERSION"}', MAX_BODY_BYTES),
         env,
-        execCtx,
+        execCtx(),
       );
       const body = await res.json<{ code: number; message: string }>();
       expect(body.code).not.toBe(ResponseCode.FAIL);
     });
 
     it('falls through to parse when Content-Length is absent', async () => {
-      const res = await dispatch(post('{not-json'), env, execCtx);
+      const res = await dispatch(post('{not-json'), env, execCtx());
       const body = await res.json<{ code: number; message: string }>();
       expect(body.message).toMatch(/JSON/);
     });
@@ -138,7 +134,7 @@ describe('dispatch', () => {
     it('logs dropped config keys when the row has values with unsupported types', async () => {
       await writeConfigRow('{"OK":"x","BAD":{"a":1}}');
 
-      await dispatch(post('{"event":"NOT_A_REAL_EVENT"}'), env, execCtx);
+      await dispatch(post('{"event":"NOT_A_REAL_EVENT"}'), env, execCtx());
 
       expect(errorSpy).toHaveBeenCalledWith(
         expect.objectContaining({ droppedKeys: ['BAD'] }),
@@ -149,7 +145,7 @@ describe('dispatch', () => {
     it('returns FORBIDDEN when the origin is not on CORS_ALLOW_ORIGIN', async () => {
       await writeConfigRow('{"CORS_ALLOW_ORIGIN":"https://allowed.example"}');
 
-      const res = await dispatch(post('{"event":"GET_FUNC_VERSION"}'), env, execCtx);
+      const res = await dispatch(post('{"event":"GET_FUNC_VERSION"}'), env, execCtx());
 
       const body = await res.json<{ code: number; message: string }>();
       expect(body.code).toBe(ResponseCode.FORBIDDEN);
@@ -161,7 +157,7 @@ describe('dispatch', () => {
         throw new TwikooError(ResponseCode.PASS_NOT_MATCH, '密码错误');
       });
 
-      const res = await dispatch(post('{"event":"GET_FUNC_VERSION"}'), env, execCtx);
+      const res = await dispatch(post('{"event":"GET_FUNC_VERSION"}'), env, execCtx());
 
       const body = await res.json<{ code: number; message: string }>();
       expect(body.code).toBe(ResponseCode.PASS_NOT_MATCH);
@@ -174,7 +170,7 @@ describe('dispatch', () => {
         throw new Error('upstream timeout');
       });
 
-      const res = await dispatch(post('{"event":"GET_FUNC_VERSION"}'), env, execCtx);
+      const res = await dispatch(post('{"event":"GET_FUNC_VERSION"}'), env, execCtx());
 
       const body = await res.json<{ code: number; message: string }>();
       expect(body.code).toBe(ResponseCode.FAIL);
@@ -191,7 +187,7 @@ describe('dispatch', () => {
         throw new Error('');
       });
 
-      const res = await dispatch(post('{"event":"GET_FUNC_VERSION"}'), env, execCtx);
+      const res = await dispatch(post('{"event":"GET_FUNC_VERSION"}'), env, execCtx());
 
       const body = await res.json<{ code: number; message: string }>();
       expect(body.code).toBe(ResponseCode.FAIL);
@@ -203,7 +199,7 @@ describe('dispatch', () => {
     it('emits one log per request tagged with event, code, uid, and duration_ms', async () => {
       await writeConfigRow('{}');
 
-      await dispatch(post('{"event":"NOT_A_REAL_EVENT"}'), env, execCtx);
+      await dispatch(post('{"event":"NOT_A_REAL_EVENT"}'), env, execCtx());
 
       expect(infoSpy).toHaveBeenCalledTimes(1);
       expect(infoSpy).toHaveBeenCalledWith(
@@ -219,7 +215,7 @@ describe('dispatch', () => {
     });
 
     it('still logs when the body fails to parse (event and uid stay empty)', async () => {
-      await dispatch(post('{not-json'), env, execCtx);
+      await dispatch(post('{not-json'), env, execCtx());
 
       expect(infoSpy).toHaveBeenCalledWith(
         expect.objectContaining({ event: '', code: ResponseCode.FAIL, uid: '' }),
@@ -230,7 +226,7 @@ describe('dispatch', () => {
     it('captures the uid from the request body', async () => {
       await writeConfigRow('{}');
 
-      await dispatch(post('{"event":"NOT_A_REAL_EVENT","accessToken":"user-abc"}'), env, execCtx);
+      await dispatch(post('{"event":"NOT_A_REAL_EVENT","accessToken":"user-abc"}'), env, execCtx());
 
       expect(infoSpy).toHaveBeenCalledWith(
         expect.objectContaining({ event: 'NOT_A_REAL_EVENT', uid: 'user-abc' }),

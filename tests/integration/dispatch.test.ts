@@ -94,8 +94,7 @@ describe('integration: dispatch hardening', () => {
     expect(body.code).toBe(ResponseCode.FAIL);
     expect(infoSpy).toHaveBeenCalledTimes(1);
     const fields = infoSpy.mock.calls[0]?.[0] as
-      | { event: string; code: number; uid: string; duration_ms: unknown }
-      | undefined;
+      { event: string; code: number; uid: string; duration_ms: unknown } | undefined;
     expect(fields?.event).toBe('COMMENT_LIKE');
     expect(fields?.code).toBe(ResponseCode.FAIL);
     expect(fields?.uid).toBe('observer-uid');
