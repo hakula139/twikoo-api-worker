@@ -26,7 +26,7 @@ const post = (body: string): Request =>
   });
 
 const writeConfigRow = async (raw: string): Promise<void> => {
-  await env.DB.prepare('INSERT INTO config (id, value) VALUES (?, ?)').bind(0, raw).run();
+  await env.DB.prepare('INSERT INTO config (id, value) VALUES (?, ?)').bind(1, raw).run();
 };
 
 let infoSpy: MockInstance;

@@ -1,6 +1,8 @@
 import { beforeAll, beforeEach, describe, expect, it } from 'vitest';
 
-import { applyTestSchema, dbInstance, resetTestDb } from '@tests/helpers/db';
+import { config } from '@/db/schema';
+
+import { applyTestSchema, dbInstance, drizzleClient, resetTestDb } from '@tests/helpers/db';
 
 beforeAll(async () => {
   await applyTestSchema();
@@ -20,6 +22,18 @@ describe('ConfigDB.read', () => {
     const db = dbInstance();
     await db.config.write('{"a":1}');
     expect(await db.config.read()).toBe('{"a":1}');
+  });
+
+  it('ignores rows outside the id = 1 singleton', async () => {
+    const client = drizzleClient();
+    const db = dbInstance();
+    await client.insert(config).values({ id: 0, value: '{"stale":true}' });
+
+    expect(await db.config.read()).toBe('');
+
+    await client.insert(config).values({ id: 1, value: '{"canonical":true}' });
+
+    expect(await db.config.read()).toBe('{"canonical":true}');
   });
 });
 

@@ -2,6 +2,8 @@ import type { DrizzleD1Database } from 'drizzle-orm/d1';
 
 import type { Config } from './schema';
 
+import { eq } from 'drizzle-orm';
+
 import { config } from './schema';
 
 export const createConfigDb = (db: DrizzleD1Database) => ({
@@ -10,7 +12,11 @@ export const createConfigDb = (db: DrizzleD1Database) => ({
   },
 
   async read(): Promise<string> {
-    const [row] = await db.select({ value: config.value }).from(config).limit(1);
+    const [row] = await db
+      .select({ value: config.value })
+      .from(config)
+      .where(eq(config.id, 1))
+      .limit(1);
     return row?.value ?? '';
   },
 

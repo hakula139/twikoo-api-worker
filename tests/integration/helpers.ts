@@ -55,7 +55,7 @@ export const sendRequest = (init: RequestInit, headers?: HeadersInit): Promise<R
 
 export const seedConfig = async (config: Record<string, unknown>): Promise<void> => {
   await env.DB.prepare('INSERT OR REPLACE INTO config (id, value) VALUES (?, ?)')
-    .bind(0, JSON.stringify(config))
+    .bind(1, JSON.stringify(config))
     .run();
 };
 
