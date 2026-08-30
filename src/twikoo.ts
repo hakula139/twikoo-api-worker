@@ -24,7 +24,7 @@ import {
 } from 'twikoo-func/utils/import';
 import { getMd5, getSha256, setCustomLibs } from 'twikoo-func/utils/lib';
 import logger from 'twikoo-func/utils/logger';
-import { emailTest, sendNotice } from 'twikoo-func/utils/notify';
+import { emailTest, noticeMaster, noticeReply, sendNotice } from 'twikoo-func/utils/notify';
 import twikooFuncPkg from 'twikoo-func/package.json';
 
 import { mailShim } from './shims/mail';
@@ -69,6 +69,8 @@ export {
   jsonParse,
   logger,
   normalizeMail,
+  noticeMaster,
+  noticeReply,
   parseComment,
   preCheckSpam,
   sendNotice,

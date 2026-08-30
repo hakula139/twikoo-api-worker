@@ -24,6 +24,8 @@ vi.mock('@/twikoo', () => ({
   logger: console,
   md5: (s: string) => `md5(${s})`,
   normalizeMail: (m: string) => m.trim().toLowerCase(),
+  noticeMaster: vi.fn(async () => undefined),
+  noticeReply: vi.fn(async () => undefined),
   parseComment: vi.fn((rows: Array<Record<string, unknown>>, uid: string) => {
     const toDto = (row: Record<string, unknown>, replies: unknown[] = []) => {
       const ups = Array.isArray(row.ups) ? row.ups : [];

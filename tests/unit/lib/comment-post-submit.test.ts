@@ -1,5 +1,5 @@
 import type { Comment, NewComment } from '@/db';
-import type { RequestCtx } from '@/types';
+import type { RequestCtx, TwikooConfig } from '@/types';
 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -22,9 +22,14 @@ interface PostSubmitDb {
   updateSpam: ReturnType<typeof vi.fn>;
 }
 
-const buildPostCtx = (db: PostSubmitDb, env: Partial<RequestCtx['env']> = {}): RequestCtx =>
+const buildPostCtx = (
+  db: PostSubmitDb,
+  env: Partial<RequestCtx['env']> = {},
+  config: TwikooConfig = {},
+): RequestCtx =>
   buildCtx({
     env: env as RequestCtx['env'],
+    config,
     db: {
       comment: {
         byId: vi.fn(async (id: string) => db.byIdRows.get(id)),
@@ -144,5 +149,137 @@ describe('postSubmit', () => {
     await postSubmit(baseSaved(), ctx);
 
     expect(captured).toBe(parent);
+  });
+
+  it('routes Telegram through the Worker sender and sends both configured mail notices', async () => {
+    const fetchMock = vi.spyOn(globalThis, 'fetch').mockResolvedValue(Response.json({ ok: true }));
+    const parent = baseSaved({ _id: mkCommentId('parent-1') });
+    let capturedParent: unknown;
+    vi.mocked(twikoo.noticeReply).mockImplementationOnce(async (current, _config, getParent) => {
+      expect(current).toEqual(expect.objectContaining({ _id: 'saved-1', id: 'saved-1' }));
+      capturedParent = await getParent({ pid: 'parent-1' });
+    });
+    const updateSpam = vi.fn(async () => undefined);
+    const ctx = buildPostCtx(
+      { byIdRows: new Map([['parent-1', parent]]), updateSpam },
+      {},
+      {
+        PUSHOO_CHANNEL: 'telegram',
+        PUSHOO_TOKEN: '123456:bot_token#-100123456',
+        SC_MAIL_NOTIFY: 'true',
+        SITE_NAME: 'Hakula',
+      },
+    );
+
+    await postSubmit(baseSaved(), ctx);
+
+    expect(twikoo.sendNotice).not.toHaveBeenCalled();
+    expect(twikoo.noticeMaster).toHaveBeenCalledWith(
+      expect.objectContaining({ _id: 'saved-1', id: 'saved-1' }),
+      expect.objectContaining({ PUSHOO_CHANNEL: 'telegram' }),
+    );
+    expect(twikoo.noticeReply).toHaveBeenCalledOnce();
+    expect(capturedParent).toBe(parent);
+    expect(fetchMock).toHaveBeenCalledOnce();
+  });
+
+  it('defaults to Telegram-only master notices while retaining reply emails', async () => {
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(Response.json({ ok: true }));
+    const updateSpam = vi.fn(async () => undefined);
+    const ctx = buildPostCtx(
+      { byIdRows: new Map(), updateSpam },
+      {},
+      {
+        PUSHOO_CHANNEL: 'telegram',
+        PUSHOO_TOKEN: '123456:bot_token#-100123456',
+        SITE_NAME: 'Hakula',
+      },
+    );
+
+    await postSubmit(baseSaved(), ctx);
+
+    expect(twikoo.noticeMaster).not.toHaveBeenCalled();
+    expect(twikoo.noticeReply).toHaveBeenCalledOnce();
+  });
+
+  it('uses upstream notices when Telegram has no token', async () => {
+    const updateSpam = vi.fn(async () => undefined);
+    const ctx = buildPostCtx(
+      { byIdRows: new Map(), updateSpam },
+      {},
+      { PUSHOO_CHANNEL: 'telegram' },
+    );
+
+    await postSubmit(baseSaved(), ctx);
+
+    expect(twikoo.sendNotice).toHaveBeenCalledOnce();
+    expect(twikoo.noticeMaster).not.toHaveBeenCalled();
+    expect(twikoo.noticeReply).not.toHaveBeenCalled();
+  });
+
+  it('skips unsupported push adapters while retaining reply emails', async () => {
+    const warnSpy = vi.spyOn(twikoo.logger, 'warn').mockImplementation(() => undefined);
+    const updateSpam = vi.fn(async () => undefined);
+    const ctx = buildPostCtx(
+      { byIdRows: new Map(), updateSpam },
+      {},
+      { PUSHOO_CHANNEL: 'bark', PUSHOO_TOKEN: 'token' },
+    );
+
+    await postSubmit(baseSaved(), ctx);
+
+    expect(twikoo.sendNotice).not.toHaveBeenCalled();
+    expect(twikoo.noticeMaster).not.toHaveBeenCalled();
+    expect(twikoo.noticeReply).toHaveBeenCalledOnce();
+    expect(warnSpy).toHaveBeenCalledWith('Configured instant-push channel is not supported.');
+  });
+
+  it('skips all notices for excluded spam', async () => {
+    const fetchMock = vi.spyOn(globalThis, 'fetch');
+    const updateSpam = vi.fn(async () => undefined);
+    const ctx = buildPostCtx(
+      { byIdRows: new Map(), updateSpam },
+      {},
+      {
+        PUSHOO_CHANNEL: 'telegram',
+        PUSHOO_TOKEN: '123456:bot_token#-100123456',
+        NOTIFY_SPAM: 'false',
+      },
+    );
+
+    await postSubmit(baseSaved({ isSpam: 1 }), ctx);
+
+    expect(twikoo.sendNotice).not.toHaveBeenCalled();
+    expect(twikoo.noticeMaster).not.toHaveBeenCalled();
+    expect(twikoo.noticeReply).not.toHaveBeenCalled();
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it('waits for mail to settle and swallows native Telegram failures', async () => {
+    vi.spyOn(globalThis, 'fetch').mockRejectedValue(new Error('telegram down'));
+    const replyDone = vi.fn();
+    vi.mocked(twikoo.noticeReply).mockImplementationOnce(async () => {
+      await Promise.resolve();
+      replyDone();
+    });
+    const errorSpy = vi.spyOn(twikoo.logger, 'error').mockImplementation(() => undefined);
+    const updateSpam = vi.fn(async () => undefined);
+    const ctx = buildPostCtx(
+      { byIdRows: new Map(), updateSpam },
+      {},
+      {
+        PUSHOO_CHANNEL: 'telegram',
+        PUSHOO_TOKEN: '123456:bot_token#-100123456',
+        SITE_NAME: 'Hakula',
+      },
+    );
+
+    await expect(postSubmit(baseSaved(), ctx)).resolves.toBeUndefined();
+
+    expect(replyDone).toHaveBeenCalledOnce();
+    expect(errorSpy).toHaveBeenCalledWith(
+      expect.objectContaining({ stage: 'sendNotice' }),
+      'postSubmit failed',
+    );
   });
 });

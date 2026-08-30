@@ -42,6 +42,7 @@ The worker is a thin TypeScript dispatcher that delegates business logic to the 
 - **Runtime**: Cloudflare Workers (V8 isolate) with `nodejs_compat` and `enable_nodejs_http2_module` flags.
 - **Storage**: Cloudflare D1 (SQLite) for `comment` / `config` / `counter` tables, accessed via Drizzle ORM (`drizzle-orm/d1`). Cloudflare R2 stores uploaded images.
 - **Mail**: HTTP-based providers only (SendGrid / MailChannels / Resend). SMTP is unavailable because Wrangler aliases `nodemailer` to an empty Worker module.
+- **Instant push**: Telegram Bot API via native `fetch`. Other upstream Pushoo channels are skipped because their Axios adapter is not Workers-compatible.
 - **Sanitization**: [`xss`](https://www.npmjs.com/package/xss) (replaces `DOMPurify` + `jsdom`).
 - **Spam**: Akismet HTTP API + frequency limiter. Cloudflare Turnstile provides captcha checks.
 - **Captcha**: Cloudflare Turnstile siteverify.
@@ -76,6 +77,7 @@ pnpm wrangler d1 create twikoo             # capture database_id → wrangler.to
 pnpm wrangler r2 bucket create twikoo
 pnpm db:push                               # needs CLOUDFLARE_ACCOUNT_ID and CLOUDFLARE_D1_TOKEN
 pnpm wrangler secret put ADMIN_PASS_HASH   # md5 of plaintext admin password — see "Admin bootstrap" below
+pnpm wrangler secret put PUSHOO_TOKEN      # Telegram bot token + # + chat ID
 pnpm wrangler secret put SMTP_PASS         # repeat per secret
 pnpm deploy
 ```

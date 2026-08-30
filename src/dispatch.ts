@@ -81,7 +81,7 @@ export const dispatch = async (
 
     const loaded = await loadConfig(env, db);
     if (loaded.kind === 'corrupted') {
-      // Avoid logging the raw row since it normally contains ADMIN_PASS and SMTP_PASS.
+      // Avoid logging the raw row because it normally contains secrets.
       // Length and parse error are safe and the only useful triage signal.
       logger.error(
         { length: loaded.length, parseError: loaded.parseError },

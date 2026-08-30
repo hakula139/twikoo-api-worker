@@ -12,6 +12,7 @@ This is a from-scratch TypeScript implementation that depends on the upstream [`
 
 - **D1 + R2 storage**: SQLite-based comment store with R2 for image uploads — no external database.
 - **HTTP mail providers**: SendGrid, MailChannels, Resend (no SMTP, no `nodemailer`).
+- **Telegram notifications**: native Bot API delivery without Node.js HTTP adapters.
 - **Cloudflare-native**: Smart Placement, observability logs, custom domain via `routes`.
 - **Public repo, private secrets**: secrets via `wrangler secret put`, never committed.
 
@@ -48,6 +49,7 @@ Set the following optional secrets as needed. Each value can also be set under t
 
 ```bash
 pnpm wrangler secret put AKISMET_KEY
+pnpm wrangler secret put PUSHOO_TOKEN
 pnpm wrangler secret put QQ_API_KEY
 pnpm wrangler secret put SENDER_EMAIL
 pnpm wrangler secret put SMTP_PASS

@@ -2,8 +2,10 @@ import type { NewComment } from '@/db';
 import type { RequestCtx } from '@/types';
 
 import { checkAkismet } from '@/lib/akismet';
+import { stringConfig } from '@/lib/config-read';
 import { configWithSecrets, secret } from '@/lib/secret';
-import { logger, sendNotice } from '@/twikoo';
+import { sendTelegramNotice } from '@/shims/telegram';
+import { logger, noticeMaster, noticeReply, sendNotice } from '@/twikoo';
 import { mkCommentId } from '@/types';
 
 // Akismet and notification failures are isolated because this work is best-effort.
@@ -39,7 +41,33 @@ export const postSubmit = async (saved: NewComment, ctx: RequestCtx): Promise<vo
       const parentId = (curr as { pid?: string }).pid;
       return parentId ? ctx.db.comment.byId(mkCommentId(parentId)) : undefined;
     };
-    await sendNotice(saved, configWithSecrets(ctx), getParentComment);
+    const config = configWithSecrets(ctx);
+    if (saved.isSpam && config.NOTIFY_SPAM === 'false') {
+      return;
+    }
+    const pushChannel = stringConfig(config, 'PUSHOO_CHANNEL');
+    const pushToken = stringConfig(config, 'PUSHOO_TOKEN');
+    const upstreamComment = { ...saved, id: saved._id };
+    if (pushChannel && pushToken) {
+      const operations: Promise<unknown>[] = [
+        noticeReply(upstreamComment, config, getParentComment),
+      ];
+      if (config.SC_MAIL_NOTIFY === 'true') {
+        operations.push(noticeMaster(upstreamComment, config));
+      }
+      if (pushChannel.toLowerCase() === 'telegram') {
+        operations.push(sendTelegramNotice(saved, config));
+      } else {
+        logger.warn('Configured instant-push channel is not supported.');
+      }
+      const results = await Promise.allSettled(operations);
+      const failure = results.find((result) => result.status === 'rejected');
+      if (failure?.status === 'rejected') {
+        throw failure.reason;
+      }
+    } else {
+      await sendNotice(upstreamComment, config, getParentComment);
+    }
   } catch (error) {
     logger.error(
       { stage: 'sendNotice', id: saved._id, url: saved.url, error },
