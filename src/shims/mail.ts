@@ -73,6 +73,7 @@ const PROVIDERS: Record<Service, MailProvider> = {
       'Authorization': `Bearer ${apiKey}`,
       'Content-Type': 'application/json',
       'Accept': 'application/json',
+      'User-Agent': 'twikoo-api-worker',
     }),
     body: (msg) => ({
       from: msg.from,
