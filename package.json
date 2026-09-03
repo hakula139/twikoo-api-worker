@@ -5,7 +5,7 @@
   "private": true,
   "type": "module",
   "main": "src/worker.ts",
-  "packageManager": "pnpm@11.0.8",
+  "packageManager": "pnpm@11.25.0",
   "scripts": {
     "check": "tsc --noEmit",
     "db:fixture": "drizzle-kit export > tests/fixtures/schema.sql",
@@ -29,17 +29,17 @@
   },
   "devDependencies": {
     "@cloudflare/vitest-pool-workers": "^0.22.0",
-    "@cloudflare/workers-types": "^5.20260830.1",
-    "@types/node": "^26.4.0",
+    "@cloudflare/workers-types": "^5.20260902.1",
+    "@types/node": "^26.4.1",
     "@vitest/coverage-istanbul": "^4.1.11",
-    "cspell": "^10.1.1",
+    "cspell": "^10.2.0",
     "drizzle-kit": "^0.31.10",
     "eslint": "^10.9.1",
     "markdownlint-cli2": "^0.23.2",
     "prettier": "^3.9.6",
     "typescript": "^6.0.3",
-    "typescript-eslint": "^8.68.0",
+    "typescript-eslint": "^8.69.0",
     "vitest": "^4.1.11",
-    "wrangler": "^4.127.1"
+    "wrangler": "^4.128.0"
   }
 }
