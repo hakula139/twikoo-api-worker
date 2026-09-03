@@ -5,7 +5,7 @@ import { checkAkismet } from '@/lib/akismet';
 import { stringConfig } from '@/lib/config-read';
 import { configWithSecrets, secret } from '@/lib/secret';
 import { sendTelegramNotice } from '@/shims/telegram';
-import { logger, noticeMaster, noticeReply, sendNotice } from '@/twikoo';
+import { equalsMail, logger, noticeMaster, noticeReply, sendNotice } from '@/twikoo';
 import { mkCommentId } from '@/types';
 
 // Akismet and notification failures are isolated because this work is best-effort.
@@ -56,7 +56,9 @@ export const postSubmit = async (saved: NewComment, ctx: RequestCtx): Promise<vo
         operations.push(noticeMaster(upstreamComment, config));
       }
       if (pushChannel.toLowerCase() === 'telegram') {
-        operations.push(sendTelegramNotice(saved, config));
+        if (!equalsMail(stringConfig(config, 'BLOGGER_EMAIL') ?? '', saved.mail)) {
+          operations.push(sendTelegramNotice(saved, config, pushToken));
+        }
       } else {
         logger.warn('Configured instant-push channel is not supported.');
       }

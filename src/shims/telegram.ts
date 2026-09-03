@@ -10,9 +10,7 @@ interface TelegramComment {
   mail: string;
   ip: string;
   comment: string;
-  href: string;
   url: string;
-  isSpam: number;
 }
 
 const htmlToText = getHtmlToText();
@@ -53,56 +51,39 @@ const escapeHtml = (value: string, maxLength: number): string => {
 };
 
 const commentUrl = (comment: TelegramComment, config: TwikooConfig): string | undefined => {
-  try {
-    const path = `/${comment.url.replace(/^\/+/, '')}`;
-    const siteUrl = stringConfig(config, 'SITE_URL');
-    if (!siteUrl) {
-      return undefined;
-    }
-    const base = new URL(siteUrl);
-    if (base.protocol !== 'http:' && base.protocol !== 'https:') {
-      return undefined;
-    }
-    const url = new URL(path, base);
-    if (url.origin !== base.origin) {
-      return undefined;
-    }
-    const hash = url.href.indexOf('#');
-    const href = `${hash === -1 ? url.href : url.href.slice(0, hash)}#${comment._id}`;
-    const escapedLength = [...href].reduce((length, char) => length + escapeChar(char).length, 0);
-    return escapedLength <= MAX_URL_LENGTH ? escapeHtml(href, MAX_URL_LENGTH) : undefined;
-  } catch {
+  const siteUrl = stringConfig(config, 'SITE_URL');
+  if (!siteUrl || !URL.canParse(siteUrl)) {
     return undefined;
   }
-};
-
-const sameMail = (left: string | undefined, right: string): boolean => {
-  const normalizedLeft = left?.trim().toLowerCase();
-  return Boolean(normalizedLeft) && normalizedLeft === right.trim().toLowerCase();
+  const base = new URL(siteUrl);
+  if (base.protocol !== 'http:' && base.protocol !== 'https:') {
+    return undefined;
+  }
+  const path = `/${comment.url.replace(/^\/+/, '')}`;
+  if (!URL.canParse(path, base.href)) {
+    return undefined;
+  }
+  const url = new URL(path, base);
+  if (url.origin !== base.origin) {
+    return undefined;
+  }
+  const hash = url.href.indexOf('#');
+  const href = `${hash === -1 ? url.href : url.href.slice(0, hash)}#${comment._id}`;
+  const escapedLength = [...href].reduce((length, char) => length + escapeChar(char).length, 0);
+  return escapedLength <= MAX_URL_LENGTH ? escapeHtml(href, MAX_URL_LENGTH) : undefined;
 };
 
 export const sendTelegramNotice = async (
   comment: TelegramComment,
   config: TwikooConfig,
+  pushToken: string,
 ): Promise<void> => {
-  const channel = stringConfig(config, 'PUSHOO_CHANNEL');
-  const pushToken = stringConfig(config, 'PUSHOO_TOKEN');
-  if (channel?.toLowerCase() !== 'telegram' || !pushToken) {
-    return;
-  }
-  if (comment.isSpam && stringConfig(config, 'NOTIFY_SPAM') === 'false') {
-    return;
-  }
-  if (sameMail(stringConfig(config, 'BLOGGER_EMAIL'), comment.mail)) {
-    return;
-  }
-
   const separator = pushToken.indexOf('#');
-  const botToken = pushToken.slice(0, separator);
-  const chatId = pushToken.slice(separator + 1);
-  if (!/^\d+:[A-Za-z0-9_-]+$/.test(botToken) || !/^(?:-?\d+|@[A-Za-z0-9_]+)$/.test(chatId)) {
+  if (separator < 1 || separator === pushToken.length - 1) {
     throw new Error('PUSHOO_TOKEN must contain a Telegram bot token and chat ID separated by #.');
   }
+  const botToken = pushToken.slice(0, separator);
+  const chatId = pushToken.slice(separator + 1);
 
   const title =
     stringConfig(config, 'MAIL_SUBJECT_ADMIN') ||
@@ -125,11 +106,10 @@ export const sendTelegramNotice = async (
       link_preview_options: { is_disabled: true },
     }),
   });
-  const result = (await response.json().catch(() => undefined)) as
-    { ok?: boolean; description?: string } | undefined;
-  if (!response.ok || result?.ok !== true) {
-    const detail =
-      result?.description || (!response.ok && response.statusText) || 'Invalid response';
-    throw new Error(`Telegram send failed: ${response.status} ${detail}`);
+  const result = await response.json<{ ok: boolean; description?: string }>();
+  if (!result.ok) {
+    throw new Error(
+      `Telegram send failed: ${response.status} ${result.description ?? response.statusText}`,
+    );
   }
 };

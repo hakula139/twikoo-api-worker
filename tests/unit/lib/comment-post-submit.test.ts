@@ -202,6 +202,25 @@ describe('postSubmit', () => {
     expect(twikoo.noticeReply).toHaveBeenCalledOnce();
   });
 
+  it('does not notify the blogger about their own comment', async () => {
+    const fetchMock = vi.spyOn(globalThis, 'fetch');
+    const updateSpam = vi.fn(async () => undefined);
+    const ctx = buildPostCtx(
+      { byIdRows: new Map(), updateSpam },
+      {},
+      {
+        BLOGGER_EMAIL: ' A@example.com ',
+        PUSHOO_CHANNEL: 'telegram',
+        PUSHOO_TOKEN: '123456:bot_token#-100123456',
+      },
+    );
+
+    await postSubmit(baseSaved(), ctx);
+
+    expect(fetchMock).not.toHaveBeenCalled();
+    expect(twikoo.noticeReply).toHaveBeenCalledOnce();
+  });
+
   it('uses upstream notices when Telegram has no token', async () => {
     const updateSpam = vi.fn(async () => undefined);
     const ctx = buildPostCtx(
