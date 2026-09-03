@@ -61,10 +61,8 @@ jobs:
       - name: Bundle size check
         run: |
           nix develop -c pnpm wrangler deploy --dry-run --outdir dist
-          # Threshold sits well under Workers' 3 MB cap with headroom over
-          # the current ~350 KiB gzipped build. Bumps here should travel with
-          # edits to scripts/bundle-trim.mjs (trim list).
-          THRESHOLD=$((950 * 1024))
+          # Keep this aligned with the Workers Free plan's 3 MiB compressed limit.
+          THRESHOLD=$((3 * 1024 * 1024))
           GZIPPED=$(gzip -c dist/worker.js | wc -c)
           echo "Compressed bundle: ${GZIPPED} bytes (threshold: ${THRESHOLD})"
           if [ "${GZIPPED}" -gt "${THRESHOLD}" ]; then

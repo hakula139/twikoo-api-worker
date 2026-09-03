@@ -2,8 +2,7 @@
 
 ## Project Overview
 
-twikoo-api-worker is a Cloudflare Workers backend for the [Twikoo](https://twikoo.js.org/en/intro.html) comment system, deployed to <https://twikoo.hakula.xyz>.
-It replaces the previous Vercel + MongoDB deployment ([hakula139/twikoo-vercel-api](https://github.com/hakula139/twikoo-vercel-api)) — which still serves the legacy `twikoo-api.hakula.xyz` URL during cutover — with Cloudflare D1 (SQLite) for comments and Cloudflare R2 for image uploads.
+twikoo-api-worker is a Cloudflare Workers backend for the [Twikoo](https://twikoo.js.org/en/intro.html) comment system, deployed to <https://twikoo.hakula.xyz>. It replaces the previous Vercel + MongoDB deployment ([hakula139/twikoo-vercel-api](https://github.com/hakula139/twikoo-vercel-api)) — which still serves the legacy `twikoo-api.hakula.xyz` URL during cutover — with Cloudflare D1 (SQLite) for comments and Cloudflare R2 for image uploads.
 
 The worker is a thin TypeScript dispatcher that delegates business logic to the upstream `twikoo-func` npm package, with V8-isolate-compatible shims for parts of `twikoo-func` that assume Node.js (mail via HTTP providers instead of SMTP, `xss` instead of `DOMPurify` + `jsdom`, etc.).
 
@@ -86,10 +85,7 @@ pnpm deploy
 
 ### Admin bootstrap
 
-`SET_PASSWORD` is admin-only because the open "claim by first call" path upstream Twikoo ships has a TOCTOU race during the deploy → first-call window.
-Seed the admin identity via `ADMIN_PASS_HASH` (md5 of the plaintext password).
-`dispatch.ts` merges it into `ctx.config.ADMIN_PASS` until the D1 row has its own.
-Once `SET_PASSWORD` rotates that value, the secret can be removed.
+`SET_PASSWORD` is admin-only because the open "claim by first call" path upstream Twikoo ships has a TOCTOU race during the deploy → first-call window. Seed the admin identity via `ADMIN_PASS_HASH` (md5 of the plaintext password). `dispatch.ts` merges it into `ctx.config.ADMIN_PASS` until the D1 row has its own. Once `SET_PASSWORD` rotates that value, the secret can be removed.
 
 ```bash
 printf 'my-plain-password' | md5           # macOS: returns 32 hex chars
@@ -100,7 +96,9 @@ pnpm wrangler secret put ADMIN_PASS_HASH   # paste the hex
 
 Pushes to `main` trigger `.github/workflows/deploy.yml`. Required repo secrets:
 
-- `CLOUDFLARE_API_TOKEN` — scoped to Account → Workers Scripts: Edit and Zone (`hakula.xyz`) → Workers Routes: Edit.
+- `CLOUDFLARE_API_TOKEN` with both permissions:
+  - Account → Workers Scripts: Edit
+  - Zone (`hakula.xyz`) → Workers Routes: Edit
 - `CLOUDFLARE_ACCOUNT_ID`.
 
 ## Coding Conventions
@@ -128,21 +126,15 @@ Pushes to `main` trigger `.github/workflows/deploy.yml`. Required repo secrets:
 
 ### Local-only paths
 
-Never reference gitignored paths (`.claude/`, `.dev.vars`, `.env*`, etc.) from source files, code comments, commit messages, PR descriptions, README, or other committed artifacts.
-They do not exist for other contributors or CI, so the references rot.
-This file (`AGENTS.md`) is the exception because it documents local planning state for the assistant.
+Never reference gitignored paths (`.claude/`, `.dev.vars`, `.env*`, etc.) from source files, code comments, commit messages, PR descriptions, README, or other committed artifacts. They do not exist for other contributors or CI, so the references rot. This file (`AGENTS.md`) is the exception because it documents local planning state for the assistant.
 
 ### Bundle constraints
 
-The Workers Free plan allows 3 MB after gzip, while CI enforces a tighter 950 KiB project limit.
-`scripts/bundle-trim.mjs` empties out two Node-only packages that `twikoo-func` pulls in (`jsdom`, `nodemailer`) so esbuild can tree-shake them.
-Touch this script if `twikoo-func` adds new Node-only dependencies.
+The Workers Free plan allows 3 MiB after gzip, and CI enforces the same limit. `scripts/bundle-trim.mjs` empties out two Node-only packages that `twikoo-func` pulls in (`jsdom`, `nodemailer`) so esbuild can tree-shake them. Touch this script if `twikoo-func` adds new Node-only dependencies.
 
 ### Secrets discipline
 
-The repo is **public**.
-Anything sensitive goes through `wrangler secret put`, never into `wrangler.toml` or source.
-Local development uses `.dev.vars` (gitignored).
+The repo is **public**. Anything sensitive goes through `wrangler secret put`, never into `wrangler.toml` or source. Local development uses `.dev.vars` (gitignored).
 
 D1 database IDs are committed: they're not secrets on their own, but they identify your account's resources. Treat as operational config.
 
@@ -153,15 +145,11 @@ D1 database IDs are committed: they're not secrets on their own, but they identi
   - Scope: most specific area changed (e.g., `worker`, `db`, `mail`, `ci`, `flake`).
 - One logical change per commit.
 - Branches: `<type>/<short-name>`.
-- PRs: assign to `hakula139`, label `enhancement` for `feat`.
+- PRs: assign to `hakula139`. Use `enhancement` for `feat` PRs and `dependencies` for dependency updates.
 
 ### Pre-commit hooks
 
-Pre-commit hooks use [git-hooks-nix](https://github.com/cachix/git-hooks.nix), configured in `flake.nix`.
-Entering the dev shell installs `.git/hooks/pre-commit` automatically.
-The hooks run Prettier (TS / JS / JSON / TOML / YAML), markdownlint, cspell, nixfmt / statix / deadnix, and basic file hygiene.
-Node-side hooks no-op when `node_modules/` is absent in the Nix sandbox.
-CI's `check` job runs the equivalent commands directly via `pnpm`.
+Pre-commit hooks use [git-hooks-nix](https://github.com/cachix/git-hooks.nix), configured in `flake.nix`. Entering the dev shell installs `.git/hooks/pre-commit` automatically. The hooks run Prettier (TS / JS / JSON / TOML / YAML), markdownlint, cspell, nixfmt / statix / deadnix, and basic file hygiene. Node-side hooks no-op when `node_modules/` is absent in the Nix sandbox. CI's `check` job runs the equivalent commands directly via `pnpm`.
 
 ### Spell checking
 
@@ -180,8 +168,7 @@ pnpm spellcheck              # cspell
 nix flake check              # Nix-side hooks. Optional locally because CI runs the Node-side equivalents.
 ```
 
-`pnpm dev` is the smoke test for runtime behavior because Wrangler uses the live D1 / R2 bindings unless `--local` is passed.
-Verify bundle size with `pnpm wrangler deploy --dry-run`.
+`pnpm dev` is the smoke test for runtime behavior because Wrangler uses the live D1 / R2 bindings unless `--local` is passed. Verify bundle size with `pnpm wrangler deploy --dry-run`.
 
 ## Code Review
 
@@ -196,11 +183,9 @@ After verification passes, run a parallel review with multiple subagents — typ
 - Visibility — `export` only what consumers need. Keep helpers module-private.
 - Idiomatic TypeScript — discriminated unions, `readonly`, exhaustive `switch`, narrow types over `any` / `unknown` casts, async / await over raw Promises.
 - Existing packages — flag hand-written logic that `twikoo-func`, `xss`, or a Cloudflare-native API already handles.
-- Bundle impact — new dependencies must fit under the 950 KiB gzip limit after `bundle-trim.mjs`. Flag Node-only packages that need trimming.
+- Bundle impact — new dependencies must fit under the 3 MiB gzip limit after `bundle-trim.mjs`. Flag Node-only packages that need trimming.
 - Secrets — any new config goes through `wrangler secret put`, never `wrangler.toml` or source.
 
 ## Upstream relationship
 
-The original Cloudflare port lives at [twikoojs/twikoo-cloudflare](https://github.com/twikoojs/twikoo-cloudflare) (MIT).
-This repo is a from-scratch TypeScript rewrite that consults the upstream as a reference implementation but does not share code.
-Business logic comes from the `twikoo-func` npm package.
+The original Cloudflare port lives at [twikoojs/twikoo-cloudflare](https://github.com/twikoojs/twikoo-cloudflare) (MIT). This repo is a from-scratch TypeScript rewrite that consults the upstream as a reference implementation but does not share code. Business logic comes from the `twikoo-func` npm package.

@@ -1,6 +1,6 @@
 // `twikoo-func` pulls in Node-only modules the runtime cannot execute.
 // Nulling their entry points lets esbuild remove them across pnpm's hoist layout.
-// Keep this list in sync; CI's 950 KiB gzip gate catches regressions.
+// CI's 3 MiB gzip gate catches bundle regressions.
 
 import { existsSync, globSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';

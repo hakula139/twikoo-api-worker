@@ -82,7 +82,9 @@ pnpm db:push                 # sync schema.ts changes to remote D1
 
 Pushes to `main` auto-deploy via [`.github/workflows/deploy.yml`](.github/workflows/deploy.yml). Required repository secrets:
 
-- `CLOUDFLARE_API_TOKEN` — Account → Workers Scripts: Edit and Zone (`hakula.xyz`) → Workers Routes: Edit.
+- `CLOUDFLARE_API_TOKEN` with both permissions:
+  - Account → Workers Scripts: Edit
+  - Zone (`hakula.xyz`) → Workers Routes: Edit
 - `CLOUDFLARE_ACCOUNT_ID`.
 
 Manual deploy:
