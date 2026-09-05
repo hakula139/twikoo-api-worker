@@ -6,6 +6,7 @@ import { ResponseCode, type ResponseCodeValue, TwikooError } from './errors';
 // Env binding name == admin-config field name. Wrangler secret wins.
 const SECRET_PAIRS = {
   AKISMET_KEY: 'AKISMET_KEY',
+  PUSHOO_TOKEN: 'PUSHOO_TOKEN',
   QQ_API_KEY: 'QQ_API_KEY',
   SENDER_EMAIL: 'SENDER_EMAIL',
   SMTP_PASS: 'SMTP_PASS',

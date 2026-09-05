@@ -19,11 +19,22 @@ vi.mock('@/twikoo', () => ({
   getPasswordStatus: vi.fn(async () => ({})),
   getUrlsQuery: (urls: string[]) =>
     urls.flatMap((url) => (url ? [url, url.endsWith('/') ? url.slice(0, -1) : `${url}/`] : [])),
+  htmlToText: vi.fn((html: string) =>
+    html
+      .replace(/<[^>]+>/g, '')
+      .replaceAll('&amp;', '&')
+      .replaceAll('&lt;', '<')
+      .replaceAll('&gt;', '>')
+      .replaceAll('&quot;', '"')
+      .replaceAll('&#39;', "'"),
+  ),
   isQQ: () => false,
   jsonParse: (s: string): unknown => JSON.parse(s),
   logger: console,
   md5: (s: string) => `md5(${s})`,
   normalizeMail: (m: string) => m.trim().toLowerCase(),
+  noticeMaster: vi.fn(async () => undefined),
+  noticeReply: vi.fn(async () => undefined),
   parseComment: vi.fn((rows: Array<Record<string, unknown>>, uid: string) => {
     const toDto = (row: Record<string, unknown>, replies: unknown[] = []) => {
       const ups = Array.isArray(row.ups) ? row.ups : [];

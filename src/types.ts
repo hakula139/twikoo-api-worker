@@ -13,6 +13,7 @@ export interface Bindings {
 export interface Secrets {
   ADMIN_PASS_HASH?: string;
   AKISMET_KEY?: string;
+  PUSHOO_TOKEN?: string;
   QQ_API_KEY?: string;
   SENDER_EMAIL?: string;
   SMTP_PASS?: string;
@@ -52,6 +53,9 @@ export interface TwikooConfig {
   LIMIT_PER_MINUTE_ALL?: string;
   NSFW_API_URL?: string;
   NSFW_THRESHOLD?: string;
+  NOTIFY_SPAM?: string;
+  PUSHOO_CHANNEL?: string;
+  PUSHOO_TOKEN?: string;
   QQ_API_KEY?: string;
   S3_ACCESS_KEY_ID?: string;
   S3_BUCKET?: string;
@@ -60,7 +64,9 @@ export interface TwikooConfig {
   S3_PATH_PREFIX?: string;
   S3_REGION?: string;
   S3_SECRET_ACCESS_KEY?: string;
+  SC_MAIL_NOTIFY?: string;
   SENDER_EMAIL?: string;
+  SITE_NAME?: string;
   SITE_URL?: string;
   SMTP_PASS?: string;
   SMTP_USER?: string;

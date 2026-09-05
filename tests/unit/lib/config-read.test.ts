@@ -16,8 +16,8 @@ describe('stringConfig', () => {
   });
 
   it('returns undefined for non-string values', () => {
-    expect(stringConfig({ SITE_NAME: 42 }, 'SITE_NAME')).toBeUndefined();
-    expect(stringConfig({ SITE_NAME: false }, 'SITE_NAME')).toBeUndefined();
+    expect(stringConfig({ PAGE_SIZE: 42 }, 'PAGE_SIZE')).toBeUndefined();
+    expect(stringConfig({ SHOW_REGION: false }, 'SHOW_REGION')).toBeUndefined();
   });
 });
 
