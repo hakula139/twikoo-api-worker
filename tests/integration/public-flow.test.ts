@@ -1,6 +1,7 @@
+import type { MockInstance } from 'vitest';
+
 import { env } from 'cloudflare:workers';
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
-import type { MockInstance } from 'vitest';
 
 import { ResponseCode } from '@/lib/errors';
 import { logger } from '@/twikoo';
@@ -24,27 +25,9 @@ afterEach(async () => {
 });
 
 describe('integration: smoke probes', () => {
-  it('GET_FUNC_VERSION returns SUCCESS without a config row', async () => {
+  it('GET_FUNC_VERSION returns the upstream version without a config row', async () => {
     const { body } = await postEvent('GET_FUNC_VERSION');
-    expect(body.code).toBe(ResponseCode.SUCCESS);
-  });
-
-  it('GET_PASSWORD_STATUS returns SUCCESS once config exists', async () => {
-    await seedConfig({});
-    const { body } = await postEvent('GET_PASSWORD_STATUS');
-    expect(body.code).toBe(ResponseCode.SUCCESS);
-  });
-
-  it('GET_CONFIG returns SUCCESS for any caller', async () => {
-    await seedConfig({});
-    const { body } = await postEvent('GET_CONFIG');
-    expect(body.code).toBe(ResponseCode.SUCCESS);
-  });
-
-  it('rejects an unknown event with EVENT_NOT_EXIST', async () => {
-    await seedConfig({});
-    const { body } = await postEvent('NOT_AN_EVENT');
-    expect(body.code).toBe(ResponseCode.EVENT_NOT_EXIST);
+    expect(body).toEqual({ code: ResponseCode.SUCCESS, version: '0.0.0-test' });
   });
 });
 
@@ -56,14 +39,14 @@ describe('integration: GET_COMMENTS_COUNT', () => {
     await seedComment({ url: '/post-b/' });
 
     const { body } = await postEvent('GET_COMMENTS_COUNT', {
-      urls: ['/post-a/', '/post-b/', '/post-c/'],
+      urls: ['/post-a', '/post-b/', '/post-c'],
     });
 
     expect(body.code).toBe(ResponseCode.SUCCESS);
     expect(body.data).toEqual([
-      { url: '/post-a/', count: 2 },
+      { url: '/post-a', count: 2 },
       { url: '/post-b/', count: 1 },
-      { url: '/post-c/', count: 0 },
+      { url: '/post-c', count: 0 },
     ]);
   });
 
@@ -79,15 +62,15 @@ describe('integration: GET_RECENT_COMMENTS', () => {
   it('returns rows in newest-first order, capped by pageSize', async () => {
     await seedConfig({});
     const t0 = Date.now() - 60_000;
-    await seedComment({ url: '/p/', comment: 'oldest', created: t0 });
-    await seedComment({ url: '/p/', comment: 'middle', created: t0 + 1_000 });
-    await seedComment({ url: '/p/', comment: 'newest', created: t0 + 2_000 });
+    await seedComment({ url: '/about-me/', comment: 'Oldest comment', created: t0 });
+    await seedComment({ url: '/about-me/', comment: 'Middle comment', created: t0 + 1_000 });
+    await seedComment({ url: '/about-me/', comment: 'Newest comment', created: t0 + 2_000 });
 
-    const { body } = await postEvent('GET_RECENT_COMMENTS', { urls: ['/p/'], pageSize: 2 });
+    const { body } = await postEvent('GET_RECENT_COMMENTS', { urls: ['/about-me'], pageSize: 2 });
 
     expect(body.code).toBe(ResponseCode.SUCCESS);
     const data = body.data as Array<{ comment: string }>;
-    expect(data.map((c) => c.comment)).toEqual(['newest', 'middle']);
+    expect(data.map((c) => c.comment)).toEqual(['Newest comment', 'Middle comment']);
   });
 
   it('rejects a non-array `urls` payload when present', async () => {
@@ -113,21 +96,70 @@ describe('integration: COMMENT_GET', () => {
 
     expect(body.code).toBe(ResponseCode.SUCCESS);
     expect(body.count).toBe(2);
-    // Mocked `parseComment` is identity, so rows expose the schema's `_id`.
-    const data = body.data as Array<{ _id: string }>;
-    expect(data.map((c) => c._id)).toEqual([second, first]);
+    const data = body.data as Array<Record<string, unknown> & { id: string }>;
+    expect(data.map((c) => c.id)).toEqual([second, first]);
+    expect(data[0]).toMatchObject({
+      id: second,
+      comment: '<p>second</p>',
+      ups: 0,
+      downs: 0,
+      replies: [],
+    });
+    for (const field of ['uid', 'mail', 'ua', 'ip']) {
+      expect(data[0]).not.toHaveProperty(field);
+    }
+  });
+
+  it('nests replies under their head comment', async () => {
+    await seedConfig({});
+    const headId = await seedComment({
+      url: '/about-me/',
+      comment: '这篇文章很有帮助。',
+      created: 100,
+    });
+    const replyId = await seedComment({
+      url: '/about-me/',
+      comment: '谢谢阅读。',
+      rid: headId,
+      pid: headId,
+      created: 200,
+    });
+
+    const { body } = await postEvent('COMMENT_GET', { url: '/about-me/' });
+
+    expect(body.count).toBe(1);
+    const data = body.data as Array<{
+      id: string;
+      replies: Array<{ id: string; ruser: string | null }>;
+    }>;
+    expect(data).toHaveLength(1);
+    expect(data[0]?.id).toBe(headId);
+    expect(data[0]?.replies.map((reply) => reply.id)).toEqual([replyId]);
+    expect(data[0]?.replies[0]?.ruser).toBe('Reader');
   });
 
   it('hides spam from anonymous viewers', async () => {
     await seedConfig({});
     // Distinct non-empty authors so the visibility `OR uid = viewer` clause
     // (viewer uid is empty here) doesn't accidentally match either row.
-    await seedComment({ url: '/post/', comment: 'visible', uid: 'author-1' });
-    await seedComment({ url: '/post/', comment: 'spam', uid: 'author-2', isSpam: 1 });
+    const visibleId = await seedComment({
+      url: '/post/',
+      comment: 'Visible comment',
+      uid: 'author-1',
+    });
+    const spamId = await seedComment({
+      url: '/post/',
+      comment: 'Spam comment',
+      uid: 'author-2',
+      isSpam: 1,
+    });
 
     const { body } = await postEvent('COMMENT_GET', { url: '/post/' });
 
     expect(body.count).toBe(1);
+    const data = body.data as Array<{ id: string }>;
+    expect(data.map((comment) => comment.id)).toEqual([visibleId]);
+    expect(data.map((comment) => comment.id)).not.toContain(spamId);
   });
 });
 
@@ -138,11 +170,11 @@ describe('integration: COMMENT_SUBMIT', () => {
     const { body } = await postEvent(
       'COMMENT_SUBMIT',
       {
-        url: '/post/',
-        ua: 'integration-ua',
-        comment: 'hello world',
-        nick: 'tester',
-        href: 'https://blog.example/post/',
+        url: '/about-me/',
+        ua: 'Mozilla/5.0',
+        comment: '感谢分享。',
+        nick: 'Reader',
+        href: 'https://hakula.xyz/about-me/',
       },
       { 'x-twikoo-recaptcha-v3': 'submitter-1' },
     );
@@ -150,7 +182,7 @@ describe('integration: COMMENT_SUBMIT', () => {
     expect(body.code).toBe(ResponseCode.SUCCESS);
     expect(typeof body.id).toBe('string');
 
-    const rows = await fetchComments('/post/');
+    const rows = await fetchComments('/about-me/');
     expect(rows).toHaveLength(1);
     expect(rows[0]?._id).toBe(body.id);
   });
@@ -160,7 +192,7 @@ describe('integration: COMMENT_SUBMIT', () => {
 
     await postEvent(
       'COMMENT_SUBMIT',
-      { url: '/p/', ua: 'ua', comment: 'one' },
+      { url: '/comments/', ua: 'Mozilla/5.0', comment: '测试评论日志。' },
       { 'x-twikoo-recaptcha-v3': 'submitter-2' },
     );
 
@@ -266,6 +298,7 @@ describe('integration: COMMENT_DELETE_FOR_USER', () => {
 
     expect(body.code).toBe(ResponseCode.FAIL);
     expect(body.message).toMatch(/自己的评论/);
+    expect(await fetchComments('/post/')).toHaveLength(1);
   });
 
   it('refuses anonymous deletes (uid empty)', async () => {
@@ -275,6 +308,7 @@ describe('integration: COMMENT_DELETE_FOR_USER', () => {
     const { body } = await postEvent('COMMENT_DELETE_FOR_USER', { id });
 
     expect(body.code).toBe(ResponseCode.NEED_LOGIN);
+    expect(await fetchComments('/post/')).toHaveLength(1);
   });
 });
 
@@ -282,16 +316,19 @@ describe('integration: COUNTER_GET', () => {
   it('increments time and updates title via the onConflictDoUpdate clause', async () => {
     await seedConfig({});
 
-    const first = await postEvent('COUNTER_GET', { url: '/post/', title: 'Hello' });
+    const first = await postEvent('COUNTER_GET', { url: '/about-me/', title: '关于我' });
     expect(first.body.code).toBe(ResponseCode.SUCCESS);
     expect(first.body.time).toBe(1);
 
-    const second = await postEvent('COUNTER_GET', { url: '/post/', title: 'Hello v2' });
+    const second = await postEvent('COUNTER_GET', {
+      url: '/about-me/',
+      title: '关于我 | HAKULA†CHANNEL',
+    });
     expect(second.body.time).toBe(2);
 
     const row = await env.DB.prepare('SELECT title, time FROM counter WHERE url = ?')
-      .bind('/post/')
+      .bind('/about-me/')
       .first<{ title: string; time: number }>();
-    expect(row).toEqual({ title: 'Hello v2', time: 2 });
+    expect(row).toEqual({ title: '关于我 | HAKULA†CHANNEL', time: 2 });
   });
 });

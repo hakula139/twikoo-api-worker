@@ -3,16 +3,13 @@ import type { ExecutionContext } from '@cloudflare/workers-types';
 import type { DB } from './db';
 import type { ResponseCodeValue } from './lib/errors';
 
-// Workers bindings (D1, R2) and the public URL — wired in wrangler.toml,
-// always present at runtime.
 export interface Bindings {
   DB: D1Database;
   R2: R2Bucket;
   R2_PUBLIC_URL: string;
 }
 
-// Wrangler secrets — optional so the smoke-test path runs without them;
-// consumers must validate (see lib/secret#requireSecret for the throwing form).
+// Optional secrets keep the version endpoint usable before configuration.
 export interface Secrets {
   ADMIN_PASS_HASH?: string;
   AKISMET_KEY?: string;
@@ -39,12 +36,7 @@ export const mkCommentId = (s: string): CommentId => s as CommentId;
 // `comment.ups.split(',')` on a `JsonString<string[]>` is a compile error.
 export type JsonString<T> = string & { readonly __json: T };
 
-// Single-row blob in the `config` table. Lists every key the worker reads
-// directly. Upstream twikoo-func sets/reads its own keys under the index
-// signature. Boolean-flavored keys (SHOW_REGION, TOP_DISABLED) are stored as
-// 'true' / 'false' strings by the admin UI, so read them via boolConfig.
-// Numeric-flavored keys (COMMENT_PAGE_SIZE, LIMIT_PER_MINUTE*, NSFW_THRESHOLD)
-// are also stored as strings, so read them via numberConfig.
+// The admin UI stores boolean and numeric settings as strings.
 export interface TwikooConfig {
   ADMIN_PASS?: string;
   AKISMET_KEY?: string;

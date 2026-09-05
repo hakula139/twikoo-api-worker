@@ -18,7 +18,7 @@ describe('corsHeaders', () => {
   });
 
   it('always allows localhost regardless of allowlist', () => {
-    const config: TwikooConfig = { CORS_ALLOW_ORIGIN: 'https://prod.example' };
+    const config: TwikooConfig = { CORS_ALLOW_ORIGIN: 'https://hakula.xyz' };
     expect(corsHeaders('http://localhost:5173', config)['Access-Control-Allow-Origin']).toBe(
       'http://localhost:5173',
     );
@@ -35,20 +35,28 @@ describe('corsHeaders', () => {
   });
 
   it('matches an exact origin entry', () => {
-    const config: TwikooConfig = { CORS_ALLOW_ORIGIN: 'https://blog.example' };
-    expect(corsHeaders('https://blog.example', config)['Access-Control-Allow-Origin']).toBe(
-      'https://blog.example',
+    const config: TwikooConfig = { CORS_ALLOW_ORIGIN: 'https://hakula.xyz' };
+    expect(corsHeaders('https://hakula.xyz', config)['Access-Control-Allow-Origin']).toBe(
+      'https://hakula.xyz',
     );
     expect(corsHeaders('https://other.example', config)).toEqual({});
   });
 
+  it('includes the port when matching an exact origin entry', () => {
+    const config: TwikooConfig = { CORS_ALLOW_ORIGIN: 'https://preview.hakula.xyz:8443' };
+    expect(
+      corsHeaders('https://preview.hakula.xyz:8443', config)['Access-Control-Allow-Origin'],
+    ).toBe('https://preview.hakula.xyz:8443');
+    expect(corsHeaders('https://preview.hakula.xyz:9443', config)).toEqual({});
+  });
+
   it('matches a bare hostname entry against either scheme', () => {
-    const config: TwikooConfig = { CORS_ALLOW_ORIGIN: 'blog.example' };
-    expect(corsHeaders('https://blog.example', config)['Access-Control-Allow-Origin']).toBe(
-      'https://blog.example',
+    const config: TwikooConfig = { CORS_ALLOW_ORIGIN: 'hakula.xyz' };
+    expect(corsHeaders('https://hakula.xyz', config)['Access-Control-Allow-Origin']).toBe(
+      'https://hakula.xyz',
     );
-    expect(corsHeaders('http://blog.example', config)['Access-Control-Allow-Origin']).toBe(
-      'http://blog.example',
+    expect(corsHeaders('http://hakula.xyz', config)['Access-Control-Allow-Origin']).toBe(
+      'http://hakula.xyz',
     );
   });
 
@@ -68,28 +76,30 @@ describe('corsHeaders', () => {
   });
 
   it('rejects a malformed origin against a non-empty allowlist', () => {
-    const config: TwikooConfig = { CORS_ALLOW_ORIGIN: 'blog.example' };
+    const config: TwikooConfig = { CORS_ALLOW_ORIGIN: 'hakula.xyz' };
     expect(corsHeaders('not-a-url', config)).toEqual({});
   });
 
   it('trims whitespace and trailing slash from allowlist entries', () => {
-    const config: TwikooConfig = { CORS_ALLOW_ORIGIN: '  https://blog.example/  , a.example' };
-    expect(corsHeaders('https://blog.example', config)['Access-Control-Allow-Origin']).toBe(
-      'https://blog.example',
+    const config: TwikooConfig = {
+      CORS_ALLOW_ORIGIN: '  https://hakula.xyz/  , preview.hakula.xyz',
+    };
+    expect(corsHeaders('https://hakula.xyz', config)['Access-Control-Allow-Origin']).toBe(
+      'https://hakula.xyz',
     );
-    expect(corsHeaders('https://a.example', config)['Access-Control-Allow-Origin']).toBe(
-      'https://a.example',
+    expect(corsHeaders('https://preview.hakula.xyz', config)['Access-Control-Allow-Origin']).toBe(
+      'https://preview.hakula.xyz',
     );
   });
 });
 
 describe('isOriginAllowed', () => {
   it('allows when origin is null (non-browser request)', () => {
-    expect(isOriginAllowed(null, { CORS_ALLOW_ORIGIN: 'https://blog.example' })).toBe(true);
+    expect(isOriginAllowed(null, { CORS_ALLOW_ORIGIN: 'https://hakula.xyz' })).toBe(true);
   });
 
   it('rejects an origin missing from a non-empty allowlist', () => {
-    const config: TwikooConfig = { CORS_ALLOW_ORIGIN: 'https://blog.example' };
+    const config: TwikooConfig = { CORS_ALLOW_ORIGIN: 'https://hakula.xyz' };
     expect(isOriginAllowed('https://other.example', config)).toBe(false);
   });
 
@@ -98,21 +108,21 @@ describe('isOriginAllowed', () => {
   });
 
   it('allows localhost regardless of allowlist', () => {
-    const config: TwikooConfig = { CORS_ALLOW_ORIGIN: 'https://prod.example' };
+    const config: TwikooConfig = { CORS_ALLOW_ORIGIN: 'https://hakula.xyz' };
     expect(isOriginAllowed('http://localhost:5173', config)).toBe(true);
   });
 });
 
 describe('jsonResponse', () => {
   it('serializes the body as JSON with the standard content type', async () => {
-    const res = jsonResponse({ code: 0, data: { hello: 'world' } });
+    const res = jsonResponse({ code: 0, data: { message: 'Comment saved.' } });
     expect(res.headers.get('Content-Type')).toBe('application/json;charset=UTF-8');
-    expect(await res.json()).toEqual({ code: 0, data: { hello: 'world' } });
+    expect(await res.json()).toEqual({ code: 0, data: { message: 'Comment saved.' } });
   });
 
   it('merges extra headers without dropping the content type', () => {
-    const res = jsonResponse({ code: 0 }, { 'X-Custom': 'yes' });
-    expect(res.headers.get('X-Custom')).toBe('yes');
+    const res = jsonResponse({ code: 0 }, { 'X-Request-ID': 'request-1' });
+    expect(res.headers.get('X-Request-ID')).toBe('request-1');
     expect(res.headers.get('Content-Type')).toBe('application/json;charset=UTF-8');
   });
 });

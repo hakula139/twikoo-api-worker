@@ -6,8 +6,7 @@ import { configWithSecrets, secret } from '@/lib/secret';
 import { logger, sendNotice } from '@/twikoo';
 import { mkCommentId } from '@/types';
 
-// Each phase has its own try/catch so an Akismet outage doesn't short-circuit
-// the email notice (and vice versa). Runs best-effort under ctx.waitUntil.
+// Akismet and notification failures are isolated because this work is best-effort.
 export const postSubmit = async (saved: NewComment, ctx: RequestCtx): Promise<void> => {
   // Mutate `saved` in place so sendNotice sees fresh isSpam, since upstream
   // suppresses spam notifications when NOTIFY_SPAM='false'.
@@ -36,7 +35,6 @@ export const postSubmit = async (saved: NewComment, ctx: RequestCtx): Promise<vo
   }
 
   try {
-    // sendNotice consumes the upstream comment shape, which our row matches.
     const getParentComment = async (curr: unknown): Promise<unknown> => {
       const parentId = (curr as { pid?: string }).pid;
       return parentId ? ctx.db.comment.byId(mkCommentId(parentId)) : undefined;

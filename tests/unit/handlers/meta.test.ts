@@ -13,7 +13,7 @@ describe('getFuncVersion', () => {
 
     const result = await getFuncVersion({}, buildCtx());
 
-    expect(twikoo.getFuncVersion).toHaveBeenCalledWith({ VERSION: twikoo.VERSION });
+    expect(twikoo.getFuncVersion).toHaveBeenCalledWith(twikoo.VERSION);
     expect(result).toEqual({ version: '0.0.0-test' });
   });
 });

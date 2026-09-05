@@ -23,8 +23,6 @@ export const secret = (ctx: RequestCtx, key: SecretEnvKey): string | undefined =
   return stringConfig(ctx.config, SECRET_PAIRS[key]);
 };
 
-// Throwing variant for sites where the secret is mandatory; saves callers a
-// truthiness check and a hand-written error message.
 export const requireSecret = (
   ctx: RequestCtx,
   key: SecretEnvKey,
@@ -37,8 +35,6 @@ export const requireSecret = (
   return value;
 };
 
-// Hand to upstream code (notify, spam) that reads config keys directly — env
-// values shadow admin-config keys.
 export const configWithSecrets = (ctx: RequestCtx): TwikooConfig => {
   const merged: TwikooConfig = { ...ctx.config };
   for (const [envKey, configKey] of Object.entries(SECRET_PAIRS) as Array<[SecretEnvKey, string]>) {

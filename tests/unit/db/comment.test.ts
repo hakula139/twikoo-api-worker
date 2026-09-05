@@ -1,5 +1,5 @@
-import type { JsonString } from '@/types';
 import type { CommentSort, NewComment } from '@/db';
+import type { JsonString } from '@/types';
 
 import { beforeAll, beforeEach, describe, expect, it } from 'vitest';
 
@@ -23,12 +23,12 @@ const seed = async (rows: NewComment[]): Promise<void> => {
 
 describe('CommentDB.byId', () => {
   it('returns the row when present', async () => {
-    const row = newComment({ _id: mkCommentId('abc'), comment: 'hello' });
+    const row = newComment({ _id: mkCommentId('comment-1'), comment: '感谢分享。' });
     await seed([row]);
 
     const db = dbInstance();
-    const fetched = await db.comment.byId(mkCommentId('abc'));
-    expect(fetched?.comment).toBe('hello');
+    const fetched = await db.comment.byId(mkCommentId('comment-1'));
+    expect(fetched?.comment).toBe('感谢分享。');
   });
 
   it('returns undefined when missing', async () => {
@@ -103,27 +103,25 @@ describe('CommentDB short-circuits on empty inputs', () => {
 });
 
 describe('CommentDB.list > orderClause', () => {
-  // Three head comments with deterministic created timestamps so each sort
-  // produces a unique permutation.
   const seedOrdered = async (): Promise<void> => {
     await seed([
       newComment({
-        _id: mkCommentId('A'),
+        _id: mkCommentId('older-popular'),
         url: '/p',
         created: 100,
-        ups: '["x","y"]' as JsonString<string[]>,
+        ups: '["reader-1","reader-2"]' as JsonString<string[]>,
       }),
       newComment({
-        _id: mkCommentId('B'),
+        _id: mkCommentId('newest-without-votes'),
         url: '/p',
         created: 200,
         ups: '[]' as JsonString<string[]>,
       }),
       newComment({
-        _id: mkCommentId('C'),
+        _id: mkCommentId('newer-popular'),
         url: '/p',
         created: 150,
-        ups: '["x","y","z"]' as JsonString<string[]>,
+        ups: '["reader-1","reader-2"]' as JsonString<string[]>,
       }),
     ]);
   };
@@ -135,23 +133,27 @@ describe('CommentDB.list > orderClause', () => {
 
   it('newest sorts by created desc', async () => {
     await seedOrdered();
-    expect(await ids('newest')).toEqual(['B', 'C', 'A']);
+    expect(await ids('newest')).toEqual(['newest-without-votes', 'newer-popular', 'older-popular']);
   });
 
   it('oldest sorts by created asc', async () => {
     await seedOrdered();
-    expect(await ids('oldest')).toEqual(['A', 'C', 'B']);
+    expect(await ids('oldest')).toEqual(['older-popular', 'newer-popular', 'newest-without-votes']);
   });
 
   it('popular sorts by ups length desc with created desc as tiebreak', async () => {
     await seedOrdered();
-    expect(await ids('popular')).toEqual(['C', 'A', 'B']);
+    expect(await ids('popular')).toEqual([
+      'newer-popular',
+      'older-popular',
+      'newest-without-votes',
+    ]);
   });
 
   it('respects the `before` cursor (strict <)', async () => {
     await seedOrdered();
     const rows = await dbInstance().comment.list(['/p'], false, 'guest', 200, 0, 10, 'newest');
-    expect(rows.map((r) => r._id)).toEqual(['C', 'A']);
+    expect(rows.map((r) => r._id)).toEqual(['newer-popular', 'older-popular']);
   });
 
   it('separates top=1 from top=0', async () => {
@@ -183,6 +185,34 @@ describe('CommentDB.replies', () => {
     await seed([newComment({ url: '/p' })]);
     const db = dbInstance();
     expect(await db.comment.replies(['/p'], false, 'guest', [])).toEqual([]);
+  });
+
+  it("hides another author's spam replies while retaining the caller's own", async () => {
+    await seed([
+      newComment({ _id: mkCommentId('head'), url: '/p' }),
+      newComment({ _id: mkCommentId('clean-reply'), url: '/p', rid: 'head', uid: 'reader-1' }),
+      newComment({
+        _id: mkCommentId('hidden-reply'),
+        url: '/p',
+        rid: 'head',
+        uid: 'reader-2',
+        isSpam: 1,
+      }),
+      newComment({
+        _id: mkCommentId('own-reply'),
+        url: '/p',
+        rid: 'head',
+        uid: 'reader-1',
+        isSpam: 1,
+      }),
+    ]);
+
+    const db = dbInstance();
+    const visible = await db.comment.replies(['/p'], false, 'reader-1', ['head']);
+    expect(visible.map((row) => row._id).sort()).toEqual(['clean-reply', 'own-reply']);
+
+    const all = await db.comment.replies(['/p'], true, 'admin', ['head']);
+    expect(all.map((row) => row._id).sort()).toEqual(['clean-reply', 'hidden-reply', 'own-reply']);
   });
 });
 
@@ -225,12 +255,13 @@ describe('CommentDB.recent', () => {
 
   it('respects the limit', async () => {
     await seed([
-      newComment({ url: '/a', created: 100 }),
-      newComment({ url: '/a', created: 200 }),
-      newComment({ url: '/a', created: 300 }),
+      newComment({ _id: mkCommentId('oldest'), url: '/a', created: 100 }),
+      newComment({ _id: mkCommentId('middle'), url: '/a', created: 200 }),
+      newComment({ _id: mkCommentId('newest'), url: '/a', created: 300 }),
     ]);
     const db = dbInstance();
-    expect(await db.comment.recent(['/a'], false, 2)).toHaveLength(2);
+    const rows = await db.comment.recent(['/a'], false, 2);
+    expect(rows.map((row) => row._id)).toEqual(['newest', 'middle']);
   });
 });
 
@@ -260,14 +291,16 @@ describe('CommentDB rate-limit counters', () => {
 
 describe('CommentDB.saveMany', () => {
   it('chunks across the D1 100-placeholder budget without losing rows', async () => {
-    // CHUNK = 4 (22 columns × 4 = 88 placeholders, under D1's 100-bound-variable
-    // cap). 13 rows force four batches: 4 + 4 + 4 + 1.
-    const rows = Array.from({ length: 13 }, () => newComment());
+    const ids = Array.from(
+      { length: 13 },
+      (_, index) => `batch-${String(index + 1).padStart(2, '0')}`,
+    );
+    const rows = ids.map((id) => newComment({ _id: mkCommentId(id) }));
     await seed(rows);
 
     const db = dbInstance();
     const all = await db.comment.exportAll();
-    expect(all).toHaveLength(13);
+    expect(all.map((row) => row._id).sort()).toEqual(ids);
   });
 
   it('is a no-op for an empty array', async () => {
@@ -365,16 +398,35 @@ describe('CommentDB admin views', () => {
     expect(rows.map((r) => r.comment)).toEqual(['flagged']);
   });
 
-  it('keyword filter LIKEs across nick / mail / link / ip / comment / url / href', async () => {
+  it.each<
+    [keyof Pick<NewComment, 'nick' | 'mail' | 'link' | 'ip' | 'comment' | 'url' | 'href'>, string]
+  >([
+    ['nick', 'Hakula'],
+    ['mail', 'reader@example.com'],
+    ['link', 'https://example.com/profile'],
+    ['ip', '192.0.2.10'],
+    ['comment', '感谢分享'],
+    ['url', '/about-me/'],
+    ['href', 'https://hakula.xyz/about-me/'],
+  ])('keyword filter searches the %s column', async (field, value) => {
+    const id = mkCommentId(`match-${field}`);
     await seed([
-      newComment({ _id: mkCommentId('m1'), nick: 'alice', comment: 'hello' }),
-      newComment({ _id: mkCommentId('m2'), nick: 'bob', comment: 'hello alice' }),
-      newComment({ _id: mkCommentId('m3'), nick: 'carol', comment: 'goodbye' }),
+      newComment({ _id: id, [field]: value }),
+      newComment({
+        _id: mkCommentId('unrelated'),
+        nick: 'Another reader',
+        mail: 'other@example.net',
+        link: 'https://example.net/profile',
+        ip: '198.51.100.20',
+        comment: 'Different content.',
+        url: '/comments/',
+        href: 'https://example.net/comments/',
+      }),
     ]);
 
     const db = dbInstance();
-    const rows = await db.comment.listForAdmin({ keyword: '%alice%' }, 10, 0);
-    expect(rows.map((r) => r._id).sort()).toEqual(['m1', 'm2']);
+    const rows = await db.comment.listForAdmin({ keyword: `%${value}%` }, 10, 0);
+    expect(rows.map((row) => row._id)).toEqual([id]);
   });
 
   // cspell:ignore fooXbar
@@ -414,37 +466,43 @@ describe('CommentDB admin views', () => {
 
   it('listForAdmin defaults to newest order on the created column', async () => {
     await seed([
-      newComment({ _id: mkCommentId('old'), created: 100 }),
-      newComment({ _id: mkCommentId('new'), created: 300 }),
-      newComment({ _id: mkCommentId('mid'), created: 200 }),
+      newComment({ _id: mkCommentId('oldest-comment'), created: 100 }),
+      newComment({ _id: mkCommentId('newest-comment'), created: 300 }),
+      newComment({ _id: mkCommentId('middle-comment'), created: 200 }),
     ]);
 
     const db = dbInstance();
     const rows = await db.comment.listForAdmin({}, 10, 0);
-    expect(rows.map((r) => r._id)).toEqual(['new', 'mid', 'old']);
+    expect(rows.map((r) => r._id)).toEqual(['newest-comment', 'middle-comment', 'oldest-comment']);
   });
 
   it('listForAdmin honors sort=oldest', async () => {
     await seed([
-      newComment({ _id: mkCommentId('old'), created: 100 }),
-      newComment({ _id: mkCommentId('new'), created: 300 }),
-      newComment({ _id: mkCommentId('mid'), created: 200 }),
+      newComment({ _id: mkCommentId('oldest-comment'), created: 100 }),
+      newComment({ _id: mkCommentId('newest-comment'), created: 300 }),
+      newComment({ _id: mkCommentId('middle-comment'), created: 200 }),
     ]);
 
     const db = dbInstance();
     const rows = await db.comment.listForAdmin({}, 10, 0, 'oldest');
-    expect(rows.map((r) => r._id)).toEqual(['old', 'mid', 'new']);
+    expect(rows.map((r) => r._id)).toEqual(['oldest-comment', 'middle-comment', 'newest-comment']);
   });
 
   it('listForAdmin honors sort=popular by ups array length', async () => {
     await seed([
-      newComment({ _id: mkCommentId('hi'), ups: '["u1","u2","u3"]' as JsonString<string[]> }),
-      newComment({ _id: mkCommentId('lo'), ups: '[]' as JsonString<string[]> }),
-      newComment({ _id: mkCommentId('mid'), ups: '["u1"]' as JsonString<string[]> }),
+      newComment({
+        _id: mkCommentId('most-votes'),
+        ups: '["reader-1","reader-2","reader-3"]' as JsonString<string[]>,
+      }),
+      newComment({ _id: mkCommentId('no-votes'), ups: '[]' as JsonString<string[]> }),
+      newComment({
+        _id: mkCommentId('one-vote'),
+        ups: '["reader-1"]' as JsonString<string[]>,
+      }),
     ]);
 
     const db = dbInstance();
     const rows = await db.comment.listForAdmin({}, 10, 0, 'popular');
-    expect(rows.map((r) => r._id)).toEqual(['hi', 'mid', 'lo']);
+    expect(rows.map((r) => r._id)).toEqual(['most-votes', 'one-vote', 'no-votes']);
   });
 });

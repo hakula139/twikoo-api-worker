@@ -159,9 +159,7 @@ const toJsonArray = (
 
 const str = (v: unknown): string => (typeof v === 'string' ? v : '');
 
-// Coerce heterogeneous upstream shapes into NewComment with safe defaults.
-// `warn` is wired through so toJsonArray can surface dropped vote arrays into
-// the import log instead of letting corruption silently coerce to '[]'.
+// Preserve diagnostics when imported vote arrays contain invalid entries.
 const normalizeRow = (raw: ImportedRow, warn: (msg: string) => void): NewComment => {
   const now = Date.now();
   const _id = typeof raw._id === 'string' && raw._id ? mkCommentId(raw._id) : newCommentId();

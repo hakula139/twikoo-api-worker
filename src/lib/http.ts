@@ -34,9 +34,7 @@ const matchEntry = (originUrl: URL, entry: string): boolean => {
   } catch {
     return false;
   }
-  return (
-    originUrl.protocol === entryUrl.protocol && hostMatches(originUrl.hostname, entryUrl.hostname)
-  );
+  return originUrl.origin === entryUrl.origin;
 };
 
 // Empty / unset allowlist is permissive — upstream parity. Localhost is exempt.

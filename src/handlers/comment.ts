@@ -163,8 +163,11 @@ export const getRecentComments: Handler<'GET_RECENT_COMMENTS'> = async (payload,
   const urlsRaw = payload.urls?.filter(Boolean);
   const urls = urlsRaw?.length ? getUrlsQuery(urlsRaw) : undefined;
   const includeReply = !!payload.includeReply;
-  const requested = Number(payload.pageSize) || RECENT_DEFAULT_PAGE_SIZE;
-  const pageSize = Math.min(requested, RECENT_MAX_PAGE_SIZE);
+  const requested = Number(payload.pageSize);
+  const pageSize =
+    Number.isInteger(requested) && requested > 0
+      ? Math.min(requested, RECENT_MAX_PAGE_SIZE)
+      : RECENT_DEFAULT_PAGE_SIZE;
 
   const rows = await ctx.db.comment.recent(urls, includeReply, pageSize);
 

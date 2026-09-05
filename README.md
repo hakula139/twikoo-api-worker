@@ -4,8 +4,7 @@
 [![codecov](https://codecov.io/gh/hakula139/twikoo-api-worker/branch/main/graph/badge.svg)](https://codecov.io/gh/hakula139/twikoo-api-worker)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
-A Cloudflare Workers backend for the [Twikoo](https://twikoo.js.org/en/intro.html) comment system, backed by Cloudflare D1 and R2.
-It replaces a Vercel + MongoDB deployment with a single low-latency Worker.
+A Cloudflare Workers backend for the [Twikoo](https://twikoo.js.org/en/intro.html) comment system, backed by Cloudflare D1 and R2. It replaces a Vercel + MongoDB deployment with a single low-latency Worker.
 
 This is a from-scratch TypeScript implementation that depends on the upstream [`twikoo-func`](https://www.npmjs.com/package/twikoo-func) npm package for business logic. It consults [`twikoojs/twikoo-cloudflare`](https://github.com/twikoojs/twikoo-cloudflare) (MIT) as a reference implementation.
 
@@ -35,16 +34,17 @@ Without Nix, install Node.js 24 and pnpm yourself.
 pnpm wrangler login
 pnpm wrangler d1 create twikoo
 pnpm wrangler r2 bucket create twikoo
+```
+
+After `wrangler d1 create twikoo`, copy the printed `database_id` into [`wrangler.toml`](wrangler.toml) and [`drizzle.config.ts`](drizzle.config.ts). After `wrangler r2 bucket create twikoo`, set the custom R2 public URL in the Cloudflare dashboard and update `R2_PUBLIC_URL` in `wrangler.toml`.
+
+Then sync [`src/db/schema.ts`](src/db/schema.ts) to that remote D1 database. This needs `CLOUDFLARE_ACCOUNT_ID` and `CLOUDFLARE_D1_TOKEN` and applies the schema delta directly, so the repository does not keep migration files.
+
+```bash
 pnpm db:push
 ```
 
-After `wrangler d1 create twikoo`, copy the printed `database_id` into [`wrangler.toml`](wrangler.toml) and [`drizzle.config.ts`](drizzle.config.ts).
-After `wrangler r2 bucket create twikoo`, set the custom R2 public URL in the Cloudflare dashboard and update `R2_PUBLIC_URL` in `wrangler.toml`.
-
-`pnpm db:push` syncs [`src/db/schema.ts`](src/db/schema.ts) to remote D1 (needs `CLOUDFLARE_D1_TOKEN`), diffing against the live database and applying the delta directly — no migration files in the repo.
-
-Set the following optional secrets as needed.
-Each value can also be set under the matching field name in the admin configuration UI, but a Wrangler secret takes precedence when both are set:
+Set the following optional secrets as needed. Each value can also be set under the matching field name in the admin configuration UI, but a Wrangler secret takes precedence when both are set:
 
 ```bash
 pnpm wrangler secret put AKISMET_KEY

@@ -21,7 +21,6 @@ type ResponseCodeName = keyof typeof ResponseCode;
 
 export type ResponseCodeValue = (typeof ResponseCode)[ResponseCodeName];
 
-// Throw inside a handler to short-circuit with a curated non-SUCCESS response.
 export class TwikooError extends Error {
   readonly code: ResponseCodeValue;
 

@@ -4,16 +4,16 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { buildComment } from '@/lib/comment-build';
 import { ResponseCode, TwikooError } from '@/lib/errors';
-import { md5, sha256 } from '@/twikoo';
+import { md5, preCheckSpam, sha256 } from '@/twikoo';
 import { mkUid } from '@/types';
 import { buildCtx } from '@tests/helpers/ctx';
 
 const submitPayload = (
   overrides: Partial<EventPayloads['COMMENT_SUBMIT']> = {},
 ): EventPayloads['COMMENT_SUBMIT'] => ({
-  url: '/post',
-  ua: 'Mozilla',
-  comment: 'hi',
+  url: '/about-me/',
+  ua: 'Mozilla/5.0',
+  comment: '感谢分享。',
   ...overrides,
 });
 
@@ -25,11 +25,11 @@ describe('buildComment', () => {
   it('rejects when a non-admin posts using the blogger email', async () => {
     const ctx = buildCtx({
       uid: mkUid('guest'),
-      config: { BLOGGER_EMAIL: 'me@example.com' },
+      config: { BLOGGER_EMAIL: 'hakula@example.com' },
     });
 
     try {
-      await buildComment(submitPayload({ mail: 'ME@example.com' }), ctx);
+      await buildComment(submitPayload({ mail: 'HAKULA@example.com' }), ctx);
       throw new Error('expected buildComment to throw');
     } catch (e) {
       expect(e).toBeInstanceOf(TwikooError);
@@ -38,15 +38,24 @@ describe('buildComment', () => {
   });
 
   it('marks master=1 when the admin posts as the blogger', async () => {
+    vi.mocked(preCheckSpam).mockReturnValueOnce(true);
     const adminUid = 'admin-uid';
     const ctx = buildCtx({
       uid: mkUid(adminUid),
-      config: { ADMIN_PASS: md5(adminUid), BLOGGER_EMAIL: 'me@example.com' },
+      config: { ADMIN_PASS: md5(adminUid), BLOGGER_EMAIL: 'hakula@example.com' },
     });
 
-    const row = await buildComment(submitPayload({ mail: 'me@example.com' }), ctx);
+    const row = await buildComment(submitPayload({ mail: 'hakula@example.com' }), ctx);
     expect(row.master).toBe(1);
     expect(row.isSpam).toBe(0);
+  });
+
+  it('marks a non-admin comment as spam when preCheckSpam matches', async () => {
+    vi.mocked(preCheckSpam).mockReturnValueOnce(true);
+
+    const row = await buildComment(submitPayload(), buildCtx({ uid: mkUid('reader-1') }));
+
+    expect(row.isSpam).toBe(1);
   });
 
   it('uses sha256 for mailMd5 by default and md5 when GRAVATAR_CDN=cravatar.cn', async () => {

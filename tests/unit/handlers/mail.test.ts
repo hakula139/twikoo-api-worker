@@ -24,7 +24,7 @@ describe('emailTest', () => {
   it('rejects a non-admin caller before invoking the upstream helper', async () => {
     const ctx = buildMailCtx('guest');
 
-    await expect(emailTest({ mail: 'a@b' }, ctx)).rejects.toMatchObject({
+    await expect(emailTest({ mail: 'reader@example.com' }, ctx)).rejects.toMatchObject({
       code: ResponseCode.NEED_LOGIN,
     });
     expect(twikoo.emailTest).not.toHaveBeenCalled();
@@ -35,7 +35,7 @@ describe('emailTest', () => {
     const adminUid = 'admin-uid';
     const ctx = buildMailCtx(adminUid, adminUid);
 
-    await expect(emailTest({ mail: 'a@b' }, ctx)).rejects.toMatchObject({
+    await expect(emailTest({ mail: 'reader@example.com' }, ctx)).rejects.toMatchObject({
       code: ResponseCode.FAIL,
       message: 'auth failed',
     });
@@ -46,7 +46,7 @@ describe('emailTest', () => {
     const adminUid = 'admin-uid';
     const ctx = buildMailCtx(adminUid, adminUid);
 
-    const result = await emailTest({ mail: 'a@b' }, ctx);
+    const result = await emailTest({ mail: 'reader@example.com' }, ctx);
 
     expect(result).toEqual({});
   });
@@ -58,10 +58,10 @@ describe('emailTest', () => {
       SMTP_PASS: 'env-secret',
     });
 
-    await emailTest({ mail: 'a@b' }, ctx);
+    await emailTest({ mail: 'reader@example.com' }, ctx);
 
     expect(twikoo.emailTest).toHaveBeenCalledWith(
-      { mail: 'a@b' },
+      { mail: 'reader@example.com' },
       expect.objectContaining({ SMTP_PASS: 'env-secret' }),
       true,
     );

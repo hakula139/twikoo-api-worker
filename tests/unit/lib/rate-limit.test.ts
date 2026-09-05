@@ -1,6 +1,6 @@
 import type { RequestCtx, TwikooConfig } from '@/types';
 
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { ResponseCode, TwikooError } from '@/lib/errors';
 import { enforceFrequencyLimit } from '@/lib/rate-limit';
@@ -12,7 +12,11 @@ interface Counts {
   global: number;
 }
 
-const buildRateCtx = (config: TwikooConfig, counts: Counts, ip = '1.2.3.4'): RequestCtx => {
+afterEach(() => {
+  vi.useRealTimers();
+});
+
+const buildRateCtx = (config: TwikooConfig, counts: Counts, ip = '192.0.2.1'): RequestCtx => {
   const db = {
     comment: {
       countSinceByIp: vi.fn(async () => counts.perIp),
@@ -44,15 +48,16 @@ describe('enforceFrequencyLimit > per-IP cap', () => {
     await expect(enforceFrequencyLimit(ctx)).rejects.toMatchObject({ code: ResponseCode.FAIL });
   });
 
-  it('queries by the request IP — different IP, different bucket', async () => {
+  it('queries the request IP over the preceding ten-minute window', async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-09-05T00:00:00Z'));
     const counts = { perIp: 0, global: 0 };
-    const ctx = buildRateCtx({ LIMIT_PER_MINUTE: '3' }, counts, '9.9.9.9');
+    const ctx = buildRateCtx({ LIMIT_PER_MINUTE: '3' }, counts, '198.51.100.10');
     await enforceFrequencyLimit(ctx);
     const db = ctx.db.comment as unknown as {
       countSinceByIp: ReturnType<typeof vi.fn>;
     };
-    const [, ip] = db.countSinceByIp.mock.calls[0] as [number, string];
-    expect(ip).toBe('9.9.9.9');
+    expect(db.countSinceByIp).toHaveBeenCalledWith(Date.now() - 10 * 60 * 1_000, '198.51.100.10');
   });
 });
 
@@ -65,20 +70,12 @@ describe('enforceFrequencyLimit > global cap', () => {
     await expect(enforceFrequencyLimit(ctx)).rejects.toMatchObject({ code: ResponseCode.FAIL });
   });
 
-  it('LIMIT_PER_MINUTE_ALL=0 disables the global cap', async () => {
-    const ctx = buildRateCtx(
-      { LIMIT_PER_MINUTE: '50', LIMIT_PER_MINUTE_ALL: '0' },
-      { perIp: 0, global: 1_000_000 },
-    );
-    await expect(enforceFrequencyLimit(ctx)).resolves.toBeUndefined();
-  });
-
   it('skips the global query when LIMIT_PER_MINUTE_ALL=0', async () => {
     const ctx = buildRateCtx(
       { LIMIT_PER_MINUTE: '50', LIMIT_PER_MINUTE_ALL: '0' },
       { perIp: 0, global: 1_000_000 },
     );
-    await enforceFrequencyLimit(ctx);
+    await expect(enforceFrequencyLimit(ctx)).resolves.toBeUndefined();
     const db = ctx.db.comment as unknown as { countSince: ReturnType<typeof vi.fn> };
     expect(db.countSince).not.toHaveBeenCalled();
   });

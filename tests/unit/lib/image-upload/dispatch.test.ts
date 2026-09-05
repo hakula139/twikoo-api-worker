@@ -185,10 +185,25 @@ describe('uploadImage routes IMAGE_CDN to the right provider', () => {
     expect(sig?.[1]).toMatch(/^[0-9a-f]{64}$/);
   });
 
-  // Pins the SigV4 derivation against fixed inputs. Catches drift in canonical
-  // request shape, header ordering, signing-key chain, etc. The pinned hex was
-  // computed by this implementation; if it changes, audit the diff before
-  // updating — a passing structural test is not enough.
+  it('s3 encodes URL-reserved filename characters in the signed request path', async () => {
+    const fetchSpy = vi
+      .spyOn(globalThis, 'fetch')
+      .mockResolvedValue(new Response('', { status: 200 }));
+    const config: TwikooConfig = {
+      IMAGE_CDN: 's3',
+      S3_BUCKET: 'my-bucket',
+      S3_ACCESS_KEY_ID: 'AKIA',
+      S3_SECRET_ACCESS_KEY: 'test-secret',
+      S3_REGION: 'us-east-1',
+    };
+
+    const result = await uploadImage(dataUrl, "Hakula's report (draft) #1?.png", config, r2Env());
+
+    const [url] = fetchSpy.mock.calls[0] as [string, RequestInit];
+    expect(url).toMatch(/Hakula%27s%20report%20%28draft%29%20%231%3F\.png$/);
+    expect(result.url).toBe(url);
+  });
+
   it('s3 SigV4 produces a stable signature for fixed inputs', async () => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date('2026-01-15T00:00:00Z'));

@@ -1,4 +1,4 @@
-// Nodemailer-shape shim. `nodemailer` is null'd at bundle time (Node-only SMTP);
+// Nodemailer-shape shim. Wrangler aliases `nodemailer` away (Node-only SMTP);
 // we route through HTTP providers instead.
 
 interface MailAuth {
@@ -39,6 +39,18 @@ interface MailProvider {
   body(msg: MailMessage): unknown;
 }
 
+const parseMailbox = (mailbox: string): { email: string; name?: string } => {
+  const match = mailbox.match(/^(.+)\s+<([^<>]+)>$/);
+  if (!match) {
+    return { email: mailbox };
+  }
+  const name = match[1].trim();
+  return {
+    email: match[2],
+    name: name.startsWith('"') && name.endsWith('"') ? name.slice(1, -1) : name,
+  };
+};
+
 const PROVIDERS: Record<Service, MailProvider> = {
   sendgrid: {
     url: 'https://api.sendgrid.com/v3/mail/send',
@@ -48,7 +60,7 @@ const PROVIDERS: Record<Service, MailProvider> = {
     }),
     body: (msg) => ({
       personalizations: [{ to: [{ email: msg.to }] }],
-      from: { email: msg.from },
+      from: parseMailbox(msg.from),
       subject: msg.subject,
       content: [{ type: 'text/html', value: msg.html }],
     }),
@@ -62,7 +74,7 @@ const PROVIDERS: Record<Service, MailProvider> = {
     }),
     body: (msg) => ({
       personalizations: [{ to: [{ email: msg.to }] }],
-      from: { email: msg.from },
+      from: parseMailbox(msg.from),
       subject: msg.subject,
       content: [{ type: 'text/html', value: msg.html }],
     }),
@@ -84,9 +96,7 @@ const PROVIDERS: Record<Service, MailProvider> = {
   },
 };
 
-// Provider returns 2xx on accepted, 4xx/5xx on rejected. EMAIL_TEST relies on
-// failures throwing; otherwise the caller stores the failure Response as
-// "sent" and the misconfiguration goes unnoticed.
+// EMAIL_TEST requires rejected provider responses to throw instead of appearing sent.
 const send = async (service: Service, apiKey: string, msg: MailMessage): Promise<Response> => {
   const provider = PROVIDERS[service];
   const response = await fetch(provider.url, {
@@ -112,7 +122,7 @@ export const mailShim: NodemailerShim = {
           throw new Error('Only SendGrid, MailChannels, and Resend are supported.');
         }
         if (!config.auth?.user) {
-          throw new Error('SMTP_USER must be set (any non-empty string for SendGrid).');
+          throw new Error('SMTP_USER must be set to any non-empty string.');
         }
         if (!config.auth.pass) {
           throw new Error('SMTP_PASS must be set with the provider API key.');

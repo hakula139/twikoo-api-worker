@@ -24,7 +24,7 @@ jobs:
           cachix_skip_push: 'true'
 
       - name: Run flake check
-        run: nix flake check --no-build
+        run: nix flake check
 
   check:
     name: Worker Check
@@ -56,6 +56,27 @@ jobs:
 
       - name: Test
         run: nix develop -c pnpm test --coverage
+
+      - name: Runtime smoke test
+        run: |
+          EXPECTED_VERSION=$(jq -r .version node_modules/twikoo-func/package.json)
+          SMOKE_LOG="${RUNNER_TEMP}/wrangler-smoke.log"
+          WRANGLER_STATE="${RUNNER_TEMP}/wrangler-state"
+          nix develop -c pnpm wrangler d1 execute twikoo --local \
+            --persist-to "${WRANGLER_STATE}" \
+            --file tests/fixtures/schema.sql
+          nix develop -c pnpm wrangler dev --local --persist-to "${WRANGLER_STATE}" \
+            --port 8787 > "${SMOKE_LOG}" 2>&1 &
+          WRANGLER_PID=$!
+          trap 'kill "${WRANGLER_PID}" 2>/dev/null || true' EXIT
+          if ! curl --retry 30 --retry-connrefused --retry-delay 1 --fail --silent \
+            --header 'Content-Type: application/json' \
+            --data '{"event":"GET_FUNC_VERSION"}' \
+            http://127.0.0.1:8787/ \
+            | jq -e --arg version "${EXPECTED_VERSION}" '.code == 0 and .version == $version' > /dev/null; then
+            cat "${SMOKE_LOG}"
+            exit 1
+          fi
 
       - name: Bundle size check
         run: |

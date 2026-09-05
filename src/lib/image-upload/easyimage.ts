@@ -14,7 +14,6 @@ interface EasyImageResponse {
   message?: string;
 }
 
-// EasyImage 2.0.
 export const uploadEasyImage = async (
   photo: string,
   fileName: string,

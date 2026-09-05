@@ -3,11 +3,11 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { checkAkismet } from '@/lib/akismet';
 
 const baseOpts = {
-  apiKey: 'KEY123',
-  blog: 'https://blog.example',
-  userIp: '1.2.3.4',
-  userAgent: 'Mozilla',
-  content: 'hi',
+  apiKey: 'test-api-key',
+  blog: 'https://hakula.xyz',
+  userIp: '192.0.2.1',
+  userAgent: 'Mozilla/5.0',
+  content: '感谢分享。',
 };
 
 const textResponse = (text: string, status = 200): Response => new Response(text, { status });
@@ -24,15 +24,15 @@ describe('checkAkismet', () => {
     expect(isSpam).toBe(true);
 
     const [url, init] = fetchSpy.mock.calls[0] as [string, RequestInit];
-    expect(url).toBe('https://KEY123.rest.akismet.com/1.1/comment-check');
+    expect(url).toBe('https://test-api-key.rest.akismet.com/1.1/comment-check');
     expect(init.method).toBe('POST');
 
     const body = init.body as URLSearchParams;
-    expect(body.get('blog')).toBe('https://blog.example');
-    expect(body.get('user_ip')).toBe('1.2.3.4');
-    expect(body.get('user_agent')).toBe('Mozilla');
+    expect(body.get('blog')).toBe('https://hakula.xyz');
+    expect(body.get('user_ip')).toBe('192.0.2.1');
+    expect(body.get('user_agent')).toBe('Mozilla/5.0');
     expect(body.get('comment_type')).toBe('comment');
-    expect(body.get('comment_content')).toBe('hi');
+    expect(body.get('comment_content')).toBe('感谢分享。');
   });
 
   it('returns false when body is "false"', async () => {
@@ -45,18 +45,18 @@ describe('checkAkismet', () => {
 
     await checkAkismet({
       ...baseOpts,
-      permalink: 'https://blog.example/post',
-      author: 'Alice',
-      authorEmail: 'a@b.c',
-      authorUrl: 'https://a.example',
+      permalink: 'https://hakula.xyz/about-me/',
+      author: 'Reader',
+      authorEmail: 'reader@example.com',
+      authorUrl: 'https://reader.example.com',
     });
 
     const [, init] = fetchSpy.mock.calls[0] as [string, RequestInit];
     const body = init.body as URLSearchParams;
-    expect(body.get('permalink')).toBe('https://blog.example/post');
-    expect(body.get('comment_author')).toBe('Alice');
-    expect(body.get('comment_author_email')).toBe('a@b.c');
-    expect(body.get('comment_author_url')).toBe('https://a.example');
+    expect(body.get('permalink')).toBe('https://hakula.xyz/about-me/');
+    expect(body.get('comment_author')).toBe('Reader');
+    expect(body.get('comment_author_email')).toBe('reader@example.com');
+    expect(body.get('comment_author_url')).toBe('https://reader.example.com');
   });
 
   it('fail-opens with logger.warn on 5xx (transient outage)', async () => {

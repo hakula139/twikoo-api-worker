@@ -2,16 +2,20 @@
 name = "twikoo-api-worker"
 main = "src/worker.ts"
 compatibility_date = "2025-07-29"
-compatibility_flags = ["nodejs_compat"]
+# twikoo-func's Axios dependency imports node:http2, which is unavailable at this compatibility date.
+compatibility_flags = ["nodejs_compat", "enable_nodejs_http2_module"]
 
 routes = [{ pattern = "twikoo.hakula.xyz", custom_domain = true }]
+
+[alias]
+# Worker-native mail, sanitization, and spam paths replace these Node-only modules.
+jsdom = "./src/shims/empty.ts"
+nodemailer = "./src/shims/empty.ts"
+tencentcloud-sdk-nodejs-tms = "./src/shims/empty.ts"
 
 [[d1_databases]]
 binding = "DB"
 database_name = "twikoo"
-# Set after `wrangler d1 create twikoo`. The ID is not a secret on its own
-# (access still requires Cloudflare account credentials), but treat it as
-# operational config — no need to share it outside this repo.
 database_id = "09fa1c1b-2f3e-4af8-bd3b-8f3b808c94c4"
 
 [[r2_buckets]]
@@ -19,8 +23,6 @@ binding = "R2"
 bucket_name = "twikoo"
 
 [vars]
-# Public URL prefix for objects uploaded to the R2 bucket above.
-# Set after configuring the R2 custom domain.
 R2_PUBLIC_URL = "https://twikoo-r2.hakula.xyz"
 
 # Set via `wrangler secret put`:
@@ -28,7 +30,7 @@ R2_PUBLIC_URL = "https://twikoo-r2.hakula.xyz"
 # QQ_API_KEY           - QQ nickname API key (api.nsuuu.com, optional)
 # SENDER_EMAIL         - notification sender address (verified at provider)
 # SMTP_PASS            - mail provider API key
-# SMTP_USER            - mail provider account name (any non-empty string for SendGrid)
+# SMTP_USER            - any non-empty string for HTTP mail providers
 # TURNSTILE_SECRET_KEY - Cloudflare Turnstile secret (captcha)
 
 [observability.logs]

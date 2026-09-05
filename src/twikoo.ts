@@ -1,5 +1,3 @@
-// Single boundary against twikoo-func; setCustomLibs runs at module load.
-
 import {
   addQQMailSuffix,
   equalsMail,

@@ -1,6 +1,7 @@
 akia
 akismet
 artalk
+axios
 cachix
 chevereto
 cloudflare
@@ -15,6 +16,7 @@ hakula
 hentai
 ifnull
 imaegoo
+jsdom
 lsky
 lskypro
 mailchannels
@@ -30,6 +32,7 @@ piclist
 pkgs
 pnpm
 remoteip
+ruser
 sendgrid
 sigv4
 smfile

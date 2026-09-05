@@ -3,7 +3,7 @@ import type { TwikooConfig } from '@/types';
 import type { UploadResult } from './types';
 
 import { stringConfig } from '../config-read';
-import { decodePhoto, safeBaseName, stripTrailingSlash } from './helpers';
+import { decodePhoto, encodePath, safeBaseName, stripTrailingSlash } from './helpers';
 
 const bytesToHex = (bytes: Uint8Array): string =>
   Array.from(bytes)
@@ -27,7 +27,6 @@ const hmacSha256 = async (key: BufferSource, data: string): Promise<Uint8Array> 
   return new Uint8Array(sig);
 };
 
-// AWS S3 (also covers R2 / S3-compatible endpoints via S3_ENDPOINT).
 export const uploadS3 = async (
   photo: string,
   fileName: string,
@@ -45,11 +44,12 @@ export const uploadS3 = async (
   const prefixRaw = stringConfig(config, 'S3_PATH_PREFIX');
   const prefix = prefixRaw ? `${stripTrailingSlash(prefixRaw)}/` : '';
   const key = `${prefix}${Date.now()}-${safeBaseName(fileName)}`;
+  const encodedKey = encodePath(key);
 
   const customEndpoint = stringConfig(config, 'S3_ENDPOINT');
   const endpoint = customEndpoint
-    ? `${stripTrailingSlash(customEndpoint)}/${bucket}/${key}`
-    : `https://${bucket}.s3.${region}.amazonaws.com/${key}`;
+    ? `${stripTrailingSlash(customEndpoint)}/${bucket}/${encodedKey}`
+    : `https://${bucket}.s3.${region}.amazonaws.com/${encodedKey}`;
   const endpointUrl = new URL(endpoint);
 
   const now = new Date();
@@ -109,11 +109,11 @@ export const uploadS3 = async (
   const cdnUrl = stringConfig(config, 'S3_CDN_URL');
   let fileUrl: string;
   if (cdnUrl) {
-    fileUrl = `${stripTrailingSlash(cdnUrl)}/${key}`;
+    fileUrl = `${stripTrailingSlash(cdnUrl)}/${encodedKey}`;
   } else if (customEndpoint) {
-    fileUrl = `${stripTrailingSlash(customEndpoint)}/${bucket}/${key}`;
+    fileUrl = `${stripTrailingSlash(customEndpoint)}/${bucket}/${encodedKey}`;
   } else {
-    fileUrl = `https://${bucket}.s3.${region}.amazonaws.com/${key}`;
+    fileUrl = `https://${bucket}.s3.${region}.amazonaws.com/${encodedKey}`;
   }
   return { url: fileUrl };
 };

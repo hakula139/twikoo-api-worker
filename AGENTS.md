@@ -6,8 +6,6 @@ twikoo-api-worker is a Cloudflare Workers backend for the [Twikoo](https://twiko
 
 The worker is a thin TypeScript dispatcher that delegates business logic to the upstream `twikoo-func` npm package, with V8-isolate-compatible shims for parts of `twikoo-func` that assume Node.js (mail via HTTP providers instead of SMTP, `xss` instead of `DOMPurify` + `jsdom`, etc.).
 
-A long-term roadmap to drop Twikoo entirely and ship a custom comment system lives in `.claude/plans/comment-system-roadmap.md` (gitignored, local planning only).
-
 ### Repo Layout
 
 ```text
@@ -17,8 +15,6 @@ A long-term roadmap to drop Twikoo entirely and ship a custom comment system liv
 │   └── workflows/
 │       ├── ci.yml              # PR validation: flake check + type/format/lint/spell/test + Codecov upload
 │       └── deploy.yml          # Push-to-main → wrangler deploy
-├── scripts/
-│   └── bundle-trim.mjs         # postinstall: empty out Node-only modules to control bundle size
 ├── src/
 │   ├── db/                     # Drizzle schema + per-table query classes
 │   ├── handlers/               # one file per Twikoo event group + registry
@@ -28,7 +24,8 @@ A long-term roadmap to drop Twikoo entirely and ship a custom comment system liv
 │   ├── twikoo.ts               # twikoo-func wiring + V8-compatible shims
 │   └── types.ts                # Env interface + shared types
 ├── tests/
-│   └── unit/                   # vitest suites running inside workerd
+│   ├── integration/            # request-to-D1 flows running inside workerd
+│   └── unit/                   # focused vitest suites running inside workerd
 ├── drizzle.config.ts           # drizzle-kit config (d1-http driver)
 ├── flake.nix                   # Nix dev shell + git-hooks-nix pre-commit
 ├── wrangler.toml               # Worker config (D1 + R2 bindings, custom domain)
@@ -42,9 +39,9 @@ A long-term roadmap to drop Twikoo entirely and ship a custom comment system liv
 
 ## Stack
 
-- **Runtime**: Cloudflare Workers (V8 isolate) with `nodejs_compat` flag.
+- **Runtime**: Cloudflare Workers (V8 isolate) with `nodejs_compat` and `enable_nodejs_http2_module` flags.
 - **Storage**: Cloudflare D1 (SQLite) for `comment` / `config` / `counter` tables, accessed via Drizzle ORM (`drizzle-orm/d1`). Cloudflare R2 stores uploaded images.
-- **Mail**: HTTP-based providers only (SendGrid / MailChannels / Resend). SMTP is unavailable because `nodemailer` is null'd at bundle time.
+- **Mail**: HTTP-based providers only (SendGrid / MailChannels / Resend). SMTP is unavailable because Wrangler aliases `nodemailer` to an empty Worker module.
 - **Sanitization**: [`xss`](https://www.npmjs.com/package/xss) (replaces `DOMPurify` + `jsdom`).
 - **Spam**: Akismet HTTP API + frequency limiter. Cloudflare Turnstile provides captcha checks.
 - **Captcha**: Cloudflare Turnstile siteverify.
@@ -63,7 +60,7 @@ nix flake check              # Nix-side hooks (Node-side run in CI's `check` job
 ### Local development
 
 ```bash
-pnpm install                 # also runs scripts/bundle-trim.mjs
+pnpm install
 pnpm dev                     # wrangler dev on port 8787 (config in wrangler.toml)
 pnpm check                   # tsc --noEmit
 pnpm test                    # vitest run inside workerd
@@ -77,7 +74,7 @@ For local secrets, create `.dev.vars` (gitignored) with one `KEY=value` per line
 pnpm wrangler login                        # one-time OAuth
 pnpm wrangler d1 create twikoo             # capture database_id → wrangler.toml + drizzle.config.ts
 pnpm wrangler r2 bucket create twikoo
-pnpm db:push                               # sync schema.ts to remote D1 (needs CLOUDFLARE_D1_TOKEN)
+pnpm db:push                               # needs CLOUDFLARE_ACCOUNT_ID and CLOUDFLARE_D1_TOKEN
 pnpm wrangler secret put ADMIN_PASS_HASH   # md5 of plaintext admin password — see "Admin bootstrap" below
 pnpm wrangler secret put SMTP_PASS         # repeat per secret
 pnpm deploy
@@ -126,11 +123,11 @@ Pushes to `main` trigger `.github/workflows/deploy.yml`. Required repo secrets:
 
 ### Local-only paths
 
-Never reference gitignored paths (`.claude/`, `.dev.vars`, `.env*`, etc.) from source files, code comments, commit messages, PR descriptions, README, or other committed artifacts. They do not exist for other contributors or CI, so the references rot. This file (`AGENTS.md`) is the exception because it documents local planning state for the assistant.
+Never reference personal gitignored paths such as `.claude/` plans or local settings from source files, code comments, commit messages, PR descriptions, README, or other committed artifacts. Repository-standard setup inputs such as `.dev.vars` may be documented where contributors need them.
 
 ### Bundle constraints
 
-The Workers Free plan allows 3 MiB after gzip, and CI enforces the same limit. `scripts/bundle-trim.mjs` empties out two Node-only packages that `twikoo-func` pulls in (`jsdom`, `nodemailer`) so esbuild can tree-shake them. Touch this script if `twikoo-func` adds new Node-only dependencies.
+The Workers Free plan allows 3 MiB after gzip, and CI enforces the same limit. Wrangler aliases the unreachable Node-only `jsdom`, `nodemailer`, and `tencentcloud-sdk-nodejs-tms` packages to `src/shims/empty.ts` so esbuild does not traverse them. Add another alias if `twikoo-func` gains another unreachable Node-only dependency.
 
 ### Secrets discipline
 
@@ -165,10 +162,10 @@ pnpm test                    # vitest run inside workerd
 pnpm lint                    # markdownlint + eslint
 pnpm format                  # prettier --check
 pnpm spellcheck              # cspell
-nix flake check              # Nix-side hooks. Optional locally because CI runs the Node-side equivalents.
+nix flake check              # Nix-side hooks. Optional locally because CI runs the same check separately.
 ```
 
-`pnpm dev` is the smoke test for runtime behavior because Wrangler uses the live D1 / R2 bindings unless `--local` is passed. Verify bundle size with `pnpm wrangler deploy --dry-run`.
+`pnpm dev` is the smoke test for runtime behavior. Wrangler uses local D1 and R2 bindings by default, while remote access must be enabled explicitly for the relevant binding. Verify bundle size with `pnpm wrangler deploy --dry-run`.
 
 ## Code Review
 
@@ -179,11 +176,11 @@ After verification passes, run a parallel review with multiple subagents — typ
 - Conciseness — prefer the simplest idiomatic solution.
 - DRY — flag duplicate logic across handlers and DB classes. Look for extraction opportunities.
 - Cross-file consistency — parallel handlers / DB methods should use the same structure, naming, ordering, and error-handling shape.
-- Comment hygiene — verbose multi-line blocks that should be one-liners, missing WHY comments where non-obvious (V8 quirks, upstream `twikoo-func` contracts, bundle-trim assumptions).
+- Comment hygiene — verbose multi-line blocks that should be one-liners, missing WHY comments where non-obvious (V8 quirks, upstream `twikoo-func` contracts, module-alias assumptions).
 - Visibility — `export` only what consumers need. Keep helpers module-private.
 - Idiomatic TypeScript — discriminated unions, `readonly`, exhaustive `switch`, narrow types over `any` / `unknown` casts, async / await over raw Promises.
 - Existing packages — flag hand-written logic that `twikoo-func`, `xss`, or a Cloudflare-native API already handles.
-- Bundle impact — new dependencies must fit under the 3 MiB gzip limit after `bundle-trim.mjs`. Flag Node-only packages that need trimming.
+- Bundle impact — new dependencies must fit under the 3 MiB gzip limit after Wrangler applies module aliases. Flag unreachable Node-only packages that need an alias.
 - Secrets — any new config goes through `wrangler secret put`, never `wrangler.toml` or source.
 
 ## Upstream relationship

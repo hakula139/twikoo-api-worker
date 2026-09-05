@@ -1,8 +1,8 @@
 import type { Env } from '@/types';
+import type { MockInstance } from 'vitest';
 
 import { createExecutionContext, env as rawEnv } from 'cloudflare:test';
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
-import type { MockInstance } from 'vitest';
 
 import { MAX_BODY_BYTES, dispatch } from '@/dispatch';
 import { ResponseCode, TwikooError } from '@/lib/errors';
@@ -15,9 +15,9 @@ const env = rawEnv as unknown as Env;
 const execCtx = () => createExecutionContext();
 
 const post = (body: string): Request =>
-  new Request('https://twikoo.example/api', {
+  new Request('https://twikoo.hakula.xyz/', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', 'Origin': 'https://blog.example' },
+    headers: { 'Content-Type': 'application/json', 'Origin': 'https://hakula.xyz' },
     body,
   });
 
@@ -32,8 +32,6 @@ beforeAll(async () => {
 });
 
 beforeEach(() => {
-  // Silence the per-request log line; the per-request log suite below reads
-  // back the captured calls.
   infoSpy = vi.spyOn(logger, 'info').mockImplementation(() => undefined);
 });
 
@@ -86,11 +84,11 @@ describe('dispatch', () => {
 
   describe('body size cap', () => {
     const postWithLength = (body: string, length: number): Request =>
-      new Request('https://twikoo.example/api', {
+      new Request('https://twikoo.hakula.xyz/', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Origin': 'https://blog.example',
+          'Origin': 'https://hakula.xyz',
           'Content-Length': String(length),
         },
         body,
@@ -106,15 +104,13 @@ describe('dispatch', () => {
     });
 
     it('accepts when Content-Length is at the cap', async () => {
-      // Real body stays small; we only assert the cap check passes the request
-      // through to the parse / dispatch path (which then 404s on event).
       const res = await dispatch(
         postWithLength('{"event":"GET_FUNC_VERSION"}', MAX_BODY_BYTES),
         env,
         execCtx(),
       );
       const body = await res.json<{ code: number; message: string }>();
-      expect(body.code).not.toBe(ResponseCode.FAIL);
+      expect(body.code).toBe(ResponseCode.SUCCESS);
     });
 
     it('falls through to parse when Content-Length is absent', async () => {

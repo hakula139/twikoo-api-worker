@@ -35,7 +35,7 @@ describe('getQqNick', () => {
 
     await getQqNick({ qq: '987@qq.com' }, ctx);
 
-    expect(fetchSpy).toHaveBeenCalledWith(`${QQ_NICK_API}?qq=987`, expect.any(Object));
+    expect(fetchSpy).toHaveBeenCalledWith(`${QQ_NICK_API}?qq=987`, { headers: {} });
   });
 
   it('forwards the API key as a Bearer token when it is bound on the worker env', async () => {
@@ -46,9 +46,9 @@ describe('getQqNick', () => {
       env: { QQ_API_KEY: 'sk-test' } as RequestCtx['env'],
     });
 
-    await getQqNick({ qq: '1' }, ctx);
+    await getQqNick({ qq: '10001' }, ctx);
 
-    expect(fetchSpy).toHaveBeenCalledWith(expect.any(String), {
+    expect(fetchSpy).toHaveBeenCalledWith(`${QQ_NICK_API}?qq=10001`, {
       headers: { Authorization: 'Bearer sk-test' },
     });
   });

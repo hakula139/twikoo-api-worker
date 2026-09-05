@@ -13,11 +13,7 @@ import {
 export const getPasswordStatus: Handler<'GET_PASSWORD_STATUS'> = async (_payload, ctx) =>
   stripCode(await getPasswordStatusFn(ctx.config, VERSION));
 
-// SET_PASSWORD is admin-only — open bootstrap is intentionally unsupported
-// because the deploy → first-call window is a TOCTOU race anyone reaching
-// the worker could win. Bootstrap by setting ADMIN_PASS_HASH (md5 of the
-// plaintext password) via `wrangler secret put`; dispatch merges it into
-// ctx.config.ADMIN_PASS so admin auth works from request one.
+// An open bootstrap would let any caller win the deploy → first-call race.
 export const setPassword: Handler<'SET_PASSWORD'> = async (payload, ctx) => {
   requireAdmin(ctx);
   validate(payload, ['password']);

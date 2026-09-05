@@ -14,17 +14,10 @@ export const enforceTurnstile = async (
     return;
   }
   if (provider !== 'Turnstile') {
-    // The upstream config UI exposes other providers (hCaptcha, reCAPTCHA, ...)
-    // that this worker doesn't implement. Log at the same severity as the
-    // missing-secret branch below since the consequence is identical: a
-    // misconfigured production captcha lets comments through unverified.
-    logger.error(
-      `CAPTCHA_PROVIDER="${provider}" is not supported by this worker. Allowing through without captcha.`,
-    );
-    return;
+    logger.error(`CAPTCHA_PROVIDER="${provider}" is not supported by this worker.`);
+    throw new TwikooError(ResponseCode.FAIL, '人机验证服务不受支持，请联系管理员');
   }
-  // siteverify needs only the secret. The site key is a frontend-only hint
-  // that admins leave blank, so don't guard the backend on it.
+  // siteverify uses the secret. The site key is consumed by the frontend.
   const turnstileSecret = secret(ctx, 'TURNSTILE_SECRET_KEY');
   if (!turnstileSecret) {
     logger.error('Turnstile is enabled but TURNSTILE_SECRET_KEY is unset.');
