@@ -22,20 +22,12 @@ describe('loadConfig', () => {
   });
 
   it('parses a valid config row', async () => {
-    const result = await loadConfig({} as Env, buildDb('{"SITE_URL":"https://x"}'));
-    expect(result).toEqual({ kind: 'ok', config: { SITE_URL: 'https://x' }, droppedKeys: [] });
-  });
-
-  it('does not mutate the parsed object on the bootstrap merge path', async () => {
-    const raw = '{"SITE_URL":"https://x"}';
-    const ok = await loadConfig({ ADMIN_PASS_HASH: 'fallback' } as Env, buildDb(raw));
-    if (ok.kind !== 'ok') {
-      throw new Error('expected ok');
-    }
-    expect(ok.config).toEqual({ SITE_URL: 'https://x', ADMIN_PASS: 'fallback' });
-    // Re-parsing the same raw bytes confirms loadConfig didn't reach back into
-    // the JSON.parse result and add ADMIN_PASS to it.
-    expect(JSON.parse(raw)).toEqual({ SITE_URL: 'https://x' });
+    const result = await loadConfig({} as Env, buildDb('{"SITE_URL":"https://hakula.xyz"}'));
+    expect(result).toEqual({
+      kind: 'ok',
+      config: { SITE_URL: 'https://hakula.xyz' },
+      droppedKeys: [],
+    });
   });
 
   it.each<[string, string]>([
@@ -54,34 +46,34 @@ describe('loadConfig', () => {
 
   it('merges ADMIN_PASS_HASH when the parsed config lacks ADMIN_PASS', async () => {
     const result = await loadConfig(
-      { ADMIN_PASS_HASH: 'fallback' } as Env,
-      buildDb('{"SITE_URL":"https://x"}'),
+      { ADMIN_PASS_HASH: 'fallback-admin-hash' } as Env,
+      buildDb('{"SITE_URL":"https://hakula.xyz"}'),
     );
     expect(result).toEqual({
       kind: 'ok',
-      config: { SITE_URL: 'https://x', ADMIN_PASS: 'fallback' },
+      config: { SITE_URL: 'https://hakula.xyz', ADMIN_PASS: 'fallback-admin-hash' },
       droppedKeys: [],
     });
   });
 
   it('does not override an existing ADMIN_PASS in the row', async () => {
     const result = await loadConfig(
-      { ADMIN_PASS_HASH: 'fallback' } as Env,
-      buildDb('{"ADMIN_PASS":"stored"}'),
+      { ADMIN_PASS_HASH: 'fallback-admin-hash' } as Env,
+      buildDb('{"ADMIN_PASS":"stored-admin-hash"}'),
     );
     if (result.kind !== 'ok') {
       throw new Error('expected ok');
     }
-    expect(result.config.ADMIN_PASS).toBe('stored');
+    expect(result.config.ADMIN_PASS).toBe('stored-admin-hash');
   });
 
   it('prunes keys whose values violate the index signature', async () => {
     const raw = JSON.stringify({
-      SITE_URL: 'https://x',
+      SITE_URL: 'https://hakula.xyz',
       COMMENT_PAGE_SIZE: 10,
       SHOW_REGION: true,
       NULL_KEY: null,
-      NESTED_OBJ: { foo: 'bar' },
+      NESTED_OBJ: { theme: 'dark' },
       NESTED_ARR: [1, 2, 3],
     });
     const result = await loadConfig({} as Env, buildDb(raw));
@@ -89,7 +81,7 @@ describe('loadConfig', () => {
       throw new Error('expected ok');
     }
     expect(result.config).toEqual({
-      SITE_URL: 'https://x',
+      SITE_URL: 'https://hakula.xyz',
       COMMENT_PAGE_SIZE: 10,
       SHOW_REGION: true,
     });

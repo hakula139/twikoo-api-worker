@@ -5,6 +5,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
   checkNsfw,
   decodePhoto,
+  encodePath,
   isUrl,
   safeBaseName,
   stripTrailingSlash,
@@ -12,6 +13,7 @@ import {
 
 const PNG_BASE64 = 'iVBORw0KGgo=';
 const dataUrl = `data:image/png;base64,${PNG_BASE64}`;
+const PNG_BYTES = new Uint8Array([137, 80, 78, 71, 13, 10, 26, 10]);
 
 const okResponse = (body: unknown, init: ResponseInit = { status: 200 }): Response =>
   new Response(JSON.stringify(body), {
@@ -24,13 +26,13 @@ afterEach(() => {
 });
 
 describe('decodePhoto', () => {
-  it('decodes a valid data URL into blob, bytes, and mimeType', () => {
+  it('decodes a valid data URL into blob, bytes, and mimeType', async () => {
     const result = decodePhoto(dataUrl);
     expect(result.mimeType).toBe('image/png');
-    expect(result.bytes).toBeInstanceOf(Uint8Array);
-    expect(result.bytes.length).toBeGreaterThan(0);
+    expect(result.bytes).toEqual(PNG_BYTES);
     expect(result.blob).toBeInstanceOf(Blob);
     expect(result.blob.type).toBe('image/png');
+    expect(new Uint8Array(await result.blob.arrayBuffer())).toEqual(PNG_BYTES);
   });
 
   it('preserves the supplied MIME type', () => {
@@ -39,7 +41,7 @@ describe('decodePhoto', () => {
   });
 
   it('defaults to application/octet-stream when the data: prefix omits a MIME type', () => {
-    expect(decodePhoto(`;base64,${PNG_BASE64}`).mimeType).toBe('application/octet-stream');
+    expect(decodePhoto(`data:;base64,${PNG_BASE64}`).mimeType).toBe('application/octet-stream');
   });
 
   it('throws when the input is not a base64 data URL', () => {
@@ -52,7 +54,7 @@ describe('isUrl', () => {
     ['https://example.com', true],
     ['http://example.com/path', true],
     ['ftp://example.com', false],
-    ['mailto:foo@example.com', false],
+    ['mailto:reader@example.com', false],
     ['/relative', false],
     ['', false],
   ])('isUrl(%s) === %s', (input, expected) => {
@@ -62,16 +64,23 @@ describe('isUrl', () => {
 
 describe('stripTrailingSlash', () => {
   it('removes a single trailing slash', () => {
-    expect(stripTrailingSlash('https://x.com/')).toBe('https://x.com');
+    expect(stripTrailingSlash('https://hakula.xyz/')).toBe('https://hakula.xyz');
   });
 
   it('leaves un-trailed strings alone', () => {
-    expect(stripTrailingSlash('https://x.com')).toBe('https://x.com');
+    expect(stripTrailingSlash('https://hakula.xyz')).toBe('https://hakula.xyz');
   });
 
   it('only strips one trailing slash even if the string ends with multiple', () => {
-    // Codepath uses /\/$/ (single-slash anchor); document the contract.
-    expect(stripTrailingSlash('https://x.com//')).toBe('https://x.com/');
+    expect(stripTrailingSlash('https://hakula.xyz//')).toBe('https://hakula.xyz/');
+  });
+});
+
+describe('encodePath', () => {
+  it('encodes each segment with the AWS URI rules without escaping separators', () => {
+    expect(encodePath("articles/Hakula's notes (draft) #1?.png")).toBe(
+      'articles/Hakula%27s%20notes%20%28draft%29%20%231%3F.png',
+    );
   });
 });
 
@@ -95,6 +104,10 @@ describe('safeBaseName', () => {
   it('falls back to "upload" on an empty basename', () => {
     expect(safeBaseName('')).toBe('upload');
     expect(safeBaseName('a/')).toBe('upload');
+  });
+
+  it('preserves URL-reserved characters for storage-key identity', () => {
+    expect(safeBaseName('report #1?.png')).toBe('report #1?.png');
   });
 });
 

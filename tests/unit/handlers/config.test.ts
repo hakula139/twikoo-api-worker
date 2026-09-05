@@ -17,13 +17,13 @@ describe('getConfig', () => {
   it('strips QQ_API_KEY from the public config response', async () => {
     vi.mocked(twikoo.getConfig).mockResolvedValueOnce({
       code: 0,
-      config: { SITE_NAME: 'X', QQ_API_KEY: 'sk-secret' },
+      config: { SITE_NAME: 'HAKULA†CHANNEL', QQ_API_KEY: 'sk-secret' },
     });
 
     const ctx = buildCtx({ uid: mkUid('') });
     const result = (await getConfig({}, ctx)) as { config: Record<string, unknown> };
 
-    expect(result.config).toEqual({ SITE_NAME: 'X' });
+    expect(result.config).toEqual({ SITE_NAME: 'HAKULA†CHANNEL' });
     expect(result.config.QQ_API_KEY).toBeUndefined();
   });
 
@@ -94,9 +94,9 @@ describe('setConfig', () => {
   it('rejects a non-admin caller', async () => {
     const { ctx, writePatch } = buildSetCtx('guest');
 
-    await expect(setConfig({ config: { SITE_NAME: 'X' } }, ctx)).rejects.toBeInstanceOf(
-      TwikooError,
-    );
+    await expect(
+      setConfig({ config: { SITE_NAME: 'HAKULA†CHANNEL' } }, ctx),
+    ).rejects.toBeInstanceOf(TwikooError);
     expect(writePatch).not.toHaveBeenCalled();
   });
 
@@ -104,9 +104,15 @@ describe('setConfig', () => {
     const adminUid = 'admin-uid';
     const { ctx, writePatch } = buildSetCtx(adminUid, adminUid);
 
-    const result = await setConfig({ config: { SITE_NAME: 'X', SHOW_REGION: 'true' } }, ctx);
+    const result = await setConfig(
+      { config: { SITE_NAME: 'HAKULA†CHANNEL', SHOW_REGION: 'true' } },
+      ctx,
+    );
 
-    expect(writePatch).toHaveBeenCalledWith({ SITE_NAME: 'X', SHOW_REGION: 'true' });
+    expect(writePatch).toHaveBeenCalledWith({
+      SITE_NAME: 'HAKULA†CHANNEL',
+      SHOW_REGION: 'true',
+    });
     expect(result).toEqual({});
   });
 });

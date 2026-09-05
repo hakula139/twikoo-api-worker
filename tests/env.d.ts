@@ -1,7 +1,4 @@
-// Register the worker's bindings on the global `Cloudflare.Env` so tests can
-// read `env.DB` / `env.R2` from `cloudflare:workers` with the same shape the
-// runtime sees. Mirrors `Bindings` in `src/types.ts`; the test pool's miniflare
-// provides in-memory implementations from `wrangler.toml`.
+// Miniflare populates these bindings from wrangler.toml.
 declare namespace Cloudflare {
   interface Env {
     DB: D1Database;

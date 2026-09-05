@@ -23,18 +23,18 @@ import { buildCtx } from '@tests/helpers/ctx';
 
 const baseRow: Comment = {
   _id: mkCommentId('c1'),
-  uid: 'u',
-  nick: 'n',
+  uid: 'reader-1',
+  nick: 'Reader',
   mail: '',
   mailMd5: '',
   link: '',
-  ua: '',
-  ip: '',
+  ua: 'Mozilla/5.0',
+  ip: '192.0.2.1',
   ipRegion: '',
   master: 0,
-  url: '/post',
+  url: '/about-me/',
   href: '',
-  comment: 'hi',
+  comment: '感谢分享。',
   pid: '',
   rid: '',
   isSpam: 0,
@@ -65,7 +65,7 @@ const buildSubmitCtx = (config: TwikooConfig, fake: FakeDb): RequestCtx => {
     },
   };
   return buildCtx({
-    ip: mkIp('1.2.3.4'),
+    ip: mkIp('192.0.2.1'),
     uid: mkUid('guest-uid'),
     config,
     db: db as unknown as RequestCtx['db'],
@@ -73,13 +73,14 @@ const buildSubmitCtx = (config: TwikooConfig, fake: FakeDb): RequestCtx => {
 };
 
 const submitPayload = (overrides: Partial<Record<string, string>> = {}) => ({
-  url: '/post',
-  ua: 'Mozilla',
-  comment: 'hi',
+  url: '/about-me/',
+  ua: 'Mozilla/5.0',
+  comment: '感谢分享。',
   ...overrides,
 });
 
 afterEach(() => {
+  vi.useRealTimers();
   vi.restoreAllMocks();
 });
 
@@ -88,7 +89,6 @@ describe('commentGet > malformed votes JSON', () => {
     const db = {
       comment: {
         count: vi.fn(async () => rows.length),
-        // First call probes head/main; second call (top=1) returns empty.
         list: vi
           .fn<(...args: unknown[]) => Promise<Comment[]>>()
           .mockResolvedValueOnce(rows)
@@ -99,7 +99,7 @@ describe('commentGet > malformed votes JSON', () => {
     return buildCtx({ uid: mkUid('guest-uid'), db: db as unknown as RequestCtx['db'] });
   };
 
-  it('treats malformed ups as empty array and still returns the comment', async () => {
+  it('treats malformed ups as zero votes and still returns the comment', async () => {
     const bad: Comment = {
       ...baseRow,
       _id: mkCommentId('bad'),
@@ -109,7 +109,7 @@ describe('commentGet > malformed votes JSON', () => {
     const result = await commentGet({ url: '/post' }, ctx);
     expect(result.count).toBe(1);
     const data = result.data as Array<{ ups?: unknown }>;
-    expect(data).toHaveLength(1);
+    expect(data[0]?.ups).toBe(0);
   });
 
   it('truncates very long malformed JSON in the warning log', async () => {
@@ -154,7 +154,6 @@ describe('commentGet > config-driven branches', () => {
   it('skips the top-pinned query when TOP_DISABLED=true', async () => {
     const { ctx, list } = buildGetCtx([baseRow], { TOP_DISABLED: 'true' });
     await commentGet({ url: '/post' }, ctx);
-    // Single call (head/main only); the second call for the top query is suppressed.
     expect(list).toHaveBeenCalledTimes(1);
   });
 
@@ -164,9 +163,7 @@ describe('commentGet > config-driven branches', () => {
     expect(list).toHaveBeenCalledTimes(2);
   });
 
-  // Stand in for upstream's strip: when commentGet calls parseComment with
-  // SHOW_REGION='false', the real impl drops ipRegion. We mimic that here so
-  // the worker's own SHOW_REGION-true patch path becomes observable.
+  // Upstream parseComment strips ipRegion unless SHOW_REGION is enabled.
   const stripIpRegion = (rows: readonly unknown[]): unknown[] =>
     rows.map((r) => {
       const { ipRegion: _ipRegion, ...rest } = r as Comment;
@@ -175,7 +172,7 @@ describe('commentGet > config-driven branches', () => {
 
   it('patches ipRegion onto each dto when SHOW_REGION=true', async () => {
     const row: Comment = { ...baseRow, ipRegion: 'Beijing' };
-    vi.mocked(twikoo.parseComment).mockImplementation(stripIpRegion);
+    vi.mocked(twikoo.parseComment).mockImplementationOnce(stripIpRegion);
     const { ctx } = buildGetCtx([row], { SHOW_REGION: 'true' });
     const result = await commentGet({ url: '/post' }, ctx);
     const data = result.data as Array<{ ipRegion?: string }>;
@@ -184,7 +181,7 @@ describe('commentGet > config-driven branches', () => {
 
   it('does not patch ipRegion when SHOW_REGION is unset', async () => {
     const row: Comment = { ...baseRow, ipRegion: 'Beijing' };
-    vi.mocked(twikoo.parseComment).mockImplementation(stripIpRegion);
+    vi.mocked(twikoo.parseComment).mockImplementationOnce(stripIpRegion);
     const { ctx } = buildGetCtx([row]);
     const result = await commentGet({ url: '/post' }, ctx);
     const data = result.data as Array<{ ipRegion?: string }>;
@@ -222,26 +219,40 @@ describe('getCommentsCount > urls validation', () => {
 });
 
 describe('getRecentComments > urls validation', () => {
-  const buildRecentCtx = (): RequestCtx => {
+  const buildRecentCtx = (): { ctx: RequestCtx; recent: ReturnType<typeof vi.fn> } => {
+    const recent = vi.fn(async () => [] as Comment[]);
     const db = {
       comment: {
-        recent: vi.fn(async () => [] as Comment[]),
+        recent,
       },
     };
-    return buildCtx({ db: db as unknown as RequestCtx['db'] });
+    return { ctx: buildCtx({ db: db as unknown as RequestCtx['db'] }), recent };
   };
 
   it('accepts an omitted urls field', async () => {
-    const ctx = buildRecentCtx();
+    const { ctx } = buildRecentCtx();
     const result = await getRecentComments({}, ctx);
     expect(result.data).toEqual([]);
   });
 
   it('rejects when urls is present but not an array of strings', async () => {
-    const ctx = buildRecentCtx();
+    const { ctx } = buildRecentCtx();
     await expect(
       getRecentComments({ urls: 'https://x' as unknown as string[] }, ctx),
     ).rejects.toMatchObject({ code: ResponseCode.FAIL });
+  });
+
+  it.each([
+    { pageSize: 0, expected: 10 },
+    { pageSize: -1, expected: 10 },
+    { pageSize: 1.5, expected: 10 },
+    { pageSize: 101, expected: 100 },
+  ])('normalizes pageSize=$pageSize to $expected', async ({ pageSize, expected }) => {
+    const { ctx, recent } = buildRecentCtx();
+
+    await getRecentComments({ pageSize }, ctx);
+
+    expect(recent).toHaveBeenCalledWith(undefined, false, expected);
   });
 });
 
@@ -278,19 +289,19 @@ describe('commentLike', () => {
   });
 });
 
-// Boundary cases for the guards live in tests/unit/lib/{rate-limit,captcha-guard}.
-// These integration smokes pin the wiring: commentSubmit invokes the guards
-// before save and the build step before save.
 describe('commentSubmit', () => {
-  it('saves a row when no guards reject', async () => {
+  it('saves a row and schedules post-submit work when no guards reject', async () => {
     const fake: FakeDb = { saved: [], perIp: 0, global: 0 };
-    const ctx = buildSubmitCtx({}, fake);
+    const waitUntil = vi.fn();
+    const ctx = { ...buildSubmitCtx({}, fake), waitUntil };
 
     const result = await commentSubmit(submitPayload(), ctx);
 
     expect(typeof result.id).toBe('string');
     expect(fake.saved).toHaveLength(1);
     expect(fake.saved[0]?._id).toBe(result.id);
+    expect(waitUntil).toHaveBeenCalledOnce();
+    expect(waitUntil.mock.calls[0]?.[0]).toBeInstanceOf(Promise);
   });
 
   it('does not save when the per-IP frequency cap is reached', async () => {
@@ -423,8 +434,9 @@ describe('commentSetForAdmin', () => {
   });
 
   it('writes only allowlisted fields and stamps `updated`', async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-09-05T00:00:00Z'));
     const { ctx, update } = buildSetCtx(ADMIN);
-    const before = Date.now();
     await commentSetForAdmin(
       {
         id: 'c1',
@@ -442,7 +454,7 @@ describe('commentSetForAdmin', () => {
     expect(fields).toMatchObject({ comment: 'edited', isSpam: 1, top: 0 });
     expect(fields).not.toHaveProperty('uid');
     expect(fields).not.toHaveProperty('created');
-    expect(fields.updated).toBeGreaterThanOrEqual(before);
+    expect(fields.updated).toBe(Date.now());
   });
 
   it('hides + un-pins (isSpam: true, top: false) via truthiness', async () => {

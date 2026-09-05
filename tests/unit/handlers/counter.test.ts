@@ -1,9 +1,13 @@
 import type { RequestCtx } from '@/types';
 
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { counterGet } from '@/handlers/counter';
 import { buildCtx } from '@tests/helpers/ctx';
+
+afterEach(() => {
+  vi.useRealTimers();
+});
 
 describe('counterGet', () => {
   const buildCounterCtx = (timeValue: number) => {
@@ -16,20 +20,24 @@ describe('counterGet', () => {
   };
 
   it('increments the counter and returns the latest count', async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-09-05T00:00:00Z'));
     const { ctx, incr, time } = buildCounterCtx(42);
 
-    const result = await counterGet({ url: '/post', title: 'Post' }, ctx);
+    const result = await counterGet({ url: '/about-me/', title: '关于我' }, ctx);
 
-    expect(incr).toHaveBeenCalledWith('/post', 'Post', expect.any(Number));
-    expect(time).toHaveBeenCalledWith('/post');
+    expect(incr).toHaveBeenCalledWith('/about-me/', '关于我', Date.now());
+    expect(time).toHaveBeenCalledWith('/about-me/');
     expect(result).toEqual({ time: 42 });
   });
 
   it('defaults title to empty string when omitted', async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-09-05T00:00:00Z'));
     const { ctx, incr } = buildCounterCtx(0);
 
-    await counterGet({ url: '/post' }, ctx);
+    await counterGet({ url: '/comments/' }, ctx);
 
-    expect(incr).toHaveBeenCalledWith('/post', '', expect.any(Number));
+    expect(incr).toHaveBeenCalledWith('/comments/', '', Date.now());
   });
 });

@@ -4,11 +4,11 @@ import { sanitizeHtml } from '@/lib/sanitize';
 
 describe('sanitizeHtml', () => {
   it('strips <script> tags and their bodies entirely', () => {
-    const out = sanitizeHtml('hi<script>alert(1)</script>there');
+    const out = sanitizeHtml('Before<script>alert(1)</script>after');
     expect(out).not.toContain('<script');
     expect(out).not.toContain('alert(1)');
-    expect(out).toContain('hi');
-    expect(out).toContain('there');
+    expect(out).toContain('Before');
+    expect(out).toContain('after');
   });
 
   it('drops on* event handler attributes from allowed tags', () => {

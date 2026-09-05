@@ -70,12 +70,12 @@ describe('configWithSecrets', () => {
   it('overlays env-bound secrets onto admin config', () => {
     const ctx = ctxOf(
       { SMTP_PASS: 'env-pass', SMTP_USER: 'env-user' },
-      { SMTP_PASS: 'config-pass', BLOGGER_EMAIL: 'a@b.c' },
+      { SMTP_PASS: 'config-pass', BLOGGER_EMAIL: 'i@hakula.xyz' },
     );
     const merged = configWithSecrets(ctx);
     expect(merged.SMTP_PASS).toBe('env-pass');
     expect(merged.SMTP_USER).toBe('env-user');
-    expect(merged.BLOGGER_EMAIL).toBe('a@b.c');
+    expect(merged.BLOGGER_EMAIL).toBe('i@hakula.xyz');
   });
 
   it('preserves admin config values for keys not present in env', () => {

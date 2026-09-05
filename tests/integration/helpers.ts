@@ -10,7 +10,7 @@ interface JsonResponseBody {
   [key: string]: unknown;
 }
 
-const ORIGIN = 'https://blog.example';
+const ORIGIN = 'https://hakula.xyz';
 
 // Runs in the same isolate, so `vi.mock('@/twikoo')` from setup.ts still applies.
 const callWorker = (init: RequestInit, headers?: HeadersInit): Promise<Response> => {
@@ -22,7 +22,7 @@ const callWorker = (init: RequestInit, headers?: HeadersInit): Promise<Response>
     merged.set('Content-Type', 'application/json');
   }
   return exports.default.fetch(
-    new Request('https://twikoo.example/api', { ...init, headers: merged }),
+    new Request('https://twikoo.hakula.xyz/', { ...init, headers: merged }),
   );
 };
 
@@ -103,17 +103,17 @@ export const seedComment = async (row: CommentRowSeed = {}): Promise<string> => 
     .bind(
       id,
       row.uid ?? '',
-      row.nick ?? 'Anon',
+      row.nick ?? 'Reader',
       row.mail ?? '',
       '',
       '',
-      'integration-ua',
-      '127.0.0.1',
+      'Mozilla/5.0',
+      '192.0.2.1',
       '',
       0,
       row.url ?? '/post/',
       '',
-      row.comment ?? '<p>seed</p>',
+      row.comment ?? '<p>感谢分享。</p>',
       row.pid ?? '',
       row.rid ?? '',
       row.isSpam ?? 0,

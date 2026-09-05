@@ -17,8 +17,8 @@ const submitPayload = (
   overrides: Partial<EventPayloads['COMMENT_SUBMIT']> = {},
 ): EventPayloads['COMMENT_SUBMIT'] => ({
   url: '/post',
-  ua: 'Mozilla',
-  comment: 'hi',
+  ua: 'Mozilla/5.0',
+  comment: '感谢分享。',
   ...overrides,
 });
 
@@ -36,12 +36,14 @@ describe('enforceTurnstile', () => {
     expect(fetchSpy).not.toHaveBeenCalled();
   });
 
-  it('logs error and allows through when CAPTCHA_PROVIDER is an unrecognized value', async () => {
+  it('fails closed when CAPTCHA_PROVIDER is not supported', async () => {
     const fetchSpy = vi.spyOn(globalThis, 'fetch');
     const errorSpy = vi.spyOn(logger, 'error').mockImplementation(() => undefined);
     const ctx = buildCtx({ config: { CAPTCHA_PROVIDER: 'hCaptcha' } });
 
-    await enforceTurnstile(submitPayload(), ctx);
+    await expect(enforceTurnstile(submitPayload(), ctx)).rejects.toMatchObject({
+      code: ResponseCode.FAIL,
+    });
 
     expect(fetchSpy).not.toHaveBeenCalled();
     expect(errorSpy).toHaveBeenCalledTimes(1);
@@ -104,7 +106,7 @@ describe('enforceTurnstile', () => {
     }
   });
 
-  it('also accepts a config-only secret (admin pasted it into ADMIN_PASS UI, no env)', async () => {
+  it('also accepts a secret stored in admin configuration', async () => {
     const fetchSpy = vi.spyOn(globalThis, 'fetch').mockResolvedValue(okSiteverify(true));
     const ctx = buildCtx({
       config: { CAPTCHA_PROVIDER: 'Turnstile', TURNSTILE_SECRET_KEY: 'sk-from-config' },

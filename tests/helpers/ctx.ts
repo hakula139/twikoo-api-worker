@@ -4,9 +4,9 @@ import { mkIp, mkUid } from '@/types';
 
 const defaultCtx = (): RequestCtx => ({
   env: {} as RequestCtx['env'],
-  request: new Request('https://twikoo.example/'),
+  request: new Request('https://twikoo.hakula.xyz/'),
   waitUntil: () => undefined,
-  ip: mkIp('1.2.3.4'),
+  ip: mkIp('192.0.2.1'),
   region: '',
   origin: null,
   uid: mkUid(''),

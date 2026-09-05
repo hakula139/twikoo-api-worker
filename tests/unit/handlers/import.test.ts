@@ -64,7 +64,7 @@ describe('commentImportForAdmin', () => {
 
   it('dispatches twikoo source to commentImportTwikoo and forwards rows to saveMany', async () => {
     vi.mocked(twikoo.commentImportTwikoo).mockResolvedValueOnce([
-      { _id: 'pre-existing', nick: 'A', comment: 'hi' },
+      { _id: 'pre-existing', nick: 'Hakula', comment: '感谢分享。' },
     ]);
     const { ctx, saveMany } = buildImportCtx(ADMIN);
     const result = await commentImportForAdmin({ source: 'twikoo', file: '[]' }, ctx);
@@ -72,12 +72,12 @@ describe('commentImportForAdmin', () => {
     const rows = saveMany.mock.calls[0]?.[0] as NewComment[] | undefined;
     expect(rows).toHaveLength(1);
     expect(rows?.[0]?._id).toBe('pre-existing');
-    expect(rows?.[0]?.nick).toBe('A');
+    expect(rows?.[0]?.nick).toBe('Hakula');
     expect(result.log).toContain('导入成功 1 条评论');
   });
 
   it('mints a fresh _id when the upstream row is missing one', async () => {
-    vi.mocked(twikoo.commentImportTwikoo).mockResolvedValueOnce([{ nick: 'A' }]);
+    vi.mocked(twikoo.commentImportTwikoo).mockResolvedValueOnce([{ nick: 'Reader' }]);
     const { ctx, saveMany } = buildImportCtx(ADMIN);
     await commentImportForAdmin({ source: 'twikoo', file: '[]' }, ctx);
     const rows = saveMany.mock.calls[0]?.[0] as NewComment[] | undefined;
@@ -86,7 +86,6 @@ describe('commentImportForAdmin', () => {
   });
 
   it.each([
-    ['twikoo', 'commentImportTwikoo'],
     ['valine', 'commentImportValine'],
     ['artalk', 'commentImportArtalk'],
     ['artalk2', 'commentImportArtalk2'],
@@ -101,22 +100,28 @@ describe('commentImportForAdmin', () => {
   it('routes source=disqus through the XML parser into commentImportDisqus', async () => {
     vi.mocked(twikoo.commentImportDisqus).mockResolvedValueOnce([]);
     const { ctx } = buildImportCtx(ADMIN);
-    const xml = '<disqus><post><id>1</id></post></disqus>';
+    const xml = '<disqus><post id="post-1"><message>Thanks for sharing.</message></post></disqus>';
     await commentImportForAdmin({ source: 'disqus', file: xml }, ctx);
     expect(twikoo.commentImportDisqus).toHaveBeenCalledTimes(1);
     const [parsed] = vi.mocked(twikoo.commentImportDisqus).mock.calls[0] ?? [];
-    // wrapElementsAsArrays should turn `<post>` content into single-element
-    // arrays so xml2js-shaped consumers can treat each elem uniformly.
-    const root = (parsed as { disqus?: Array<{ post?: unknown[] }> } | undefined)?.disqus;
-    expect(Array.isArray(root)).toBe(true);
-    expect(Array.isArray(root?.[0]?.post)).toBe(true);
+    expect(parsed).toEqual({
+      disqus: [
+        {
+          post: [
+            {
+              $: { id: 'post-1' },
+              message: ['Thanks for sharing.'],
+            },
+          ],
+        },
+      ],
+    });
   });
 
   it('coerces missing/wrong fields with safe defaults via normalizeRow', async () => {
     vi.mocked(twikoo.commentImportTwikoo).mockResolvedValueOnce([
       {
         _id: 'r1',
-        // intentionally malformed types
         nick: 42 as unknown as string,
         master: '1',
         isSpam: true,
@@ -132,12 +137,9 @@ describe('commentImportForAdmin', () => {
     expect(row?.nick).toBe('');
     expect(row?.master).toBe(1);
     expect(row?.isSpam).toBe(1);
-    // toJsonArray rejects strings that don't parse to a string[] so corrupt
-    // upstream values can't round-trip into D1 with the JsonString brand.
     expect(row?.ups).toBe('[]');
     expect(row?.downs).toBe('["u1","u2"]');
     expect(typeof row?.created).toBe('number');
-    // The drop must surface in the import log so the admin sees it.
     expect(result.log).toMatch(/row r1 ups dropped/);
   });
 
@@ -149,15 +151,12 @@ describe('commentImportForAdmin', () => {
     const result = await commentImportForAdmin({ source: 'twikoo', file: '[]' }, ctx);
     const row = (saveMany.mock.calls[0]?.[0] as NewComment[] | undefined)?.[0];
     expect(row?.ups).toBe('["a","b"]');
-    // downs parses to [123] (numbers, not strings) so the brand is denied.
     expect(row?.downs).toBe('[]');
     expect(result.log).toMatch(/row r1 downs dropped/);
     expect(result.log).not.toMatch(/row r1 ups dropped/);
   });
 
   it('drops a string that parses to a non-array JSON value', async () => {
-    // Distinct from the 'not-an-array' case (parse failure): here the JSON parses
-    // successfully but yields a non-array, so the brand still has to be denied.
     vi.mocked(twikoo.commentImportTwikoo).mockResolvedValueOnce([
       { _id: 'r1', ups: '42', downs: '{"a":1}' },
     ]);

@@ -1,5 +1,4 @@
-// Port of twikoo-func/utils/image.js to Web APIs (Blob / FormData / fetch /
-// Web Crypto for S3 SigV4); upstream uses Node fs / axios / form-data.
+// Uses Web APIs because the upstream image adapters depend on Node APIs.
 
 import type { TwikooConfig } from '@/types';
 
@@ -33,8 +32,6 @@ type KnownImageCdn = (typeof KNOWN_IMAGE_CDNS)[number];
 const isKnownImageCdn = (s: string): s is KnownImageCdn =>
   (KNOWN_IMAGE_CDNS as readonly string[]).includes(s);
 
-// Matches upstream's IMAGE_CDN routing, plus 'r2'. Per-provider preconditions
-// are validated by each provider; this layer catches only unset/unrecognized.
 export const uploadImage = async (
   photo: string,
   fileName: string,
@@ -103,7 +100,6 @@ export const uploadImage = async (
         return await uploadR2(photo, fileName, env);
     }
   } catch (e) {
-    // Preserve typed errors (e.g. NSFW_REJECTED); wrap everything else.
     if (e instanceof TwikooError) {
       throw e;
     }

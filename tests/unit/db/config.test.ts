@@ -18,22 +18,22 @@ describe('ConfigDB.read', () => {
     expect(await db.config.read()).toBe('');
   });
 
-  it('returns the most recent write', async () => {
+  it('returns a written value', async () => {
     const db = dbInstance();
-    await db.config.write('{"a":1}');
-    expect(await db.config.read()).toBe('{"a":1}');
+    await db.config.write('{"SITE_NAME":"HAKULA†CHANNEL"}');
+    expect(await db.config.read()).toBe('{"SITE_NAME":"HAKULA†CHANNEL"}');
   });
 
   it('ignores rows outside the id = 1 singleton', async () => {
     const client = drizzleClient();
     const db = dbInstance();
-    await client.insert(config).values({ id: 0, value: '{"stale":true}' });
+    await client.insert(config).values({ id: 0, value: '{"SITE_NAME":"Stale Site"}' });
 
     expect(await db.config.read()).toBe('');
 
-    await client.insert(config).values({ id: 1, value: '{"canonical":true}' });
+    await client.insert(config).values({ id: 1, value: '{"SITE_NAME":"HAKULA†CHANNEL"}' });
 
-    expect(await db.config.read()).toBe('{"canonical":true}');
+    expect(await db.config.read()).toBe('{"SITE_NAME":"HAKULA†CHANNEL"}');
   });
 });
 
@@ -60,7 +60,7 @@ describe('ConfigDB.writePatch', () => {
     });
   });
 
-  it('preserves existing keys not mentioned in the patch', async () => {
+  it('preserves existing keys and overwrites keys present in the patch', async () => {
     const db = dbInstance();
     await db.config.write(JSON.stringify({ ADMIN_PASS: 'old', SITE_URL: 'https://old.example' }));
     await db.config.writePatch({ ADMIN_PASS: 'new' });
@@ -69,14 +69,6 @@ describe('ConfigDB.writePatch', () => {
       ADMIN_PASS: 'new',
       SITE_URL: 'https://old.example',
     });
-  });
-
-  it('overwrites keys that appear in the patch', async () => {
-    const db = dbInstance();
-    await db.config.write(JSON.stringify({ TURNSTILE_SITE_KEY: '0x1' }));
-    await db.config.writePatch({ TURNSTILE_SITE_KEY: '0x2' });
-
-    expect(JSON.parse(await db.config.read())).toEqual({ TURNSTILE_SITE_KEY: '0x2' });
   });
 });
 

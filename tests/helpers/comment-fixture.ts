@@ -1,10 +1,8 @@
-import type { JsonString } from '@/types';
 import type { NewComment } from '@/db';
+import type { JsonString } from '@/types';
 
 import { mkCommentId } from '@/types';
 
-// Sensible defaults for required NOT NULL columns. Tests override the fields
-// that matter for the assertion under test.
 let counter = 0;
 
 export const newComment = (overrides: Partial<NewComment> = {}): NewComment => {
@@ -12,18 +10,18 @@ export const newComment = (overrides: Partial<NewComment> = {}): NewComment => {
   const id = `c${counter.toString().padStart(4, '0')}`;
   return {
     _id: mkCommentId(id),
-    uid: 'guest-uid',
-    nick: 'guest',
+    uid: 'reader-1',
+    nick: 'Reader',
     mail: '',
     mailMd5: '',
     link: '',
     ua: 'Mozilla/5.0',
-    ip: '1.2.3.4',
+    ip: '192.0.2.1',
     ipRegion: '',
     master: 0,
-    url: '/post',
-    href: '',
-    comment: 'hi',
+    url: '/about-me/',
+    href: 'https://hakula.xyz/about-me/',
+    comment: '感谢分享。',
     pid: '',
     rid: '',
     isSpam: 0,

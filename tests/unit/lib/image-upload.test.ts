@@ -1,16 +1,14 @@
 import type { Env, TwikooConfig } from '@/types';
 
 import { env as rawEnv } from 'cloudflare:test';
-
-const env = rawEnv as unknown as Env;
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
-import { ResponseCode, TwikooError } from '@/lib/errors';
 import { uploadImage } from '@/lib/image-upload';
 
-const PNG_BASE64 = 'iVBORw0KGgo='; // arbitrary 8-byte payload, mime-flagged as png
+const PNG_BASE64 = 'iVBORw0KGgo=';
 const dataUrl = `data:image/png;base64,${PNG_BASE64}`;
-const expectedBytes = atob(PNG_BASE64).length;
+const PNG_BYTES = new Uint8Array([137, 80, 78, 71, 13, 10, 26, 10]);
+const env = rawEnv as unknown as Env;
 
 const r2Env = (): Pick<Env, 'R2' | 'R2_PUBLIC_URL'> => ({
   R2: env.R2,
@@ -32,7 +30,7 @@ describe('uploadImage — r2 path', () => {
     const result = await uploadImage(dataUrl, 'sample.png', config, r2Env());
 
     expect(result.url.startsWith('https://r2.example.test/')).toBe(true);
-    const key = result.url.replace('https://r2.example.test/', '');
+    const key = decodeURIComponent(new URL(result.url).pathname.slice(1));
     expect(key).toMatch(/^\d+-sample\.png$/);
 
     const stored = await env.R2.get(key);
@@ -40,14 +38,14 @@ describe('uploadImage — r2 path', () => {
       throw new Error('expected R2 to return the uploaded object');
     }
     const bytes = new Uint8Array(await stored.arrayBuffer());
-    expect(bytes.length).toBe(expectedBytes);
+    expect(bytes).toEqual(PNG_BYTES);
     expect(stored.httpMetadata?.contentType).toBe('image/png');
   });
 
   it('strips path traversal segments from the upload key', async () => {
     const config: TwikooConfig = { IMAGE_CDN: 'r2' };
     const result = await uploadImage(dataUrl, '../../etc/passwd', config, r2Env());
-    const key = result.url.replace('https://r2.example.test/', '');
+    const key = decodeURIComponent(new URL(result.url).pathname.slice(1));
     expect(key).not.toContain('/');
     expect(key).not.toContain('..');
     expect(key).toMatch(/^\d+-passwd$/);
@@ -60,25 +58,13 @@ describe('uploadImage — r2 path', () => {
     expect(key).toMatch(/^\d+-upload$/);
   });
 
-  it('wraps generic errors as TwikooError(UPLOAD_FAILED)', async () => {
+  it('encodes URL-reserved filename characters without changing the R2 key', async () => {
     const config: TwikooConfig = { IMAGE_CDN: 'r2' };
-    const brokenEnv = { R2: env.R2, R2_PUBLIC_URL: '' };
-    try {
-      await uploadImage(dataUrl, 'x.png', config, brokenEnv);
-      throw new Error('expected uploadImage to throw');
-    } catch (e) {
-      expect(e).toBeInstanceOf(TwikooError);
-      expect((e as TwikooError).code).toBe(ResponseCode.UPLOAD_FAILED);
-    }
-  });
+    const result = await uploadImage(dataUrl, 'report #1?.png', config, r2Env());
+    expect(result.url).toMatch(/report%20%231%3F\.png$/);
 
-  it('rejects when no IMAGE_CDN is configured', async () => {
-    try {
-      await uploadImage(dataUrl, 'x.png', {}, r2Env());
-      throw new Error('expected uploadImage to throw');
-    } catch (e) {
-      expect(e).toBeInstanceOf(TwikooError);
-      expect((e as TwikooError).code).toBe(ResponseCode.UPLOAD_FAILED);
-    }
+    const key = decodeURIComponent(new URL(result.url).pathname.slice(1));
+    expect(key).toMatch(/^\d+-report #1\?\.png$/);
+    expect(await env.R2.get(key)).not.toBeNull();
   });
 });

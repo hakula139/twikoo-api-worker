@@ -15,29 +15,23 @@ afterEach(() => {
 });
 
 describe('imageUpload', () => {
+  const photo = 'data:image/png;base64,iVBORw0KGgo=';
+
   it('forwards photo, fileName, config, and env to uploadImage and wraps the result', async () => {
     vi.mocked(imageLib.uploadImage).mockResolvedValueOnce({ url: 'https://cdn.example/y.png' });
     const env = { R2_PUBLIC_URL: 'https://cdn.example' } as RequestCtx['env'];
     const config = { IMAGE_CDN: 'r2' };
     const ctx = buildCtx({ config, env });
 
-    const result = await imageUpload(
-      { photo: 'data:image/png;base64,AAAA...', fileName: 'a.png' },
-      ctx,
-    );
+    const result = await imageUpload({ photo, fileName: 'avatar.png' }, ctx);
 
-    expect(imageLib.uploadImage).toHaveBeenCalledWith(
-      'data:image/png;base64,AAAA...',
-      'a.png',
-      config,
-      env,
-    );
+    expect(imageLib.uploadImage).toHaveBeenCalledWith(photo, 'avatar.png', config, env);
     expect(result).toEqual({ data: { url: 'https://cdn.example/y.png' } });
   });
 
   it('propagates errors from uploadImage', async () => {
     vi.mocked(imageLib.uploadImage).mockRejectedValueOnce(new Error('R2 binding missing'));
-    await expect(imageUpload({ photo: 'p', fileName: 'a.png' }, buildCtx())).rejects.toThrow(
+    await expect(imageUpload({ photo, fileName: 'avatar.png' }, buildCtx())).rejects.toThrow(
       'R2 binding missing',
     );
   });

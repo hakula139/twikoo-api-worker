@@ -4,7 +4,6 @@ on:
   push:
     branches: [main]
   pull_request:
-    branches: [main]
   workflow_dispatch:
 
 permissions:
@@ -16,7 +15,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
 
       - name: Setup Nix
         uses: ./.github/actions/setup-nix
@@ -25,14 +24,14 @@ jobs:
           cachix_skip_push: 'true'
 
       - name: Run flake check
-        run: nix flake check --no-build
+        run: nix flake check
 
   check:
     name: Worker Check
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
 
       - name: Setup Nix
         uses: ./.github/actions/setup-nix
@@ -58,13 +57,32 @@ jobs:
       - name: Test
         run: nix develop -c pnpm test --coverage
 
+      - name: Runtime smoke test
+        run: |
+          EXPECTED_VERSION=$(jq -r .version node_modules/twikoo-func/package.json)
+          SMOKE_LOG="${RUNNER_TEMP}/wrangler-smoke.log"
+          WRANGLER_STATE="${RUNNER_TEMP}/wrangler-state"
+          nix develop -c pnpm wrangler d1 execute twikoo --local \
+            --persist-to "${WRANGLER_STATE}" \
+            --file tests/fixtures/schema.sql
+          nix develop -c pnpm wrangler dev --local --persist-to "${WRANGLER_STATE}" \
+            --port 8787 > "${SMOKE_LOG}" 2>&1 &
+          WRANGLER_PID=$!
+          trap 'kill "${WRANGLER_PID}" 2>/dev/null || true' EXIT
+          if ! curl --retry 30 --retry-connrefused --retry-delay 1 --fail --silent \
+            --header 'Content-Type: application/json' \
+            --data '{"event":"GET_FUNC_VERSION"}' \
+            http://127.0.0.1:8787/ \
+            | jq -e --arg version "${EXPECTED_VERSION}" '.code == 0 and .version == $version' > /dev/null; then
+            cat "${SMOKE_LOG}"
+            exit 1
+          fi
+
       - name: Bundle size check
         run: |
           nix develop -c pnpm wrangler deploy --dry-run --outdir dist
-          # Threshold sits well under Workers' 1 MiB cap with headroom over
-          # the current ~500 KiB gzipped build. Bumps here should travel with
-          # edits to scripts/bundle-trim.mjs (trim list).
-          THRESHOLD=$((950 * 1024))
+          # Keep this aligned with the Workers Free plan's 3 MiB compressed limit.
+          THRESHOLD=$((3 * 1024 * 1024))
           GZIPPED=$(gzip -c dist/worker.js | wc -c)
           echo "Compressed bundle: ${GZIPPED} bytes (threshold: ${THRESHOLD})"
           if [ "${GZIPPED}" -gt "${THRESHOLD}" ]; then
@@ -73,7 +91,7 @@ jobs:
           fi
 
       - name: Upload to Codecov
-        uses: codecov/codecov-action@v6
+        uses: codecov/codecov-action@v7
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
           files: coverage/lcov.info

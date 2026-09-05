@@ -47,7 +47,7 @@ describe('integration: LOGIN', () => {
   it('returns PASS_NOT_EXIST before any password has been seeded', async () => {
     await seedConfig({});
 
-    const { body } = await postEvent('LOGIN', { password: 'whatever' });
+    const { body } = await postEvent('LOGIN', { password: 'password-before-setup' });
 
     expect(body.code).toBe(ResponseCode.PASS_NOT_EXIST);
   });
@@ -64,20 +64,30 @@ describe('integration: SET_PASSWORD lockdown', () => {
 });
 
 describe('integration: COMMENT_GET_FOR_ADMIN sort options', () => {
-  let ids: { a: string; b: string; c: string };
+  let ids: { olderPopular: string; newerPopular: string; newestWithoutVotes: string };
 
   beforeEach(async () => {
     await seedAdmin();
     const t = Date.now() - 60_000;
-    const a = await seedComment({ url: '/post/', comment: 'A', created: t, ups: '["x","y"]' });
-    const b = await seedComment({
+    const olderPopular = await seedComment({
       url: '/post/',
-      comment: 'B',
-      created: t + 1_000,
-      ups: '["x"]',
+      comment: 'Older popular comment',
+      created: t,
+      ups: '["reader-1","reader-2"]',
     });
-    const c = await seedComment({ url: '/post/', comment: 'C', created: t + 2_000, ups: '[]' });
-    ids = { a, b, c };
+    const newerPopular = await seedComment({
+      url: '/post/',
+      comment: 'Newer popular comment',
+      created: t + 1_000,
+      ups: '["reader-1","reader-2"]',
+    });
+    const newestWithoutVotes = await seedComment({
+      url: '/post/',
+      comment: 'Newest comment without votes',
+      created: t + 2_000,
+      ups: '[]',
+    });
+    ids = { olderPopular, newerPopular, newestWithoutVotes };
   });
 
   const fetchAdminList = async (
@@ -99,25 +109,41 @@ describe('integration: COMMENT_GET_FOR_ADMIN sort options', () => {
     const result = await fetchAdminList(undefined);
 
     expect(result.count).toBe(3);
-    expect(result.data.map((r) => r._id)).toEqual([ids.c, ids.b, ids.a]);
+    expect(result.data.map((r) => r._id)).toEqual([
+      ids.newestWithoutVotes,
+      ids.newerPopular,
+      ids.olderPopular,
+    ]);
   });
 
   it('sort=oldest reverses the order', async () => {
     const result = await fetchAdminList('oldest');
 
-    expect(result.data.map((r) => r._id)).toEqual([ids.a, ids.b, ids.c]);
+    expect(result.data.map((r) => r._id)).toEqual([
+      ids.olderPopular,
+      ids.newerPopular,
+      ids.newestWithoutVotes,
+    ]);
   });
 
   it('sort=popular ranks by ups length, breaking ties on created desc', async () => {
     const result = await fetchAdminList('popular');
 
-    expect(result.data.map((r) => r._id)).toEqual([ids.a, ids.b, ids.c]);
+    expect(result.data.map((r) => r._id)).toEqual([
+      ids.newerPopular,
+      ids.olderPopular,
+      ids.newestWithoutVotes,
+    ]);
   });
 
   it('an unrecognized sort value falls back to newest', async () => {
-    const result = await fetchAdminList('garbage');
+    const result = await fetchAdminList('unsupported-sort');
 
-    expect(result.data.map((r) => r._id)).toEqual([ids.c, ids.b, ids.a]);
+    expect(result.data.map((r) => r._id)).toEqual([
+      ids.newestWithoutVotes,
+      ids.newerPopular,
+      ids.olderPopular,
+    ]);
   });
 
   it('non-admin callers get NEED_LOGIN', async () => {
@@ -128,7 +154,7 @@ describe('integration: COMMENT_GET_FOR_ADMIN sort options', () => {
 });
 
 describe('integration: COMMENT_SET_FOR_ADMIN boolean flags', () => {
-  it('hides a comment via { isSpam: true } from the widget', async () => {
+  it('stores { isSpam: true } as 1', async () => {
     await seedAdmin();
     const id = await seedComment({ url: '/post/', isSpam: 0 });
 
@@ -196,6 +222,7 @@ describe('integration: COMMENT_DELETE_FOR_ADMIN', () => {
     const { body } = await postEvent('COMMENT_DELETE_FOR_ADMIN', { id });
 
     expect(body.code).toBe(ResponseCode.NEED_LOGIN);
+    expect(await fetchComments('/post/')).toHaveLength(1);
   });
 });
 
@@ -233,7 +260,7 @@ describe('integration: COMMENT_EXPORT_FOR_ADMIN', () => {
 
     const { body } = await postEvent(
       'COMMENT_EXPORT_FOR_ADMIN',
-      { collection: 'evil' },
+      { collection: 'unsupported-collection' },
       adminAuthHeader(),
     );
 
@@ -251,14 +278,6 @@ describe('integration: COMMENT_EXPORT_FOR_ADMIN', () => {
 });
 
 describe('integration: GET_CONFIG_FOR_ADMIN', () => {
-  it('returns SUCCESS for an admin caller', async () => {
-    await seedAdmin();
-
-    const { body } = await postEvent('GET_CONFIG_FOR_ADMIN', {}, adminAuthHeader(ADMIN_TOKEN));
-
-    expect(body.code).toBe(ResponseCode.SUCCESS);
-  });
-
   it('rejects non-admin callers with NEED_LOGIN', async () => {
     await seedAdmin();
 

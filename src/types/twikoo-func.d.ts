@@ -1,5 +1,3 @@
-// Ambient types for twikoo-func — only the surface we consume.
-
 declare module 'twikoo-func/utils/lib' {
   export function setCustomLibs(libs: {
     DOMPurify?: { sanitize: (input: string) => string };
@@ -10,10 +8,9 @@ declare module 'twikoo-func/utils/lib' {
 }
 
 declare module 'twikoo-func/utils' {
-  export function getFuncVersion(opts: { VERSION: string }): {
+  export function getFuncVersion(VERSION: string): {
     code: number;
-    data?: { version: string };
-    version?: string;
+    version: string;
   };
   export function parseComment(
     comments: readonly unknown[],

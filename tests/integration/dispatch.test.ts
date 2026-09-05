@@ -1,5 +1,5 @@
-import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { MockInstance } from 'vitest';
+import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { MAX_BODY_BYTES } from '@/dispatch';
 import { ResponseCode } from '@/lib/errors';
@@ -29,7 +29,7 @@ describe('integration: worker entry', () => {
       { 'Access-Control-Request-Method': 'POST' },
     );
     expect(res.status).toBe(204);
-    expect(res.headers.get('Access-Control-Allow-Origin')).toBe('https://blog.example');
+    expect(res.headers.get('Access-Control-Allow-Origin')).toBe('https://hakula.xyz');
     expect(res.headers.get('Access-Control-Allow-Methods')).toContain('POST');
   });
 
@@ -52,6 +52,14 @@ describe('integration: worker entry', () => {
 });
 
 describe('integration: dispatch hardening', () => {
+  it('rejects an unknown event with EVENT_NOT_EXIST', async () => {
+    await seedConfig({});
+
+    const { body } = await postEvent('NOT_AN_EVENT');
+
+    expect(body.code).toBe(ResponseCode.EVENT_NOT_EXIST);
+  });
+
   it('rejects with FAIL + CORS when Content-Length exceeds the cap', async () => {
     const { body, headers } = await postRaw('{}', {
       'Content-Length': String(MAX_BODY_BYTES + 1),
@@ -63,16 +71,16 @@ describe('integration: dispatch hardening', () => {
 
   describe('CORS rejection short-circuits writes', () => {
     it('returns FORBIDDEN and skips the handler when Origin is not allowlisted', async () => {
-      await seedConfig({ CORS_ALLOW_ORIGIN: 'https://allowed.example' });
+      await seedConfig({ CORS_ALLOW_ORIGIN: 'https://hakula.xyz' });
 
       const { body } = await postEvent(
         'COMMENT_SUBMIT',
         {
           url: '/post/',
-          ua: 'integration-ua',
-          comment: 'should not persist',
+          ua: 'Mozilla/5.0',
+          comment: 'This rejected comment must not persist.',
         },
-        { 'Origin': 'https://attacker.example', 'x-twikoo-recaptcha-v3': 'attacker' },
+        { 'Origin': 'https://attacker.example.com', 'x-twikoo-recaptcha-v3': 'attacker' },
       );
 
       expect(body.code).toBe(ResponseCode.FORBIDDEN);
@@ -94,8 +102,7 @@ describe('integration: dispatch hardening', () => {
     expect(body.code).toBe(ResponseCode.FAIL);
     expect(infoSpy).toHaveBeenCalledTimes(1);
     const fields = infoSpy.mock.calls[0]?.[0] as
-      | { event: string; code: number; uid: string; duration_ms: unknown }
-      | undefined;
+      { event: string; code: number; uid: string; duration_ms: unknown } | undefined;
     expect(fields?.event).toBe('COMMENT_LIKE');
     expect(fields?.code).toBe(ResponseCode.FAIL);
     expect(fields?.uid).toBe('observer-uid');

@@ -1,12 +1,17 @@
 import type { Comment, NewComment } from '@/db';
 import type { RequestCtx } from '@/types';
 
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { postSubmit } from '@/lib/comment-post-submit';
 import * as twikoo from '@/twikoo';
 import { mkCommentId } from '@/types';
 import { buildCtx } from '@tests/helpers/ctx';
+
+beforeEach(() => {
+  vi.clearAllMocks();
+  vi.spyOn(twikoo.logger, 'error').mockImplementation(() => undefined);
+});
 
 afterEach(() => {
   vi.restoreAllMocks();
@@ -31,18 +36,18 @@ const buildPostCtx = (db: PostSubmitDb, env: Partial<RequestCtx['env']> = {}): R
 const baseSaved = (overrides: Partial<NewComment> = {}): Comment => {
   const row: NewComment = {
     _id: mkCommentId('saved-1'),
-    uid: 'u',
-    nick: 'n',
-    mail: 'a@example.com',
+    uid: 'reader-1',
+    nick: 'Reader',
+    mail: 'reader@example.com',
     mailMd5: '',
     link: '',
-    ua: 'Mozilla',
-    ip: '1.2.3.4',
+    ua: 'Mozilla/5.0',
+    ip: '192.0.2.1',
     ipRegion: '',
     master: 0,
-    url: '/post',
-    href: 'https://blog.example/post',
-    comment: 'hi',
+    url: '/about-me/',
+    href: 'https://hakula.xyz/about-me/',
+    comment: '感谢分享。',
     pid: '',
     rid: '',
     isSpam: 0,
@@ -114,6 +119,7 @@ describe('postSubmit', () => {
 
     await expect(postSubmit(baseSaved(), ctx)).resolves.toBeUndefined();
     expect(updateSpam).not.toHaveBeenCalled();
+    expect(twikoo.sendNotice).toHaveBeenCalledOnce();
   });
 
   it('swallows sendNotice errors so postSubmit always resolves', async () => {
@@ -129,7 +135,6 @@ describe('postSubmit', () => {
     let captured: unknown;
     vi.mocked(twikoo.sendNotice).mockImplementationOnce(async (_curr, _config, getParent) => {
       captured = await getParent({ pid: 'parent-1' });
-      // Empty pid should short-circuit to undefined without hitting byId.
       const undef = await getParent({});
       expect(undef).toBeUndefined();
     });

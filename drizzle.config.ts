@@ -1,9 +1,7 @@
 import { defineConfig } from 'drizzle-kit';
 
-// drizzle-kit runs at build time on the laptop / CI, not inside a Worker, so
-// it talks to D1 via the REST API rather than the wrangler binding. The
-// account / database IDs are operational config (already in wrangler.toml);
-// CLOUDFLARE_D1_TOKEN must be exported in the shell with "D1 Edit" permission.
+// drizzle-kit uses D1's REST API, so the shell needs the account ID and a token
+// with D1 Edit permission.
 export default defineConfig({
   schema: './src/db/schema.ts',
   out: './migrations',
