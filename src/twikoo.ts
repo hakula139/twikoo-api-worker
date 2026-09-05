@@ -22,7 +22,7 @@ import {
   commentImportValine,
   jsonParse,
 } from 'twikoo-func/utils/import';
-import { getMd5, getSha256, setCustomLibs } from 'twikoo-func/utils/lib';
+import { getHtmlToText, getMd5, getSha256, setCustomLibs } from 'twikoo-func/utils/lib';
 import logger from 'twikoo-func/utils/logger';
 import { emailTest, noticeMaster, noticeReply, sendNotice } from 'twikoo-func/utils/notify';
 import twikooFuncPkg from 'twikoo-func/package.json';
@@ -38,6 +38,7 @@ setCustomLibs({
 });
 
 export const VERSION: string = twikooFuncPkg.version;
+export const htmlToText = getHtmlToText();
 
 // getMd5() / getSha256() are factories — cache once for stable references.
 export const md5 = getMd5();

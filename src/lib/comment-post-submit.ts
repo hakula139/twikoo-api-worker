@@ -10,8 +10,6 @@ import { mkCommentId } from '@/types';
 
 // Akismet and notification failures are isolated because this work is best-effort.
 export const postSubmit = async (saved: NewComment, ctx: RequestCtx): Promise<void> => {
-  // Mutate `saved` in place so sendNotice sees fresh isSpam, since upstream
-  // suppresses spam notifications when NOTIFY_SPAM='false'.
   try {
     const akismetKey = secret(ctx, 'AKISMET_KEY') ?? '';
     if (akismetKey && akismetKey !== 'MANUAL_REVIEW') {
@@ -71,9 +69,6 @@ export const postSubmit = async (saved: NewComment, ctx: RequestCtx): Promise<vo
       await sendNotice(upstreamComment, config, getParentComment);
     }
   } catch (error) {
-    logger.error(
-      { stage: 'sendNotice', id: saved._id, url: saved.url, error },
-      'postSubmit failed',
-    );
+    logger.error({ stage: 'notify', id: saved._id, url: saved.url, error }, 'postSubmit failed');
   }
 };

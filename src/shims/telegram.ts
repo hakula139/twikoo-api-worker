@@ -1,8 +1,7 @@
 import type { TwikooConfig } from '@/types';
 
-import { getHtmlToText } from 'twikoo-func/utils/lib';
-
 import { stringConfig } from '@/lib/config-read';
+import { htmlToText } from '@/twikoo';
 
 interface TelegramComment {
   _id: string;
@@ -13,7 +12,7 @@ interface TelegramComment {
   url: string;
 }
 
-const htmlToText = getHtmlToText();
+// Field budgets leave room for HTML tags within Telegram's 4,096-character limit.
 const MAX_TITLE_LENGTH = 300;
 const MAX_NICK_LENGTH = 240;
 const MAX_COMMENT_LENGTH = 2_000;
@@ -51,6 +50,9 @@ const escapeHtml = (value: string, maxLength: number): string => {
 };
 
 const commentUrl = (comment: TelegramComment, config: TwikooConfig): string | undefined => {
+  if (comment.url.length > MAX_URL_LENGTH) {
+    return undefined;
+  }
   const siteUrl = stringConfig(config, 'SITE_URL');
   if (!siteUrl || !URL.canParse(siteUrl)) {
     return undefined;
@@ -85,17 +87,17 @@ export const sendTelegramNotice = async (
   const botToken = pushToken.slice(0, separator);
   const chatId = pushToken.slice(separator + 1);
 
-  const title =
-    stringConfig(config, 'MAIL_SUBJECT_ADMIN') ||
-    `${stringConfig(config, 'SITE_NAME') ?? ''}有新评论了`;
+  const siteName = stringConfig(config, 'SITE_NAME');
+  const title = siteName ? `您在 ${siteName} 发表的文章有了新评论～` : '您的文章有了新评论～';
   const url = commentUrl(comment, config);
-  const link = url ? `\n\n<a href="${url}">查看原文</a>` : '';
-  const text = `<b>${escapeHtml(title, MAX_TITLE_LENGTH)}</b>
+  const link = url ? `<a href="${url}">查看原文</a>\n\n` : '';
+  const text = `
+<b>${escapeHtml(title, MAX_TITLE_LENGTH)}</b>
 
 <b>${escapeHtml(comment.nick, MAX_NICK_LENGTH)}</b>
-<blockquote>${escapeHtml(htmlToText(comment.comment), MAX_COMMENT_LENGTH)}</blockquote>${link}
+<blockquote>${escapeHtml(htmlToText(comment.comment), MAX_COMMENT_LENGTH)}</blockquote>
 
-<code>${escapeHtml(comment.mail, MAX_MAIL_LENGTH)}</code> · <code>${escapeHtml(comment.ip, MAX_IP_LENGTH)}</code>`;
+${link}<code>${escapeHtml(comment.mail, MAX_MAIL_LENGTH)}</code> · <code>${escapeHtml(comment.ip, MAX_IP_LENGTH)}</code>`.trim();
   const response = await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },

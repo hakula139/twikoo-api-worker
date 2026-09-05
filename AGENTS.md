@@ -82,6 +82,8 @@ pnpm wrangler secret put SMTP_PASS         # repeat per secret
 pnpm deploy
 ```
 
+Telegram notifications require `PUSHOO_CHANNEL=telegram` in the admin configuration and a `PUSHOO_TOKEN` secret formatted as `<bot-token>#<chat-id>`.
+
 ### Admin bootstrap
 
 `SET_PASSWORD` is admin-only because the open "claim by first call" path upstream Twikoo ships has a TOCTOU race during the deploy → first-call window. Seed the admin identity via `ADMIN_PASS_HASH` (md5 of the plaintext password). `dispatch.ts` merges it into `ctx.config.ADMIN_PASS` until the D1 row has its own. Once `SET_PASSWORD` rotates that value, the secret can be removed.

@@ -27,6 +27,7 @@ R2_PUBLIC_URL = "https://twikoo-r2.hakula.xyz"
 
 # Set via `wrangler secret put`:
 # AKISMET_KEY          - Akismet API key (spam check)
+# PUSHOO_TOKEN         - Telegram <bot-token>#<chat-id>
 # QQ_API_KEY           - QQ nickname API key (api.nsuuu.com, optional)
 # SENDER_EMAIL         - notification sender address (verified at provider)
 # SMTP_PASS            - mail provider API key

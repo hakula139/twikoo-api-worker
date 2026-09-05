@@ -157,21 +157,20 @@ describe('postSubmit', () => {
     let capturedParent: unknown;
     vi.mocked(twikoo.noticeReply).mockImplementationOnce(async (current, _config, getParent) => {
       expect(current).toEqual(expect.objectContaining({ _id: 'saved-1', id: 'saved-1' }));
-      capturedParent = await getParent({ pid: 'parent-1' });
+      capturedParent = await getParent(current);
     });
     const updateSpam = vi.fn(async () => undefined);
     const ctx = buildPostCtx(
       { byIdRows: new Map([['parent-1', parent]]), updateSpam },
-      {},
+      { PUSHOO_TOKEN: '123456:bot_token#-100123456' },
       {
         PUSHOO_CHANNEL: 'telegram',
-        PUSHOO_TOKEN: '123456:bot_token#-100123456',
         SC_MAIL_NOTIFY: 'true',
-        SITE_NAME: 'Hakula',
+        SITE_NAME: 'HAKULA†CHANNEL',
       },
     );
 
-    await postSubmit(baseSaved(), ctx);
+    await postSubmit(baseSaved({ pid: 'parent-1' }), ctx);
 
     expect(twikoo.sendNotice).not.toHaveBeenCalled();
     expect(twikoo.noticeMaster).toHaveBeenCalledWith(
@@ -183,8 +182,8 @@ describe('postSubmit', () => {
     expect(fetchMock).toHaveBeenCalledOnce();
   });
 
-  it('defaults to Telegram-only master notices while retaining reply emails', async () => {
-    vi.spyOn(globalThis, 'fetch').mockResolvedValue(Response.json({ ok: true }));
+  it('sends clean comments to Telegram without opting into master emails', async () => {
+    const fetchMock = vi.spyOn(globalThis, 'fetch').mockResolvedValue(Response.json({ ok: true }));
     const updateSpam = vi.fn(async () => undefined);
     const ctx = buildPostCtx(
       { byIdRows: new Map(), updateSpam },
@@ -192,7 +191,8 @@ describe('postSubmit', () => {
       {
         PUSHOO_CHANNEL: 'telegram',
         PUSHOO_TOKEN: '123456:bot_token#-100123456',
-        SITE_NAME: 'Hakula',
+        NOTIFY_SPAM: 'false',
+        SITE_NAME: 'HAKULA†CHANNEL',
       },
     );
 
@@ -200,6 +200,7 @@ describe('postSubmit', () => {
 
     expect(twikoo.noticeMaster).not.toHaveBeenCalled();
     expect(twikoo.noticeReply).toHaveBeenCalledOnce();
+    expect(fetchMock).toHaveBeenCalledOnce();
   });
 
   it('does not notify the blogger about their own comment', async () => {
@@ -209,7 +210,7 @@ describe('postSubmit', () => {
       { byIdRows: new Map(), updateSpam },
       {},
       {
-        BLOGGER_EMAIL: ' A@example.com ',
+        BLOGGER_EMAIL: ' READER@example.com ',
         PUSHOO_CHANNEL: 'telegram',
         PUSHOO_TOKEN: '123456:bot_token#-100123456',
       },
@@ -239,26 +240,33 @@ describe('postSubmit', () => {
   it('skips unsupported push adapters while retaining reply emails', async () => {
     const warnSpy = vi.spyOn(twikoo.logger, 'warn').mockImplementation(() => undefined);
     const updateSpam = vi.fn(async () => undefined);
+    const parent = baseSaved({ _id: mkCommentId('parent-1') });
     const ctx = buildPostCtx(
-      { byIdRows: new Map(), updateSpam },
+      { byIdRows: new Map([['parent-1', parent]]), updateSpam },
       {},
       { PUSHOO_CHANNEL: 'bark', PUSHOO_TOKEN: 'token' },
     );
 
-    await postSubmit(baseSaved(), ctx);
+    await postSubmit(baseSaved({ pid: 'parent-1' }), ctx);
 
     expect(twikoo.sendNotice).not.toHaveBeenCalled();
     expect(twikoo.noticeMaster).not.toHaveBeenCalled();
-    expect(twikoo.noticeReply).toHaveBeenCalledOnce();
+    expect(twikoo.noticeReply).toHaveBeenCalledWith(
+      expect.objectContaining({ pid: 'parent-1' }),
+      expect.any(Object),
+      expect.any(Function),
+    );
     expect(warnSpy).toHaveBeenCalledWith('Configured instant-push channel is not supported.');
   });
 
-  it('skips all notices for excluded spam', async () => {
-    const fetchMock = vi.spyOn(globalThis, 'fetch');
+  it('suppresses notices when Akismet marks the comment as excluded spam', async () => {
+    const fetchMock = vi
+      .spyOn(globalThis, 'fetch')
+      .mockResolvedValueOnce(new Response('true', { status: 200 }));
     const updateSpam = vi.fn(async () => undefined);
     const ctx = buildPostCtx(
       { byIdRows: new Map(), updateSpam },
-      {},
+      { AKISMET_KEY: 'ak-key' },
       {
         PUSHOO_CHANNEL: 'telegram',
         PUSHOO_TOKEN: '123456:bot_token#-100123456',
@@ -266,20 +274,24 @@ describe('postSubmit', () => {
       },
     );
 
-    await postSubmit(baseSaved({ isSpam: 1 }), ctx);
+    const saved = baseSaved();
+    await postSubmit(saved, ctx);
 
+    expect(saved.isSpam).toBe(1);
+    expect(updateSpam).toHaveBeenCalledOnce();
     expect(twikoo.sendNotice).not.toHaveBeenCalled();
     expect(twikoo.noticeMaster).not.toHaveBeenCalled();
     expect(twikoo.noticeReply).not.toHaveBeenCalled();
-    expect(fetchMock).not.toHaveBeenCalled();
+    expect(fetchMock).toHaveBeenCalledOnce();
   });
 
   it('waits for mail to settle and swallows native Telegram failures', async () => {
-    vi.spyOn(globalThis, 'fetch').mockRejectedValue(new Error('telegram down'));
-    const replyDone = vi.fn();
-    vi.mocked(twikoo.noticeReply).mockImplementationOnce(async () => {
-      await Promise.resolve();
-      replyDone();
+    const fetchMock = vi.spyOn(globalThis, 'fetch').mockRejectedValue(new Error('telegram down'));
+    let releaseReply!: () => void;
+    vi.mocked(twikoo.noticeReply).mockImplementationOnce(() => {
+      return new Promise<void>((resolve) => {
+        releaseReply = resolve;
+      });
     });
     const errorSpy = vi.spyOn(twikoo.logger, 'error').mockImplementation(() => undefined);
     const updateSpam = vi.fn(async () => undefined);
@@ -289,15 +301,24 @@ describe('postSubmit', () => {
       {
         PUSHOO_CHANNEL: 'telegram',
         PUSHOO_TOKEN: '123456:bot_token#-100123456',
-        SITE_NAME: 'Hakula',
+        SITE_NAME: 'HAKULA†CHANNEL',
       },
     );
 
-    await expect(postSubmit(baseSaved(), ctx)).resolves.toBeUndefined();
+    let resolved = false;
+    const submission = postSubmit(baseSaved({ pid: 'parent-1' }), ctx).then(() => {
+      resolved = true;
+    });
 
-    expect(replyDone).toHaveBeenCalledOnce();
+    await vi.waitFor(() => expect(fetchMock).toHaveBeenCalledOnce());
+    await Promise.resolve();
+    expect(resolved).toBe(false);
+
+    releaseReply();
+    await expect(submission).resolves.toBeUndefined();
+
     expect(errorSpy).toHaveBeenCalledWith(
-      expect.objectContaining({ stage: 'sendNotice' }),
+      expect.objectContaining({ stage: 'notify' }),
       'postSubmit failed',
     );
   });

@@ -54,7 +54,6 @@ export interface TwikooConfig {
   NSFW_API_URL?: string;
   NSFW_THRESHOLD?: string;
   NOTIFY_SPAM?: string;
-  MAIL_SUBJECT_ADMIN?: string;
   PUSHOO_CHANNEL?: string;
   PUSHOO_TOKEN?: string;
   QQ_API_KEY?: string;

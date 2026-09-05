@@ -57,6 +57,8 @@ pnpm wrangler secret put SMTP_USER
 pnpm wrangler secret put TURNSTILE_SECRET_KEY
 ```
 
+Telegram notifications also require `PUSHOO_CHANNEL=telegram` in the admin configuration. Store `PUSHOO_TOKEN` as `<bot-token>#<chat-id>`.
+
 Required for first-time bootstrap — `SET_PASSWORD` is admin-only by design (the open "claim by first call" path upstream Twikoo ships is intentionally not supported, since the deploy → first-call window is a TOCTOU race). Seed the admin identity with the md5 of your plaintext password:
 
 ```bash

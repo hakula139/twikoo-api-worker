@@ -3,9 +3,9 @@ declare module 'twikoo-func/utils/lib' {
     DOMPurify?: { sanitize: (input: string) => string };
     nodemailer?: { createTransport: (config: unknown) => unknown };
   }): void;
+  export function getHtmlToText(): (input: string) => string;
   export function getMd5(): (input: string) => string;
   export function getSha256(): (input: string) => string;
-  export function getHtmlToText(): (input: string) => string;
 }
 
 declare module 'twikoo-func/utils' {
