@@ -82,7 +82,7 @@
               enable = true;
               name = "prettier";
               entry = nodeHook "prettier-write" "prettier --write --ignore-unknown";
-              files = "\\.(ts|js|mjs|json|toml|yaml|yml)$";
+              types = [ "text" ];
               pass_filenames = true;
             };
 
