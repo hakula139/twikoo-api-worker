@@ -14,7 +14,7 @@
   # Inputs
   # ----------------------------------------------------------------------------
   inputs = {
-    nixpkgs.url = "github:NixOS/nixpkgs/nixos-25.11";
+    nixpkgs.url = "github:NixOS/nixpkgs/nixos-26.05";
     flake-utils.url = "github:numtide/flake-utils";
     git-hooks-nix.url = "github:cachix/git-hooks.nix";
   };
@@ -47,7 +47,7 @@
             wrapper = pkgs.writeShellApplication {
               inherit name;
               runtimeInputs = [
-                pkgs.nodejs_24
+                pkgs.nodejs_26
                 pkgs.pnpm
               ];
               text = ''
@@ -121,7 +121,7 @@
           packages =
             preCommitCheck.enabledPackages
             ++ (with pkgs; [
-              nodejs_24
+              nodejs_26
               pnpm
             ]);
 
