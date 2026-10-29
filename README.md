@@ -27,7 +27,7 @@ nix develop                  # auto-installs pre-commit hooks
 pnpm install
 ```
 
-Without Nix, install Node.js 24 and pnpm yourself.
+Without Nix, install Node.js 26 and pnpm yourself.
 
 ## One-time provisioning
 
