@@ -4,5 +4,4 @@ allowBuilds:
   workerd: true
 
 overrides:
-  # twikoo-func requests pushoo@latest, which would otherwise resolve to the untested 2.x major.
-  pushoo: 0.1.12
+  twikoo-func>pushoo: '-'
