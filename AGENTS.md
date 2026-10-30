@@ -42,7 +42,7 @@ The worker is a thin TypeScript dispatcher that delegates business logic to the 
 - **Runtime**: Cloudflare Workers (V8 isolate) with `nodejs_compat` and `enable_nodejs_http2_module` flags.
 - **Storage**: Cloudflare D1 (SQLite) for `comment` / `config` / `counter` tables, accessed via Drizzle ORM (`drizzle-orm/d1`). Cloudflare R2 stores uploaded images.
 - **Mail**: HTTP-based providers only (SendGrid / MailChannels / Resend). SMTP is unavailable because Wrangler aliases `nodemailer` to an empty Worker module.
-- **Instant push**: Telegram Bot API via native `fetch`. Other upstream Pushoo channels are skipped because their Axios adapter is not Workers-compatible.
+- **Instant push**: Telegram Bot API via native `fetch`. Other upstream Pushoo channels are skipped.
 - **Sanitization**: [`xss`](https://www.npmjs.com/package/xss) (replaces `DOMPurify` + `jsdom`).
 - **Spam**: Akismet HTTP API + frequency limiter. Cloudflare Turnstile provides captcha checks.
 - **Captcha**: Cloudflare Turnstile siteverify.
@@ -131,7 +131,7 @@ Never reference personal gitignored paths such as `.claude/` plans or local sett
 
 ### Bundle constraints
 
-The Workers Free plan allows 3 MiB after gzip, and CI enforces the same limit. Wrangler aliases the unreachable Node-only `jsdom`, `nodemailer`, and `tencentcloud-sdk-nodejs-tms` packages to `src/shims/empty.ts` so esbuild does not traverse them. Add another alias if `twikoo-func` gains another unreachable Node-only dependency.
+The Workers Free plan allows 3 MiB after gzip, and CI enforces the same limit. Wrangler aliases the unused `jsdom`, `nodemailer`, `pushoo`, and `tencentcloud-sdk-nodejs-tms` packages to `src/shims/empty.ts` so esbuild does not traverse them. Add another alias if `twikoo-func` gains another unused dependency that cannot run in Workers.
 
 ### Secrets discipline
 
