@@ -4,4 +4,7 @@ allowBuilds:
   workerd: true
 
 overrides:
+  '@xsai/generate-text>@xsai/shared': ^0.5.1
+  '@xsai/shared-chat>@xsai/shared': ^0.5.1
+  markdownlint>re2js: ^2.9.1
   twikoo-func>pushoo: '-'

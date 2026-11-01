@@ -274,7 +274,7 @@ describe('uploadImage > dispatch-level config gates', () => {
   it('rejects when IMAGE_CDN is unset', async () => {
     await expect(uploadImage(dataUrl, 'a.png', {}, r2Env())).rejects.toMatchObject({
       code: ResponseCode.UPLOAD_FAILED,
-      message: expect.stringContaining('未配置图片上传服务') as unknown as string,
+      message: expect.stringContaining('未配置图片上传服务') as string,
     });
   });
 
@@ -289,7 +289,7 @@ describe('uploadImage > dispatch-level config gates', () => {
     const config: TwikooConfig = { IMAGE_CDN: 's3' };
     await expect(uploadImage(dataUrl, 'a.png', config, r2Env())).rejects.toMatchObject({
       code: ResponseCode.UPLOAD_FAILED,
-      message: expect.stringContaining('S3') as unknown as string,
+      message: expect.stringContaining('S3') as string,
     });
   });
 
@@ -298,7 +298,7 @@ describe('uploadImage > dispatch-level config gates', () => {
     const env = { R2: r2Env().R2 } as Pick<Env, 'R2' | 'R2_PUBLIC_URL'>;
     await expect(uploadImage(dataUrl, 'a.png', config, env)).rejects.toMatchObject({
       code: ResponseCode.UPLOAD_FAILED,
-      message: expect.stringContaining('R2') as unknown as string,
+      message: expect.stringContaining('R2') as string,
     });
   });
 });
@@ -331,7 +331,7 @@ describe('uploadImage > provider-level error responses wrap as UPLOAD_FAILED', (
     };
     await expect(uploadImage(dataUrl, 'a.png', config, r2Env())).rejects.toMatchObject({
       code: ResponseCode.UPLOAD_FAILED,
-      message: expect.stringContaining('invalid api key') as unknown as string,
+      message: expect.stringContaining('invalid api key') as string,
     });
   });
 
@@ -346,7 +346,7 @@ describe('uploadImage > provider-level error responses wrap as UPLOAD_FAILED', (
     };
     await expect(uploadImage(dataUrl, 'a.png', config, r2Env())).rejects.toMatchObject({
       code: ResponseCode.UPLOAD_FAILED,
-      message: expect.stringContaining('CODE: 500') as unknown as string,
+      message: expect.stringContaining('CODE: 500') as string,
     });
   });
 
