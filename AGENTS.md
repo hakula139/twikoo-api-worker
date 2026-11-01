@@ -75,7 +75,7 @@ For local secrets, create `.dev.vars` (gitignored) with one `KEY=value` per line
 pnpm wrangler login                        # one-time OAuth
 pnpm wrangler d1 create twikoo             # capture database_id → wrangler.toml + drizzle.config.ts
 pnpm wrangler r2 bucket create twikoo
-pnpm db:push                               # needs CLOUDFLARE_ACCOUNT_ID and CLOUDFLARE_D1_TOKEN
+pnpm db:push                               # needs CLOUDFLARE_ACCOUNT_ID and CLOUDFLARE_API_TOKEN with D1 Edit
 pnpm wrangler secret put ADMIN_PASS_HASH   # md5 of plaintext admin password — see "Admin bootstrap" below
 pnpm wrangler secret put PUSHOO_TOKEN      # Telegram bot token + # + chat ID
 pnpm wrangler secret put SMTP_PASS         # repeat per secret
