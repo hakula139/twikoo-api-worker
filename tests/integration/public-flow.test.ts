@@ -50,6 +50,51 @@ describe('integration: GET_COMMENTS_COUNT', () => {
     ]);
   });
 
+  it.each([false, true])(
+    'counts 200 requested URLs across slash variants with includeReply=%s',
+    async (includeReply) => {
+      await seedConfig({});
+      const urls = Array.from({ length: 198 }, (_, index) => `/batch-${index}`);
+      const requestedUrls = [...urls, '/batch-1', '/batch-1/'];
+      for (const [index, url] of urls.entries()) {
+        const profile = index % 5;
+        if (profile >= 1 && profile <= 3) {
+          await seedComment({ url, comment: 'Example head' });
+        }
+        if (profile === 2) {
+          await seedComment({ url: `${url}/`, comment: 'Example slash head' });
+        }
+        if (profile === 3) {
+          await seedComment({ url, rid: 'parent', comment: 'Example reply' });
+          await seedComment({ url: `${url}/`, rid: 'parent', comment: 'Example slash reply' });
+        }
+        if (profile === 4) {
+          await seedComment({ url, isSpam: 1, comment: 'Example spam head' });
+          await seedComment({
+            url: `${url}/`,
+            rid: 'parent',
+            isSpam: 1,
+            comment: 'Example spam reply',
+          });
+        }
+      }
+      const counts = [0, 1, 2, includeReply ? 3 : 1, 0];
+      const expected = [
+        ...urls.map((url, index) => ({ url, count: counts[index % counts.length] })),
+        { url: '/batch-1', count: 1 },
+        { url: '/batch-1/', count: 1 },
+      ];
+
+      const { body } = await postEvent('GET_COMMENTS_COUNT', {
+        urls: requestedUrls,
+        includeReply,
+      });
+
+      expect(body.code).toBe(ResponseCode.SUCCESS);
+      expect(body.data).toEqual(expected);
+    },
+  );
+
   it('rejects a non-array `urls` payload', async () => {
     await seedConfig({});
     const { body } = await postEvent('GET_COMMENTS_COUNT', { urls: 'https://x/' });
@@ -72,6 +117,33 @@ describe('integration: GET_RECENT_COMMENTS', () => {
     const data = body.data as Array<{ comment: string }>;
     expect(data.map((c) => c.comment)).toEqual(['Newest comment', 'Middle comment']);
   });
+
+  it.each([false, true])(
+    'returns the globally newest comments across 200 URLs with includeReply=%s',
+    async (includeReply) => {
+      await seedConfig({});
+      const urls = Array.from({ length: 198 }, (_, index) => `/recent-${index}`);
+      const quotedUrl = '/recent-\'"quoted"';
+      urls[100] = quotedUrl;
+      const early = await seedComment({ url: '/recent-1', created: 300 });
+      const late = await seedComment({ url: '/recent-197/', created: 200 });
+      const quoted = await seedComment({ url: quotedUrl, created: 100 });
+      const reply = await seedComment({ url: `${quotedUrl}/`, rid: quoted, created: 400 });
+      await seedComment({ url: '/recent-1', isSpam: 1, created: 500 });
+      await seedComment({ url: '/outside', created: 600 });
+      const expected = includeReply ? [reply, early, late] : [early, late, quoted];
+
+      const { body } = await postEvent('GET_RECENT_COMMENTS', {
+        urls: [...urls, '/recent-1', '/recent-1/'],
+        includeReply,
+        pageSize: 3,
+      });
+
+      expect(body.code).toBe(ResponseCode.SUCCESS);
+      const data = body.data as Array<{ id: string }>;
+      expect(data.map((row) => row.id)).toEqual(expected);
+    },
+  );
 
   it('rejects a non-array `urls` payload when present', async () => {
     await seedConfig({});
@@ -161,6 +233,77 @@ describe('integration: COMMENT_GET', () => {
     expect(data.map((comment) => comment.id)).toEqual([visibleId]);
     expect(data.map((comment) => comment.id)).not.toContain(spamId);
   });
+
+  it.each([
+    { sort: 'oldest', headCount: 100, pinned: false },
+    { sort: 'popular', headCount: 100, pinned: false },
+    { sort: 'newest', headCount: 500, pinned: true },
+  ])(
+    'loads replies for $headCount heads with sort=$sort and pinned=$pinned',
+    async ({ sort, headCount, pinned }) => {
+      await seedConfig({});
+      const heads = [];
+      for (let index = 0; index < headCount; index++) {
+        const id = await seedComment({
+          url: index % 2 ? '/thread/' : '/thread',
+          uid: 'author',
+          created: index + 1,
+          top: pinned ? 1 : 0,
+          ups: JSON.stringify(Array.from({ length: index % 3 }, (_, voter) => `voter-${voter}`)),
+        });
+        const reply = await seedComment({
+          url: index % 2 ? '/thread' : '/thread/',
+          uid: 'author',
+          rid: id,
+          pid: id,
+          created: 1_000 + index,
+        });
+        heads.push({ id, index, replies: [reply] });
+      }
+      const first = heads[0];
+      const ownSpam = await seedComment({
+        url: '/thread/',
+        uid: 'viewer',
+        rid: first.id,
+        pid: first.id,
+        isSpam: 1,
+        created: 3_000,
+      });
+      first.replies.push(ownSpam);
+      await seedComment({ url: '/thread', uid: 'other', rid: first.id, isSpam: 1 });
+      await seedComment({ url: '/thread/', uid: 'other', isSpam: 1 });
+      await seedComment({ url: '/outside', rid: first.id });
+      await seedComment({ url: '/thread', rid: 'unselected-head' });
+      const ordered = [...heads].sort((a, b) => {
+        if (sort === 'oldest') {
+          return a.index - b.index;
+        }
+        if (sort === 'popular') {
+          return (b.index % 3) - (a.index % 3) || b.index - a.index;
+        }
+        return b.index - a.index;
+      });
+      const expected = ordered.map(({ id, replies }) => ({ id, replies }));
+      if (pinned) {
+        const normal = await seedComment({ url: '/thread', uid: 'author', created: 0 });
+        expected.push({ id: normal, replies: [] });
+      }
+
+      const { body } = await postEvent(
+        'COMMENT_GET',
+        { url: '/thread', sort },
+        { 'x-twikoo-recaptcha-v3': 'viewer' },
+      );
+
+      expect(body.code).toBe(ResponseCode.SUCCESS);
+      expect(body.count).toBe(headCount + Number(pinned));
+      expect(body.more).toBe(false);
+      const data = body.data as Array<{ id: string; replies: Array<{ id: string }> }>;
+      expect(
+        data.map(({ id, replies }) => ({ id, replies: replies.map((reply) => reply.id) })),
+      ).toEqual(expected);
+    },
+  );
 });
 
 describe('integration: COMMENT_SUBMIT', () => {
