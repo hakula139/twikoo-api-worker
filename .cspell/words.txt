@@ -48,3 +48,4 @@ valine
 vitest
 workerd
 wrangler
+xsai
