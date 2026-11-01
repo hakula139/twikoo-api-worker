@@ -110,6 +110,9 @@
             };
           };
         };
+
+        flock = nixpkgs.lib.getExe pkgs.flock;
+        git = nixpkgs.lib.getExe pkgs.git;
       in
       {
         # ----------------------------------------------------------------------
@@ -118,14 +121,26 @@
         devShells.default = pkgs.mkShell {
           name = "twikoo-api-worker-dev";
 
-          packages =
-            preCommitCheck.enabledPackages
-            ++ (with pkgs; [
-              nodejs_26
-              pnpm
-            ]);
+          packages = [
+            preCommitCheck.config.package
+          ]
+          ++ preCommitCheck.enabledPackages
+          ++ (with pkgs; [
+            nodejs_26
+            pnpm
+          ]);
 
-          inherit (preCommitCheck) shellHook;
+          # git-hooks.nix stores a main-checkout-relative path that linked worktrees cannot
+          # resolve (cachix/git-hooks.nix#688). Serialize installation before clearing it.
+          shellHook = ''
+            if common=$(${git} rev-parse --path-format=absolute --git-common-dir 2>/dev/null); then
+              (
+                ${flock} 9
+                ${preCommitCheck.config.installationScript}
+                ${git} config --local --unset-all core.hooksPath || true
+              ) 9>"$common/git-hooks.lock"
+            fi
+          '';
         };
 
         # ----------------------------------------------------------------------
