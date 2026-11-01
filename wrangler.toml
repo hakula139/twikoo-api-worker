@@ -8,9 +8,9 @@ compatibility_flags = ["nodejs_compat", "enable_nodejs_http2_module"]
 routes = [{ pattern = "twikoo.hakula.xyz", custom_domain = true }]
 
 [alias]
-# Worker-native mail, sanitization, and spam paths replace these Node-only modules.
 jsdom = "./src/shims/empty.ts"
 nodemailer = "./src/shims/empty.ts"
+pushoo = "./src/shims/empty.ts"
 tencentcloud-sdk-nodejs-tms = "./src/shims/empty.ts"
 
 [[d1_databases]]
