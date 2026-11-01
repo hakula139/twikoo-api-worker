@@ -15,6 +15,10 @@ export type CommentSort = 'newest' | 'oldest' | 'popular';
 const visibility = (showAll: boolean, uid: string) =>
   showAll ? undefined : or(eq(comment.isSpam, 0), eq(comment.uid, uid));
 
+// Bind each string list once to stay within D1's 100-parameter limit.
+const stringListValues = (values: string[]): SQL =>
+  sql`(SELECT value FROM json_each(${JSON.stringify(values)}))`;
+
 // `ups` is stored as a JSON array of voter UIDs (not a count), so popular sort
 // goes through `json_array_length`. Tiebreak on `created desc` for stability.
 const orderClause = (sort: CommentSort): SQL[] => {
@@ -81,7 +85,13 @@ export const createCommentDb = (db: DrizzleD1Database) => ({
     return db
       .select()
       .from(comment)
-      .where(and(inArray(comment.url, urls), visibility(showAll, uid), inArray(comment.rid, rids)));
+      .where(
+        and(
+          inArray(comment.url, urls),
+          visibility(showAll, uid),
+          inArray(comment.rid, stringListValues(rids)),
+        ),
+      );
   },
 
   // Returns a `url → count` map; callers fan out url variants via `getUrlsQuery`
@@ -95,7 +105,7 @@ export const createCommentDb = (db: DrizzleD1Database) => ({
       .from(comment)
       .where(
         and(
-          inArray(comment.url, urls),
+          inArray(comment.url, stringListValues(urls)),
           eq(comment.isSpam, 0),
           includeReply ? undefined : eq(comment.rid, ''),
         ),
@@ -114,7 +124,7 @@ export const createCommentDb = (db: DrizzleD1Database) => ({
       .from(comment)
       .where(
         and(
-          urls?.length ? inArray(comment.url, urls) : undefined,
+          urls?.length ? inArray(comment.url, stringListValues(urls)) : undefined,
           eq(comment.isSpam, 0),
           includeReply ? undefined : eq(comment.rid, ''),
         ),
