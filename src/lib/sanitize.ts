@@ -13,6 +13,7 @@ const TAG_EXTRAS: Record<string, string[]> = {
   a: ['rel'],
   code: ['class'],
   div: ['class', 'style'],
+  img: ['class'],
   pre: ['class'],
   span: ['class', 'style'],
 };
