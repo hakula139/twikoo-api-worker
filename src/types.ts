@@ -24,7 +24,7 @@ export interface Secrets {
 export interface Env extends Bindings, Secrets {}
 
 // Branded primitives keep identity strings and row ids from being passed
-// interchangeably; mk* helpers localize the unavoidable cast.
+// interchangeably. mk* helpers localize the unavoidable cast.
 export type Uid = string & { readonly __uid: unique symbol };
 export type Ip = string & { readonly __ip: unique symbol };
 export type CommentId = string & { readonly __commentId: unique symbol };
@@ -33,8 +33,6 @@ export const mkUid = (s: string): Uid => s as Uid;
 export const mkIp = (s: string): Ip => s as Ip;
 export const mkCommentId = (s: string): CommentId => s as CommentId;
 
-// JSON-encoded payload of T. Forces a parse step before structural ops, so
-// `comment.ups.split(',')` on a `JsonString<string[]>` is a compile error.
 export type JsonString<T> = string & { readonly __json: T };
 
 // The admin UI stores boolean and numeric settings as strings.
@@ -98,9 +96,6 @@ export interface TwikooResponse {
   [key: string]: unknown;
 }
 
-// One key per supported `event` field on incoming requests; the value is the
-// trusted shape of that event's body. Required fields are non-optional here
-// and enforced at runtime by `validate()` inside each handler.
 export interface EventPayloads {
   COMMENT_DELETE_FOR_ADMIN: { id: string };
   COMMENT_DELETE_FOR_USER: { id: string };
@@ -145,9 +140,6 @@ export interface EventPayloads {
 
 export type EventName = keyof EventPayloads;
 
-// Returning `{}` is treated as SUCCESS. The event name is required so callers
-// can't accidentally drop into the `payload: never` shape that a default would
-// produce.
 export type Handler<E extends EventName> = (
   payload: EventPayloads[E],
   ctx: RequestCtx,

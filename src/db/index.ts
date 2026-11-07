@@ -11,6 +11,7 @@ export type { Bit, Comment, Config, Counter, NewComment } from './schema';
 
 export const buildDb = (d1: D1Database) => {
   const client = drizzle(d1);
+
   return {
     comment: createCommentDb(client),
     config: createConfigDb(client),

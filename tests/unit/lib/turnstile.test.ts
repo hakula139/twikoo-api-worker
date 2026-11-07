@@ -26,10 +26,12 @@ describe('verifyTurnstile', () => {
     expect(fetchSpy).toHaveBeenCalledTimes(1);
 
     const [url, init] = fetchSpy.mock.calls[0] as [string, RequestInit];
+
     expect(url).toBe('https://challenges.cloudflare.com/turnstile/v0/siteverify');
     expect(init.method).toBe('POST');
 
     const body = init.body as URLSearchParams;
+
     expect(body.get('secret')).toBe('test-secret');
     expect(body.get('response')).toBe('test-response-token');
     expect(body.get('remoteip')).toBe('192.0.2.1');
@@ -42,6 +44,7 @@ describe('verifyTurnstile', () => {
 
     const [, init] = fetchSpy.mock.calls[0] as [string, RequestInit];
     const body = init.body as URLSearchParams;
+
     expect(body.has('remoteip')).toBe(false);
   });
 
@@ -54,6 +57,7 @@ describe('verifyTurnstile', () => {
       secret: 'test-secret',
       token: 'test-response-token',
     });
+
     expect(result).toEqual({ success: false, errorCodes: ['invalid-input-response'] });
   });
 
@@ -64,6 +68,7 @@ describe('verifyTurnstile', () => {
       secret: 'test-secret',
       token: 'test-response-token',
     });
+
     expect(result).toEqual({ success: false, errorCodes: ['http-503'] });
   });
 });

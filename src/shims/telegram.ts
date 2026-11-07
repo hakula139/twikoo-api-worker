@@ -41,11 +41,14 @@ const escapeHtml = (value: string, maxLength: number): string => {
   let escaped = '';
   for (const char of value) {
     const next = escapeChar(char);
+
     if (escaped.length + next.length > maxLength - 3) {
       return `${escaped}...`;
     }
+
     escaped += next;
   }
+
   return escaped;
 };
 
@@ -53,25 +56,35 @@ const commentUrl = (comment: TelegramComment, config: TwikooConfig): string | un
   if (comment.url.length > MAX_URL_LENGTH) {
     return undefined;
   }
+
   const siteUrl = stringConfig(config, 'SITE_URL');
+
   if (!siteUrl || !URL.canParse(siteUrl)) {
     return undefined;
   }
+
   const base = new URL(siteUrl);
+
   if (base.protocol !== 'http:' && base.protocol !== 'https:') {
     return undefined;
   }
+
   const path = `/${comment.url.replace(/^\/+/, '')}`;
+
   if (!URL.canParse(path, base.href)) {
     return undefined;
   }
+
   const url = new URL(path, base);
+
   if (url.origin !== base.origin) {
     return undefined;
   }
+
   const hash = url.href.indexOf('#');
   const href = `${hash === -1 ? url.href : url.href.slice(0, hash)}#${comment._id}`;
   const escapedLength = [...href].reduce((length, char) => length + escapeChar(char).length, 0);
+
   return escapedLength <= MAX_URL_LENGTH ? escapeHtml(href, MAX_URL_LENGTH) : undefined;
 };
 
@@ -81,9 +94,11 @@ export const sendTelegramNotice = async (
   pushToken: string,
 ): Promise<void> => {
   const separator = pushToken.indexOf('#');
+
   if (separator < 1 || separator === pushToken.length - 1) {
     throw new Error('PUSHOO_TOKEN must contain a Telegram bot token and chat ID separated by #.');
   }
+
   const botToken = pushToken.slice(0, separator);
   const chatId = pushToken.slice(separator + 1);
 
@@ -109,6 +124,7 @@ ${link}<code>${escapeHtml(comment.mail, MAX_MAIL_LENGTH)}</code> · <code>${esca
     }),
   });
   const result = await response.json<{ ok: boolean; description?: string }>();
+
   if (!result.ok) {
     throw new Error(
       `Telegram send failed: ${response.status} ${result.description ?? response.statusText}`,

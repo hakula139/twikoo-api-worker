@@ -2,10 +2,9 @@ import type { CommentId, JsonString } from '../types';
 
 import { index, integer, sqliteTable, text } from 'drizzle-orm/sqlite-core';
 
-// SQLite booleans ride on INTEGER; `Bit` narrows the surface to 0/1.
+// SQLite booleans ride on INTEGER. `Bit` narrows the surface to 0/1.
 export type Bit = 0 | 1;
 
-// `ups` / `downs` store JSON arrays of voter UIDs as text; callers parse.
 export const comment = sqliteTable(
   'comment',
   {
@@ -39,7 +38,6 @@ export const comment = sqliteTable(
   ],
 );
 
-// Singleton row pinned to id = 1 so writes can use INSERT ... ON CONFLICT.
 export const config = sqliteTable('config', {
   id: integer('id').notNull().primaryKey().default(1),
   value: text('value').notNull().default(''),

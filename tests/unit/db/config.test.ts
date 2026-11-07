@@ -15,13 +15,15 @@ beforeEach(async () => {
 describe('ConfigDB.read', () => {
   it('returns empty string before any write', async () => {
     const db = dbInstance();
+
     expect(await db.config.read()).toBe('');
   });
 
   it('returns a written value', async () => {
     const db = dbInstance();
-    await db.config.write('{"SITE_NAME":"HAKULA†CHANNEL"}');
-    expect(await db.config.read()).toBe('{"SITE_NAME":"HAKULA†CHANNEL"}');
+    await db.config.write('{"SITE_NAME":"Example†Site"}');
+
+    expect(await db.config.read()).toBe('{"SITE_NAME":"Example†Site"}');
   });
 
   it('ignores rows outside the id = 1 singleton', async () => {
@@ -31,9 +33,9 @@ describe('ConfigDB.read', () => {
 
     expect(await db.config.read()).toBe('');
 
-    await client.insert(config).values({ id: 1, value: '{"SITE_NAME":"HAKULA†CHANNEL"}' });
+    await client.insert(config).values({ id: 1, value: '{"SITE_NAME":"Example†Site"}' });
 
-    expect(await db.config.read()).toBe('{"SITE_NAME":"HAKULA†CHANNEL"}');
+    expect(await db.config.read()).toBe('{"SITE_NAME":"Example†Site"}');
   });
 });
 
@@ -44,6 +46,7 @@ describe('ConfigDB.write', () => {
     await db.config.write('{"second":true}');
 
     const all = await db.config.exportAll();
+
     expect(all).toHaveLength(1);
     expect(all[0]).toMatchObject({ id: 1, value: '{"second":true}' });
   });
@@ -135,6 +138,7 @@ describe('ConfigDB.writePatch', () => {
 describe('ConfigDB.exportAll', () => {
   it('returns an empty array when no row exists', async () => {
     const db = dbInstance();
+
     expect(await db.config.exportAll()).toEqual([]);
   });
 });

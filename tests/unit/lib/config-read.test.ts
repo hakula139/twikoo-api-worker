@@ -1,66 +1,53 @@
+import type { TwikooConfig } from '@/types';
+
 import { describe, expect, it } from 'vitest';
 
 import { boolConfig, numberConfig, stringConfig } from '@/lib/config-read';
 
 describe('stringConfig', () => {
-  it('returns the string value when present and non-empty', () => {
-    expect(stringConfig({ SITE_NAME: 'HAKULA†CHANNEL' }, 'SITE_NAME')).toBe('HAKULA†CHANNEL');
-  });
+  it.each([
+    { config: { SITE_NAME: 'Example†Site' }, key: 'SITE_NAME', expected: 'Example†Site' },
+    { config: { SITE_NAME: '' }, key: 'SITE_NAME', expected: undefined },
+    { config: {}, key: 'SITE_NAME', expected: undefined },
+    { config: { PAGE_SIZE: 42 }, key: 'PAGE_SIZE', expected: undefined },
+    { config: { SHOW_REGION: false }, key: 'SHOW_REGION', expected: undefined },
+  ])('reads $key from $config', ({ config, key, expected }) => {
+    const value = stringConfig(config, key);
 
-  it('returns undefined for an empty string', () => {
-    expect(stringConfig({ SITE_NAME: '' }, 'SITE_NAME')).toBeUndefined();
-  });
-
-  it('returns undefined for missing keys', () => {
-    expect(stringConfig({}, 'SITE_NAME')).toBeUndefined();
-  });
-
-  it('returns undefined for non-string values', () => {
-    expect(stringConfig({ PAGE_SIZE: 42 }, 'PAGE_SIZE')).toBeUndefined();
-    expect(stringConfig({ SHOW_REGION: false }, 'SHOW_REGION')).toBeUndefined();
+    expect(value).toBe(expected);
   });
 });
 
 describe('numberConfig', () => {
-  it('parses a numeric string', () => {
-    expect(numberConfig({ COMMENT_PAGE_SIZE: '5' }, 'COMMENT_PAGE_SIZE', 1)).toBe(5);
-  });
+  it.each([
+    { value: '5', expected: 5 },
+    { value: 5, expected: 5 },
+    { value: 'not-a-number', expected: 7 },
+    { value: '0', expected: 7 },
+    { value: '-3', expected: 7 },
+    { value: undefined, expected: 7 },
+  ])('reads $value with a fallback of 7', ({ value, expected }) => {
+    const result = numberConfig({ PAGE_SIZE: value }, 'PAGE_SIZE', 7);
 
-  it('returns the number directly when stored as number', () => {
-    expect(numberConfig({ PAGE_SIZE: 5 }, 'PAGE_SIZE', 1)).toBe(5);
-  });
-
-  it('falls back when the value cannot be parsed', () => {
-    expect(numberConfig({ COMMENT_PAGE_SIZE: 'not-a-number' }, 'COMMENT_PAGE_SIZE', 7)).toBe(7);
-  });
-
-  it('falls back on non-positive values', () => {
-    expect(numberConfig({ COMMENT_PAGE_SIZE: '0' }, 'COMMENT_PAGE_SIZE', 7)).toBe(7);
-    expect(numberConfig({ COMMENT_PAGE_SIZE: '-3' }, 'COMMENT_PAGE_SIZE', 7)).toBe(7);
-  });
-
-  it('falls back on missing keys', () => {
-    expect(numberConfig({}, 'COMMENT_PAGE_SIZE', 7)).toBe(7);
+    expect(result).toBe(expected);
   });
 });
 
 describe('boolConfig', () => {
-  it('returns true for non-empty strings other than "false"', () => {
-    expect(boolConfig({ SHOW_REGION: 'true' }, 'SHOW_REGION')).toBe(true);
-    expect(boolConfig({ SHOW_REGION: 'yes' }, 'SHOW_REGION')).toBe(true);
-  });
+  it.each([
+    { value: 'true', expected: true },
+    { value: 'yes', expected: true },
+    { value: true, expected: true },
+    { value: 'false', expected: false },
+    { value: false, expected: false },
+    { value: '', expected: false },
+    { value: undefined, expected: false },
+  ] satisfies { value: TwikooConfig[string]; expected: boolean }[])(
+    'reads $value',
+    ({ value, expected }) => {
+      const result = boolConfig({ SHOW_REGION: value }, 'SHOW_REGION');
 
-  it('returns false for the literal "false" string', () => {
-    expect(boolConfig({ SHOW_REGION: 'false' }, 'SHOW_REGION')).toBe(false);
-  });
-
-  it('returns the value directly when stored as boolean', () => {
-    expect(boolConfig({ SHOW_REGION: true }, 'SHOW_REGION')).toBe(true);
-    expect(boolConfig({ SHOW_REGION: false }, 'SHOW_REGION')).toBe(false);
-  });
-
-  it('returns false for missing keys or empty strings', () => {
-    expect(boolConfig({}, 'SHOW_REGION')).toBe(false);
-    expect(boolConfig({ SHOW_REGION: '' }, 'SHOW_REGION')).toBe(false);
-  });
+      expect(result).toBe(expected);
+    },
+  );
 });

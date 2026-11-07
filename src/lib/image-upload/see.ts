@@ -11,7 +11,6 @@ interface SeeResponse {
   data?: { url?: string; [key: string]: unknown };
 }
 
-// S.EE (former SM.MS).
 export const uploadSee = async (
   photo: string,
   fileName: string,
@@ -26,8 +25,10 @@ export const uploadSee = async (
     body: formData,
   });
   const data: SeeResponse = await response.json();
+
   if (!data.success || !data.data?.url) {
     throw new Error(data.message ?? 'S.EE upload failed');
   }
-  return data.data as UploadResult;
+
+  return { ...data.data, url: data.data.url };
 };

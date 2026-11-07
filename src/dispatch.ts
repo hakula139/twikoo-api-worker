@@ -16,8 +16,7 @@ import { mkIp, mkUid } from './types';
 const stringField = (body: Record<string, unknown>, key: string): string =>
   typeof body[key] === 'string' ? body[key] : '';
 
-// Generous enough for base64 image uploads (~5 MB raw → ~6.7 MB encoded)
-// and small bulk imports, while still well below the Workers runtime cap.
+// Leave room for a 5 MiB image after base64 encoding.
 export const MAX_BODY_BYTES = 10 * 1024 * 1024;
 
 export const dispatch = async (
@@ -29,12 +28,11 @@ export const dispatch = async (
   let event = '';
   let code: ResponseCodeValue = ResponseCode.SUCCESS;
 
-  // Records the response code so the per-request log line in `finally`
-  // reports the same status the client received.
   const respond = (body: Partial<TwikooResponse>, headers: Record<string, string>): Response => {
     if (body.code !== undefined) {
       code = body.code;
     }
+
     return jsonResponse(body, headers);
   };
 
@@ -42,10 +40,9 @@ export const dispatch = async (
     const origin = request.headers.get('Origin');
     const db = buildDb(env.DB);
 
-    // Pre-check Content-Length so we never materialize an oversize body. The
-    // header may be absent (chunked transfer, some HTTP/2 framing) — that's
-    // fine, the runtime cap remains the backstop.
+    // Requests without Content-Length rely on the Workers runtime limit.
     const contentLength = request.headers.get('Content-Length');
+
     if (contentLength !== null && Number(contentLength) > MAX_BODY_BYTES) {
       return respond(
         { code: ResponseCode.FAIL, message: 'Request body too large.' },
@@ -54,8 +51,10 @@ export const dispatch = async (
     }
 
     let body: Record<string, unknown>;
+
     try {
       const parsed = await request.json<unknown>();
+
       if (!isPlainObject(parsed)) {
         return respond(
           { code: ResponseCode.FAIL, message: 'Request body must be a JSON object.' },
@@ -77,11 +76,13 @@ export const dispatch = async (
     const uid = mkUid(accessToken || request.headers.get('x-twikoo-recaptcha-v3') || '');
 
     const loaded = await loadConfig(env, db);
+
     if (loaded.kind === 'corrupted') {
       logger.error(
         { length: loaded.length, reason: loaded.reason },
         'Config row is not valid JSON or not an object.',
       );
+
       return respond(
         {
           code: ResponseCode.CONFIG_NOT_EXIST,
@@ -90,12 +91,14 @@ export const dispatch = async (
         corsHeaders(origin),
       );
     }
+
     if (loaded.droppedKeys.length > 0) {
       logger.error(
         { droppedKeys: loaded.droppedKeys },
         'Config row had keys with unsupported value types; pruned at the boundary.',
       );
     }
+
     const config = loaded.config;
     const headers = corsHeaders(origin, config);
 
@@ -125,14 +128,14 @@ export const dispatch = async (
         headers,
       );
     }
-    // Cast erases per-event payload narrowing here; each handler's validate()
-    // re-checks required fields at runtime.
+
     const handler = handlers[event] as (
       payload: EventPayloads[EventName],
       ctx: RequestCtx,
     ) => Promise<Partial<TwikooResponse>>;
 
     let result: Partial<TwikooResponse>;
+
     try {
       result = await handler(body, requestCtx);
     } catch (error) {

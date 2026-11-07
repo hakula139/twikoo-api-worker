@@ -11,7 +11,6 @@ interface LskyProResponse {
   data?: { links?: { url?: string }; [key: string]: unknown };
 }
 
-// Also used for `7bu` and URL-as-IMAGE_CDN.
 export const uploadLskyPro = async (
   photo: string,
   fileName: string,
@@ -29,8 +28,10 @@ export const uploadLskyPro = async (
     body: formData,
   });
   const data: LskyProResponse = await response.json();
+
   if (!data.status || !data.data?.links?.url) {
     throw new Error(data.message ?? 'LskyPro upload failed');
   }
+
   return { ...data.data, url: data.data.links.url };
 };

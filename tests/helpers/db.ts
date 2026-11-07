@@ -19,7 +19,6 @@ export const applyTestSchema = async (): Promise<void> => {
   await applyD1Migrations(env.DB, [{ name: '0000_init', queries: migrationQueries }]);
 };
 
-// Reset rows without rebuilding the shared test schema.
 export const resetTestDb = async (): Promise<void> => {
   await env.DB.batch([
     env.DB.prepare('DELETE FROM comment'),

@@ -15,49 +15,55 @@ const hostMatches = (hostname: string, pattern: string): boolean => {
   if (pattern === '*') {
     return true;
   }
+
   if (pattern.startsWith('*.')) {
     const suffix = pattern.slice(1);
+
     return hostname.endsWith(suffix) && hostname.length > suffix.length;
   }
+
   return hostname === pattern;
 };
 
-// Each entry is one of:
-//   - exact origin (`https://foo.bar`)            — scheme + host must match
-//   - bare host or wildcard (`foo.bar`, `*.foo.bar`) — any scheme, host pattern match
-//   - `*` — allow any origin
 const matchEntry = (originUrl: URL, entry: string): boolean => {
   if (!entry.includes('://')) {
     return hostMatches(originUrl.hostname, entry);
   }
+
   let entryUrl: URL;
+
   try {
     entryUrl = new URL(entry);
   } catch {
     return false;
   }
+
   return originUrl.origin === entryUrl.origin;
 };
 
-// Empty / unset allowlist is permissive — upstream parity. Localhost is exempt.
+// Upstream allows an empty allowlist and exempts localhost.
 const matchAllowedOrigin = (origin: string, config: TwikooConfig): string => {
   if (LOCALHOST_REGEX.test(origin)) {
     return origin;
   }
+
   const entries = (config.CORS_ALLOW_ORIGIN ?? '')
     .split(',')
     .map((entry) => entry.trim().replace(/\/$/, ''))
     .filter(Boolean);
+
   if (entries.length === 0) {
     return origin;
   }
 
   let originUrl: URL;
+
   try {
     originUrl = new URL(origin);
   } catch {
     return '';
   }
+
   return entries.some((entry) => matchEntry(originUrl, entry)) ? origin : '';
 };
 
@@ -65,6 +71,7 @@ export const isOriginAllowed = (origin: string | null, config: TwikooConfig): bo
   if (!origin) {
     return true;
   }
+
   return matchAllowedOrigin(origin, config) !== '';
 };
 
@@ -75,11 +82,15 @@ export const corsHeaders = (
   if (!origin) {
     return {};
   }
+
   const allowed = config ? matchAllowedOrigin(origin, config) : origin;
+
   if (!allowed) {
     logger.warn(`CORS rejected origin: ${origin}`);
+
     return {};
   }
+
   return {
     'Access-Control-Allow-Credentials': 'true',
     'Access-Control-Allow-Origin': allowed,
@@ -101,6 +112,7 @@ export const jsonResponse = (
   ) {
     body.err ??= body.message;
   }
+
   return new Response(JSON.stringify(body), {
     headers: {
       'Content-Type': 'application/json;charset=UTF-8',

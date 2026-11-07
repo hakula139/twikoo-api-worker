@@ -17,6 +17,7 @@ describe('CounterDB.incr', () => {
 
     expect(await db.counter.time('/post')).toBe(1);
     const all = await db.counter.exportAll();
+
     expect(all).toHaveLength(1);
     expect(all[0]).toMatchObject({ url: '/post', title: 'Post', time: 1, created: 1000 });
   });
@@ -28,6 +29,7 @@ describe('CounterDB.incr', () => {
 
     expect(await db.counter.time('/post')).toBe(2);
     const [row] = await db.counter.exportAll();
+
     expect(row).toMatchObject({ title: 'New Title', created: 1000, updated: 2000 });
   });
 
@@ -45,6 +47,7 @@ describe('CounterDB.incr', () => {
 describe('CounterDB.time', () => {
   it('returns 0 for an unknown URL', async () => {
     const db = dbInstance();
+
     expect(await db.counter.time('/missing')).toBe(0);
   });
 });
@@ -52,6 +55,7 @@ describe('CounterDB.time', () => {
 describe('CounterDB.exportAll', () => {
   it('returns an empty array when no counters exist', async () => {
     const db = dbInstance();
+
     expect(await db.counter.exportAll()).toEqual([]);
   });
 });

@@ -39,15 +39,18 @@ describe('integration: worker entry', () => {
       { method: 'OPTIONS' },
       { 'Access-Control-Request-Method': 'POST' },
     );
+
     expect(res.status).toBe(204);
-    expect(res.headers.get('Access-Control-Allow-Origin')).toBe('https://hakula.xyz');
+    expect(res.headers.get('Access-Control-Allow-Origin')).toBe('https://example.com');
     expect(res.headers.get('Access-Control-Allow-Methods')).toContain('POST');
   });
 
   it('answers GET / with the version probe', async () => {
     const res = await sendRequest({ method: 'GET' });
+
     expect(res.status).toBe(200);
     const body = await res.json<{ code: number; data: { version: string }; message: string }>();
+
     expect(body.code).toBe(ResponseCode.SUCCESS);
     expect(body.data.version).toBe('0.0.0-test');
     expect(body.message).toMatch(/running/i);
@@ -56,6 +59,7 @@ describe('integration: worker entry', () => {
   it('rejects unsupported methods with FAIL and the Allow header', async () => {
     const res = await sendRequest({ method: 'PATCH' });
     const body = await res.json<{ code: number; message: string }>();
+
     expect(body.code).toBe(ResponseCode.FAIL);
     expect(body.message).toMatch(/PATCH/);
     expect(res.headers.get('Allow')).toBe('GET, OPTIONS, POST');
@@ -174,6 +178,7 @@ describe('integration: dispatch hardening', () => {
     const { body, headers } = await postRaw('{}', {
       'Content-Length': String(MAX_BODY_BYTES + 1),
     });
+
     expect(body.code).toBe(ResponseCode.FAIL);
     expect(body.message).toMatch(/too large/i);
     expect(body.err).toBe(body.message);
@@ -182,7 +187,7 @@ describe('integration: dispatch hardening', () => {
 
   describe('CORS rejection short-circuits writes', () => {
     it('returns FORBIDDEN and skips the handler when Origin is not allowlisted', async () => {
-      await seedConfig({ CORS_ALLOW_ORIGIN: 'https://hakula.xyz' });
+      await seedConfig({ CORS_ALLOW_ORIGIN: 'https://example.com' });
 
       const { body } = await postEvent(
         'COMMENT_SUBMIT',

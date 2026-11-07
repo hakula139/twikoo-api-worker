@@ -7,15 +7,18 @@ import { stringConfig } from '../config-read';
 
 export const decodePhoto = (dataUrl: string): DecodedPhoto => {
   const [meta, base64] = dataUrl.split(';base64,');
+
   if (!base64) {
     throw new Error('photo must be a base64 data URL');
   }
+
   const mimeType = meta.replace(/^data:/, '') || 'application/octet-stream';
   const binary = atob(base64);
   const bytes = new Uint8Array(binary.length);
   for (let i = 0; i < binary.length; i++) {
     bytes[i] = binary.charCodeAt(i);
   }
+
   return { blob: new Blob([bytes], { type: mimeType }), bytes, mimeType };
 };
 
@@ -38,13 +41,13 @@ export const multipartFromPhoto = (photo: string, fileName: string, field: strin
   const { blob } = decodePhoto(photo);
   const fd = new FormData();
   fd.append(field, blob, fileName);
+
   return fd;
 };
 
-// Drop path separators and collapse repeated dots so a hostile fileName can't
-// climb out of the configured prefix or collide with a different tenant.
 export const safeBaseName = (name: string): string => {
   const base = name.replace(/.*[\\/]/, '').replace(/\.{2,}/g, '.');
+
   return base || 'upload';
 };
 
@@ -58,6 +61,7 @@ interface NsfwResult {
 
 export const checkNsfw = async (photo: string, config: TwikooConfig): Promise<NsfwResult> => {
   const apiBase = stringConfig(config, 'NSFW_API_URL');
+
   if (!apiBase) {
     return { rejected: false, message: '' };
   }
@@ -74,8 +78,10 @@ export const checkNsfw = async (photo: string, config: TwikooConfig): Promise<Ns
       signal: AbortSignal.timeout(30000),
     });
     const scores: Record<string, number> | null = await response.json();
+
     if (scores && typeof scores === 'object') {
       const nsfwScore = (scores.porn ?? 0) + (scores.hentai ?? 0) + (scores.sexy ?? 0);
+
       if (nsfwScore > threshold) {
         return {
           rejected: true,
@@ -84,9 +90,9 @@ export const checkNsfw = async (photo: string, config: TwikooConfig): Promise<Ns
       }
     }
   } catch (error) {
-    // Best-effort: NSFW failures fall through (don't block upload), but log so
-    // a misconfigured / down provider is visible.
+    // Keep uploads available when the NSFW provider fails, and log the failure.
     logger.warn('NSFW pre-check failed:', error);
   }
+
   return { rejected: false, message: '' };
 };

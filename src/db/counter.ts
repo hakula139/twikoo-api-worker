@@ -23,6 +23,7 @@ export const createCounterDb = (db: DrizzleD1Database) => ({
       .from(counter)
       .where(eq(counter.url, url))
       .limit(1);
+
     return row?.time ?? 0;
   },
 

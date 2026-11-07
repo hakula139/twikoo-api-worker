@@ -1,13 +1,14 @@
-import type { NewComment } from '@/db';
+import type { Comment } from '@/db';
 import type { JsonString } from '@/types';
 
 import { mkCommentId } from '@/types';
 
 let counter = 0;
 
-export const newComment = (overrides: Partial<NewComment> = {}): NewComment => {
+export const newComment = (overrides: Partial<Comment> = {}): Comment => {
   counter += 1;
   const id = `c${counter.toString().padStart(4, '0')}`;
+
   return {
     _id: mkCommentId(id),
     uid: 'reader-1',
@@ -20,7 +21,7 @@ export const newComment = (overrides: Partial<NewComment> = {}): NewComment => {
     ipRegion: '',
     master: 0,
     url: '/about-me/',
-    href: 'https://hakula.xyz/about-me/',
+    href: 'https://example.com/about-me/',
     comment: '感谢分享。',
     pid: '',
     rid: '',

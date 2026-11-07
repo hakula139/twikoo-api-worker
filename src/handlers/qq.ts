@@ -17,6 +17,7 @@ export const getQqNick: Handler<'GET_QQ_NICK'> = async (payload, ctx) => {
   const apiKey = secret(ctx, 'QQ_API_KEY');
 
   const nick = await fetchQqNick(qq, apiKey);
+
   return { nick };
 };
 
@@ -24,19 +25,24 @@ export const getQqNick: Handler<'GET_QQ_NICK'> = async (payload, ctx) => {
 // null so the widget falls back to letting the user type their own nickname.
 const fetchQqNick = async (qq: string, apiKey?: string): Promise<string | null> => {
   const headers: Record<string, string> = {};
+
   if (apiKey) {
     headers.Authorization = `Bearer ${apiKey}`;
   }
 
   try {
     const response = await fetch(`${QQ_NICK_API}?qq=${encodeURIComponent(qq)}`, { headers });
+
     if (!response.ok) {
       return null;
     }
+
     const data = await response.json<QqNickResponse>();
+
     return data.code === 200 && data.data?.nick ? data.data.nick : null;
   } catch (error) {
     logger.warn('Failed to fetch QQ nick:', error);
+
     return null;
   }
 };

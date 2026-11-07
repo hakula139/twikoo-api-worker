@@ -5,6 +5,7 @@ import { sanitizeHtml } from '@/lib/sanitize';
 describe('sanitizeHtml', () => {
   it('strips <script> tags and their bodies entirely', () => {
     const out = sanitizeHtml('Before<script>alert(1)</script>after');
+
     expect(out).not.toContain('<script');
     expect(out).not.toContain('alert(1)');
     expect(out).toContain('Before');
@@ -13,12 +14,14 @@ describe('sanitizeHtml', () => {
 
   it('drops on* event handler attributes from allowed tags', () => {
     const out = sanitizeHtml('<a href="https://example.com" onclick="bad()">link</a>');
+
     expect(out).not.toContain('onclick');
     expect(out).toContain('href="https://example.com"');
   });
 
   it('strips javascript: URLs from anchor href', () => {
     const out = sanitizeHtml('<a href="javascript:alert(1)">x</a>');
+
     expect(out).not.toMatch(/javascript:/i);
   });
 
@@ -26,6 +29,7 @@ describe('sanitizeHtml', () => {
     const out = sanitizeHtml(
       '<img src="https://example.com/a.png" alt="pic"><pre class="hljs"><code class="language-js">x</code></pre>',
     );
+
     expect(out).toContain('<img');
     expect(out).toContain('src="https://example.com/a.png"');
     expect(out).toContain('alt="pic"');
@@ -35,6 +39,7 @@ describe('sanitizeHtml', () => {
 
   it('drops <iframe> entirely', () => {
     const out = sanitizeHtml('<iframe src="https://evil"></iframe>after');
+
     expect(out).not.toContain('<iframe');
     expect(out).toContain('after');
   });

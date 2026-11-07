@@ -17,10 +17,13 @@ export const uploadChevereto = async (
   config: TwikooConfig,
 ): Promise<UploadResult> => {
   const siteUrl = stringConfig(config, 'IMAGE_CDN_URL');
+
   if (!siteUrl) {
     throw new Error('未配置 Chevereto 站点地址 (IMAGE_CDN_URL)');
   }
+
   const token = stringConfig(config, 'IMAGE_CDN_TOKEN');
+
   if (!token) {
     throw new Error('未配置 Chevereto API Key (IMAGE_CDN_TOKEN)');
   }
@@ -34,10 +37,12 @@ export const uploadChevereto = async (
     body: formData,
   });
   const data: CheveretoResponse = await response.json();
+
   if (data.status_code !== 200 || !data.image?.url) {
     const errMsg = data.error?.message ?? JSON.stringify(data);
     throw new Error(`Chevereto 上传失败: ${errMsg}`);
   }
+
   return {
     url: data.image.url,
     thumb: data.image.thumb?.url ?? data.image.url,

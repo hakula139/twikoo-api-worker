@@ -13,19 +13,22 @@ const buildDb = (raw: string): DB =>
 describe('loadConfig', () => {
   it('returns {} for an empty config row with no ADMIN_PASS_HASH bootstrap', async () => {
     const result = await loadConfig({} as Env, buildDb(''));
+
     expect(result).toEqual({ kind: 'ok', config: {}, droppedKeys: [] });
   });
 
   it('returns { ADMIN_PASS } from ADMIN_PASS_HASH when the row is empty', async () => {
     const result = await loadConfig({ ADMIN_PASS_HASH: 'abcd' } as Env, buildDb(''));
+
     expect(result).toEqual({ kind: 'ok', config: { ADMIN_PASS: 'abcd' }, droppedKeys: [] });
   });
 
   it('parses a valid config row', async () => {
-    const result = await loadConfig({} as Env, buildDb('{"SITE_URL":"https://hakula.xyz"}'));
+    const result = await loadConfig({} as Env, buildDb('{"SITE_URL":"https://example.com"}'));
+
     expect(result).toEqual({
       kind: 'ok',
-      config: { SITE_URL: 'https://hakula.xyz' },
+      config: { SITE_URL: 'https://example.com' },
       droppedKeys: [],
     });
   });
@@ -43,11 +46,12 @@ describe('loadConfig', () => {
   it('merges ADMIN_PASS_HASH when the parsed config lacks ADMIN_PASS', async () => {
     const result = await loadConfig(
       { ADMIN_PASS_HASH: 'fallback-admin-hash' } as Env,
-      buildDb('{"SITE_URL":"https://hakula.xyz"}'),
+      buildDb('{"SITE_URL":"https://example.com"}'),
     );
+
     expect(result).toEqual({
       kind: 'ok',
-      config: { SITE_URL: 'https://hakula.xyz', ADMIN_PASS: 'fallback-admin-hash' },
+      config: { SITE_URL: 'https://example.com', ADMIN_PASS: 'fallback-admin-hash' },
       droppedKeys: [],
     });
   });
@@ -57,15 +61,17 @@ describe('loadConfig', () => {
       { ADMIN_PASS_HASH: 'fallback-admin-hash' } as Env,
       buildDb('{"ADMIN_PASS":"stored-admin-hash"}'),
     );
+
     if (result.kind !== 'ok') {
       throw new Error('expected ok');
     }
+
     expect(result.config.ADMIN_PASS).toBe('stored-admin-hash');
   });
 
   it('prunes keys whose values violate the index signature', async () => {
     const raw = JSON.stringify({
-      SITE_URL: 'https://hakula.xyz',
+      SITE_URL: 'https://example.com',
       COMMENT_PAGE_SIZE: 10,
       SHOW_REGION: true,
       NULL_KEY: null,
@@ -73,11 +79,13 @@ describe('loadConfig', () => {
       NESTED_ARR: [1, 2, 3],
     });
     const result = await loadConfig({} as Env, buildDb(raw));
+
     if (result.kind !== 'ok') {
       throw new Error('expected ok');
     }
+
     expect(result.config).toEqual({
-      SITE_URL: 'https://hakula.xyz',
+      SITE_URL: 'https://example.com',
       COMMENT_PAGE_SIZE: 10,
       SHOW_REGION: true,
     });

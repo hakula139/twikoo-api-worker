@@ -19,10 +19,11 @@ export const setPassword: Handler<'SET_PASSWORD'> = async (payload, ctx) => {
   validate(payload, ['password']);
 
   await ctx.db.config.writePatch({ ADMIN_PASS: md5(payload.password) });
+
   return {};
 };
 
-// Don't return `ticket` — it routes the widget through tcb signIn (crashes on
+// Don't return `ticket`. It routes the widget through tcb signIn (crashes on
 // URL envId). isAdmin recovers the role from later accessToken headers.
 export const login: Handler<'LOGIN'> = async (payload, ctx) => {
   validate(payload, ['password']);
@@ -30,8 +31,10 @@ export const login: Handler<'LOGIN'> = async (payload, ctx) => {
   if (!ctx.config.ADMIN_PASS) {
     throw new TwikooError(ResponseCode.PASS_NOT_EXIST, '未配置管理密码');
   }
+
   if (md5(payload.password) !== ctx.config.ADMIN_PASS) {
     throw new TwikooError(ResponseCode.PASS_NOT_MATCH, '密码错误');
   }
+
   return {};
 };

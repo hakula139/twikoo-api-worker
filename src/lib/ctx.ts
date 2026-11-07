@@ -11,15 +11,19 @@ export type LoadConfigResult =
 // ADMIN_PASS_HASH keeps a fresh deployment claimable without an open first-call race.
 export const loadConfig = async (env: Env, db: DB): Promise<LoadConfigResult> => {
   const raw = await db.config.read();
+
   if (!raw) {
     return { kind: 'ok', config: bootstrap({}, env), droppedKeys: [] };
   }
+
   let parsed: unknown;
+
   try {
     parsed = JSON.parse(raw);
   } catch {
     return { kind: 'corrupted', length: raw.length, reason: 'invalid-json' };
   }
+
   if (!isPlainObject(parsed)) {
     return {
       kind: 'corrupted',
@@ -27,7 +31,9 @@ export const loadConfig = async (env: Env, db: DB): Promise<LoadConfigResult> =>
       reason: 'invalid-object',
     };
   }
+
   const { config, droppedKeys } = pruneConfig(parsed);
+
   return { kind: 'ok', config: bootstrap(config, env), droppedKeys };
 };
 
@@ -43,6 +49,7 @@ const pruneConfig = (
       droppedKeys.push(key);
     }
   }
+
   return { config, droppedKeys };
 };
 
@@ -50,5 +57,6 @@ const bootstrap = (config: TwikooConfig, env: Env): TwikooConfig => {
   if (!config.ADMIN_PASS && env.ADMIN_PASS_HASH) {
     config.ADMIN_PASS = env.ADMIN_PASS_HASH;
   }
+
   return config;
 };

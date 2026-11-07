@@ -1,8 +1,6 @@
 import type { AdminFilter, Bit, Comment, CommentSort, NewComment } from '@/db';
 import type { EventPayloads, Handler, JsonString, RequestCtx } from '@/types';
 
-import { mkCommentId } from '@/types';
-
 import { isAdmin, requireAdmin } from '@/lib/auth';
 import { enforceTurnstile } from '@/lib/captcha-guard';
 import { buildComment } from '@/lib/comment-build';
@@ -13,8 +11,9 @@ import { formatIpRegion } from '@/lib/geo';
 import { isPlainObject, isStringArray } from '@/lib/guards';
 import { enforceFrequencyLimit } from '@/lib/rate-limit';
 import { getAvatar, getMailMd5, getUrlsQuery, logger, parseComment, validate } from '@/twikoo';
+import { mkCommentId } from '@/types';
 
-// Year 3270 — sentinel "no `before` cursor" so the `<` comparison always passes.
+// Year 3270 represents an absent `before` cursor.
 const MAX_TIMESTAMP_MILLIS = 41025312000000;
 const MAX_QUERY_LIMIT = 500;
 const NON_NEWEST_LIMIT = 100;
@@ -31,8 +30,10 @@ const parseUidArray = (
   if (!raw) {
     return [];
   }
+
   try {
     const parsed = JSON.parse(raw) as unknown;
+
     return Array.isArray(parsed) ? (parsed as string[]) : [];
   } catch {
     logger.warn({ id: commentId, field, length: raw.length }, 'Malformed vote JSON.');
@@ -63,7 +64,7 @@ export const commentGet: Handler<'COMMENT_GET'> = async (payload, ctx) => {
   validate(payload, ['url']);
 
   // Fan out `/path` and `/path/` so a viewer arriving at either form sees
-  // comments posted on the other; matches getCommentsCount / getRecentComments.
+  // comments posted on the other. Matches getCommentsCount / getRecentComments.
   const urls = getUrlsQuery([payload.url]);
   const beforeRaw = Number(payload.before);
   const before = Number.isFinite(beforeRaw) && beforeRaw > 0 ? beforeRaw : MAX_TIMESTAMP_MILLIS;
@@ -74,10 +75,11 @@ export const commentGet: Handler<'COMMENT_GET'> = async (payload, ctx) => {
   const total = await ctx.db.comment.count(urls, showAll, ctx.uid);
 
   // The widget's `before` cursor (min rendered created) is only meaningful for
-  // `newest`; `oldest` / `popular` fetch up to NON_NEWEST_LIMIT in one shot.
+  // `newest`. `oldest` / `popular` fetch up to NON_NEWEST_LIMIT in one shot.
   const isNewest = sort === 'newest';
   let probed: Comment[];
   let more = false;
+
   if (isNewest) {
     probed = await ctx.db.comment.list(urls, showAll, ctx.uid, before, 0, pageSize + 1, sort);
     more = probed.length > pageSize;
@@ -94,6 +96,7 @@ export const commentGet: Handler<'COMMENT_GET'> = async (payload, ctx) => {
   } else {
     probed = [];
   }
+
   const main = more ? probed.slice(0, pageSize) : probed;
 
   const top =
@@ -111,7 +114,7 @@ export const commentGet: Handler<'COMMENT_GET'> = async (payload, ctx) => {
   const all = [...heads, ...replies];
 
   // Force SHOW_REGION off so parseComment skips its Node-only ip2region
-  // lookup; we patch ipRegion from the stored value below.
+  // lookup. We patch ipRegion from the stored value below.
   const configForParse = { ...ctx.config, SHOW_REGION: 'false' };
   const parsed = parseComment(all.map(decodeVotes), ctx.uid, configForParse) as ParsedComment[];
 
@@ -119,6 +122,7 @@ export const commentGet: Handler<'COMMENT_GET'> = async (payload, ctx) => {
     const byId = new Map(all.map((c) => [c._id, c]));
     const patch = (dto: ParsedComment): void => {
       const original = byId.get(mkCommentId(dto.id));
+
       if (original?.ipRegion) {
         dto.ipRegion = formatIpRegion(original.ipRegion);
       }
@@ -136,6 +140,7 @@ export const commentGet: Handler<'COMMENT_GET'> = async (payload, ctx) => {
 
 export const getCommentsCount: Handler<'GET_COMMENTS_COUNT'> = async (payload, ctx) => {
   validate(payload, ['urls']);
+
   if (!isStringArray(payload.urls)) {
     throw new TwikooError(ResponseCode.FAIL, '`urls` must be an array of strings.');
   }
@@ -158,6 +163,7 @@ export const getRecentComments: Handler<'GET_RECENT_COMMENTS'> = async (payload,
   if (payload.urls !== undefined && !isStringArray(payload.urls)) {
     throw new TwikooError(ResponseCode.FAIL, '`urls` must be an array of strings.');
   }
+
   const urlsRaw = payload.urls?.filter(Boolean);
   const urls = urlsRaw?.length ? getUrlsQuery(urlsRaw) : undefined;
   const includeReply = !!payload.includeReply;
@@ -193,11 +199,13 @@ export const commentLike: Handler<'COMMENT_LIKE'> = async (payload, ctx) => {
   validate(payload, ['id']);
 
   const type = payload.type ?? 'up';
+
   if (!isLikeType(type)) {
     throw new TwikooError(ResponseCode.FAIL, `Invalid like type: ${type}`);
   }
 
   const matched = await ctx.db.comment.toggleVote(mkCommentId(payload.id), ctx.uid, type);
+
   if (!matched) {
     throw new TwikooError(ResponseCode.FAIL, 'Comment not found.');
   }
@@ -219,7 +227,7 @@ export const commentSubmit: Handler<'COMMENT_SUBMIT'> = async (payload, ctx) => 
   return { id: newComment._id };
 };
 
-// Escape SQLite LIKE metacharacters; pairs with ESCAPE '\' in adminKeywordFilter.
+// Escape SQLite LIKE metacharacters. Pairs with ESCAPE '\' in adminKeywordFilter.
 const escapeLikePattern = (s: string): string => s.replace(/[\\%_]/g, (c) => `\\${c}`);
 
 const buildAdminFilter = (payload: EventPayloads['COMMENT_GET_FOR_ADMIN']): AdminFilter => {
@@ -227,6 +235,7 @@ const buildAdminFilter = (payload: EventPayloads['COMMENT_GET_FOR_ADMIN']): Admi
     payload.type === 'HIDDEN' ? 1 : payload.type === 'VISIBLE' ? 0 : undefined;
   const rawKeyword = payload.keyword?.trim();
   const keyword = rawKeyword ? `%${escapeLikePattern(rawKeyword)}%` : undefined;
+
   return { isSpam, keyword };
 };
 
@@ -244,7 +253,7 @@ export const commentGetForAdmin: Handler<'COMMENT_GET_FOR_ADMIN'> = async (paylo
     ctx.db.comment.listForAdmin(filter, per, per * (page - 1), sort),
   ]);
 
-  // Skip upstream parseCommentForAdmin (Node-only ip2region lookup); reformat
+  // Skip upstream parseCommentForAdmin (Node-only ip2region lookup). Reformat
   // the stored region populated at submit time from request.cf.
   const data = rows.map((c) => ({
     ...c,
@@ -254,34 +263,37 @@ export const commentGetForAdmin: Handler<'COMMENT_GET_FOR_ADMIN'> = async (paylo
   return { count, data };
 };
 
-// Only the three fields read below are writable. Identity, vote arrays,
-// timestamps, and any other set keys are silently dropped.
 export const commentSetForAdmin: Handler<'COMMENT_SET_FOR_ADMIN'> = async (payload, ctx) => {
   requireAdmin(ctx);
   validate(payload, ['id', 'set']);
 
   const set = payload.set;
+
   if (!isPlainObject(set)) {
     throw new TwikooError(ResponseCode.FAIL, '`set` must be an object.');
   }
 
   const fields: Partial<NewComment> = { updated: Date.now() };
+
   if ('comment' in set) {
     if (typeof set.comment !== 'string') {
       throw new TwikooError(ResponseCode.FAIL, 'Invalid value for comment');
     }
+
     fields.comment = set.comment;
   }
-  // Upstream widget toggles via `!current.flag`, so collapse to truthiness
-  // and accept any shape the widget might evolve to send.
+
+  // Upstream toggles flags through JavaScript truthiness.
   if ('isSpam' in set) {
     fields.isSpam = set.isSpam ? 1 : 0;
   }
+
   if ('top' in set) {
     fields.top = set.top ? 1 : 0;
   }
 
   await ctx.db.comment.update(mkCommentId(payload.id), fields);
+
   return { updated: 1 };
 };
 
@@ -290,6 +302,7 @@ export const commentDeleteForAdmin: Handler<'COMMENT_DELETE_FOR_ADMIN'> = async 
   validate(payload, ['id']);
 
   await ctx.db.comment.delete(mkCommentId(payload.id));
+
   return { deleted: 1 };
 };
 
@@ -297,29 +310,30 @@ export const commentDeleteForUser: Handler<'COMMENT_DELETE_FOR_USER'> = async (p
   validate(payload, ['id']);
 
   const id = mkCommentId(payload.id);
+
   if (!ctx.uid) {
-    // Anonymous comments have empty uid; an empty equality match would
+    // Anonymous comments have empty uid. An empty equality match would
     // collapse all anon authors into one delete-able pool.
     throw new TwikooError(ResponseCode.NEED_LOGIN, '请先登录');
   }
+
   const row = await ctx.db.comment.byId(id);
+
   if (!row) {
     throw new TwikooError(ResponseCode.FAIL, '评论不存在');
   }
+
   if (row.uid !== ctx.uid) {
     throw new TwikooError(ResponseCode.FAIL, '只能删除自己的评论');
   }
 
   await ctx.db.comment.delete(id);
+
   return { deleted: 1 };
 };
 
-type ExportCollection = 'comment' | 'counter' | 'config';
-const EXPORT_COLLECTIONS = [
-  'comment',
-  'counter',
-  'config',
-] as const satisfies readonly ExportCollection[];
+const EXPORT_COLLECTIONS = ['comment', 'counter', 'config'] as const;
+type ExportCollection = (typeof EXPORT_COLLECTIONS)[number];
 const isExportCollection = (s: string): s is ExportCollection =>
   (EXPORT_COLLECTIONS as readonly string[]).includes(s);
 
@@ -327,11 +341,13 @@ export const commentExportForAdmin: Handler<'COMMENT_EXPORT_FOR_ADMIN'> = async 
   requireAdmin(ctx);
 
   const raw = payload.collection ?? 'comment';
+
   if (!isExportCollection(raw)) {
     throw new TwikooError(ResponseCode.FAIL, `Unsupported collection: ${raw}`);
   }
 
   const data = await exportRows(raw, ctx);
+
   return { data };
 };
 

@@ -16,6 +16,7 @@ describe('counterGet', () => {
     const ctx = buildCtx({
       db: { counter: { incr, time } } as unknown as RequestCtx['db'],
     });
+
     return { ctx, incr, time };
   };
 

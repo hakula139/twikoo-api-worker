@@ -1,5 +1,4 @@
-// Nodemailer-shape shim. Wrangler aliases `nodemailer` away (Node-only SMTP);
-// we route through HTTP providers instead.
+// Use HTTP providers because Workers cannot deliver SMTP mail.
 
 import type { TwikooConfig } from '@/types';
 
@@ -81,10 +80,13 @@ interface MailProvider {
 
 const parseMailbox = (mailbox: string): { email: string; name?: string } => {
   const match = mailbox.match(/^(.+)\s+<([^<>]+)>$/);
+
   if (!match) {
     return { email: mailbox };
   }
+
   const name = match[1].trim();
+
   return {
     email: match[2],
     name: name.startsWith('"') && name.endsWith('"') ? name.slice(1, -1) : name,
@@ -136,7 +138,7 @@ const PROVIDERS: Record<Service, MailProvider> = {
   },
 };
 
-// EMAIL_TEST requires rejected provider responses to throw instead of appearing sent.
+// EMAIL_TEST requires rejected provider responses to throw.
 const send = async (service: Service, apiKey: string, msg: MailMessage): Promise<Response> => {
   const provider = PROVIDERS[service];
   const response = await fetch(provider.url, {
@@ -144,11 +146,13 @@ const send = async (service: Service, apiKey: string, msg: MailMessage): Promise
     headers: provider.headers(apiKey),
     body: JSON.stringify(provider.body(msg)),
   });
+
   if (!response.ok) {
     const text = await response.text().catch(() => '');
     const detail = text || response.statusText;
     throw new Error(`${service} send failed: ${response.status} ${detail}`);
   }
+
   return response;
 };
 

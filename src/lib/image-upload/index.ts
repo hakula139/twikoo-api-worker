@@ -40,12 +40,12 @@ export const uploadImage = async (
 ): Promise<UploadResult> => {
   try {
     const imageService = stringConfig(config, 'IMAGE_CDN') ?? '';
+
     if (!imageService) {
       throw new Error('未配置图片上传服务');
     }
 
-    // Non-S3 / non-R2 providers historically require IMAGE_CDN_TOKEN to be
-    // set. Preserve that contract so a missing token fails fast.
+    // Upstream providers require IMAGE_CDN_TOKEN except S3 and R2.
     if (
       imageService !== 's3' &&
       imageService !== 'r2' &&
@@ -56,13 +56,12 @@ export const uploadImage = async (
 
     if (stringConfig(config, 'NSFW_API_URL')) {
       const nsfw = await checkNsfw(photo, config);
+
       if (nsfw.rejected) {
         throw new TwikooError(ResponseCode.NSFW_REJECTED, nsfw.message);
       }
     }
 
-    // Treat any URL-shaped IMAGE_CDN as an LskyPro base URL. Hoisted above the
-    // known-CDN switch so the switch can cover its narrow union exhaustively.
     if (isUrl(imageService)) {
       return await uploadLskyPro(photo, fileName, config, imageService);
     }
@@ -74,8 +73,10 @@ export const uploadImage = async (
     switch (imageService) {
       case '7bu':
         return await uploadLskyPro(photo, fileName, config, 'https://7bu.top');
+
       case 'see':
         return await uploadSee(photo, fileName, config, 'https://s.ee/api/v1/file/upload');
+
       case 'lskypro':
         return await uploadLskyPro(
           photo,
@@ -83,6 +84,7 @@ export const uploadImage = async (
           config,
           stringConfig(config, 'IMAGE_CDN_URL') ?? '',
         );
+
       case 'piclist':
         return await uploadPicList(
           photo,
@@ -90,12 +92,16 @@ export const uploadImage = async (
           config,
           stringConfig(config, 'IMAGE_CDN_URL') ?? '',
         );
+
       case 'easyimage':
         return await uploadEasyImage(photo, fileName, config);
+
       case 'chevereto':
         return await uploadChevereto(photo, fileName, config);
+
       case 's3':
         return await uploadS3(photo, fileName, config);
+
       case 'r2':
         return await uploadR2(photo, fileName, env);
     }
@@ -103,6 +109,7 @@ export const uploadImage = async (
     if (e instanceof TwikooError) {
       throw e;
     }
+
     const message = e instanceof Error ? e.message : String(e);
     throw new TwikooError(ResponseCode.UPLOAD_FAILED, message);
   }

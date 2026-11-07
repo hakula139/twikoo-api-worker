@@ -22,16 +22,21 @@ const QQ_AVATAR_API = 'https://aq.qq.com/cn2/get_img/get_face';
 // Best-effort: any failure returns '' so `getAvatar` falls back to gravatar.
 const fetchQqAvatar = async (qqMail: string): Promise<string> => {
   const qqNum = qqMail.replace(/@qq\.com$/i, '');
+
   try {
     const url = `${QQ_AVATAR_API}?img_type=3&uin=${encodeURIComponent(qqNum)}`;
     const response = await fetch(url);
+
     if (!response.ok) {
       return '';
     }
+
     const data = await response.json<{ url?: string }>();
+
     return data.url ?? '';
   } catch (error) {
     logger.warn('Failed to fetch QQ avatar:', error);
+
     return '';
   }
 };
@@ -42,6 +47,7 @@ export const buildComment = async (
 ): Promise<NewComment> => {
   const isAdminUser = isAdmin(ctx.uid, ctx.config);
   const isBlogger = equalsMail(payload.mail ?? '', ctx.config.BLOGGER_EMAIL ?? '');
+
   if (isBlogger && !isAdminUser) {
     throw new TwikooError(ResponseCode.NEED_LOGIN, '请先登录管理面板，再使用博主身份发送评论');
   }
@@ -49,11 +55,13 @@ export const buildComment = async (
   const timestamp = Date.now();
   const hashMail = (mail: string): string => {
     const normalized = normalizeMail(mail);
+
     return ctx.config.GRAVATAR_CDN === 'cravatar.cn' ? md5(normalized) : sha256(normalized);
   };
 
   let mail = payload.mail ?? '';
   let avatar = '';
+
   if (mail && isQQ(mail)) {
     mail = addQQMailSuffix(mail);
     avatar = await fetchQqAvatar(mail);

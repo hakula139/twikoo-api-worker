@@ -12,6 +12,7 @@ describe('corsHeaders', () => {
 
   it('echoes the origin and emits the standard CORS headers when no config is provided', () => {
     const headers = corsHeaders('https://example.com');
+
     expect(headers['Access-Control-Allow-Origin']).toBe('https://example.com');
     expect(headers['Access-Control-Allow-Credentials']).toBe('true');
     expect(headers['Access-Control-Allow-Methods']).toBe('GET, POST');
@@ -19,7 +20,8 @@ describe('corsHeaders', () => {
   });
 
   it('always allows localhost regardless of allowlist', () => {
-    const config: TwikooConfig = { CORS_ALLOW_ORIGIN: 'https://hakula.xyz' };
+    const config: TwikooConfig = { CORS_ALLOW_ORIGIN: 'https://example.com' };
+
     expect(corsHeaders('http://localhost:5173', config)['Access-Control-Allow-Origin']).toBe(
       'http://localhost:5173',
     );
@@ -30,39 +32,44 @@ describe('corsHeaders', () => {
 
   it('treats empty allowlist as permissive', () => {
     const config: TwikooConfig = { CORS_ALLOW_ORIGIN: '' };
+
     expect(corsHeaders('https://anywhere.example', config)['Access-Control-Allow-Origin']).toBe(
       'https://anywhere.example',
     );
   });
 
   it('matches an exact origin entry', () => {
-    const config: TwikooConfig = { CORS_ALLOW_ORIGIN: 'https://hakula.xyz' };
-    expect(corsHeaders('https://hakula.xyz', config)['Access-Control-Allow-Origin']).toBe(
-      'https://hakula.xyz',
+    const config: TwikooConfig = { CORS_ALLOW_ORIGIN: 'https://example.com' };
+
+    expect(corsHeaders('https://example.com', config)['Access-Control-Allow-Origin']).toBe(
+      'https://example.com',
     );
     expect(corsHeaders('https://other.example', config)).toEqual({});
   });
 
   it('includes the port when matching an exact origin entry', () => {
-    const config: TwikooConfig = { CORS_ALLOW_ORIGIN: 'https://preview.hakula.xyz:8443' };
+    const config: TwikooConfig = { CORS_ALLOW_ORIGIN: 'https://preview.example.com:8443' };
+
     expect(
-      corsHeaders('https://preview.hakula.xyz:8443', config)['Access-Control-Allow-Origin'],
-    ).toBe('https://preview.hakula.xyz:8443');
-    expect(corsHeaders('https://preview.hakula.xyz:9443', config)).toEqual({});
+      corsHeaders('https://preview.example.com:8443', config)['Access-Control-Allow-Origin'],
+    ).toBe('https://preview.example.com:8443');
+    expect(corsHeaders('https://preview.example.com:9443', config)).toEqual({});
   });
 
   it('matches a bare hostname entry against either scheme', () => {
-    const config: TwikooConfig = { CORS_ALLOW_ORIGIN: 'hakula.xyz' };
-    expect(corsHeaders('https://hakula.xyz', config)['Access-Control-Allow-Origin']).toBe(
-      'https://hakula.xyz',
+    const config: TwikooConfig = { CORS_ALLOW_ORIGIN: 'example.com' };
+
+    expect(corsHeaders('https://example.com', config)['Access-Control-Allow-Origin']).toBe(
+      'https://example.com',
     );
-    expect(corsHeaders('http://hakula.xyz', config)['Access-Control-Allow-Origin']).toBe(
-      'http://hakula.xyz',
+    expect(corsHeaders('http://example.com', config)['Access-Control-Allow-Origin']).toBe(
+      'http://example.com',
     );
   });
 
   it('matches a wildcard subdomain but not the apex', () => {
     const config: TwikooConfig = { CORS_ALLOW_ORIGIN: '*.example.com' };
+
     expect(corsHeaders('https://a.example.com', config)['Access-Control-Allow-Origin']).toBe(
       'https://a.example.com',
     );
@@ -71,36 +78,40 @@ describe('corsHeaders', () => {
 
   it('treats a single "*" entry as allow-any', () => {
     const config: TwikooConfig = { CORS_ALLOW_ORIGIN: '*' };
+
     expect(corsHeaders('https://random.example', config)['Access-Control-Allow-Origin']).toBe(
       'https://random.example',
     );
   });
 
   it('rejects a malformed origin against a non-empty allowlist', () => {
-    const config: TwikooConfig = { CORS_ALLOW_ORIGIN: 'hakula.xyz' };
+    const config: TwikooConfig = { CORS_ALLOW_ORIGIN: 'example.com' };
+
     expect(corsHeaders('not-a-url', config)).toEqual({});
   });
 
   it('trims whitespace and trailing slash from allowlist entries', () => {
     const config: TwikooConfig = {
-      CORS_ALLOW_ORIGIN: '  https://hakula.xyz/  , preview.hakula.xyz',
+      CORS_ALLOW_ORIGIN: '  https://example.com/  , preview.example.com',
     };
-    expect(corsHeaders('https://hakula.xyz', config)['Access-Control-Allow-Origin']).toBe(
-      'https://hakula.xyz',
+
+    expect(corsHeaders('https://example.com', config)['Access-Control-Allow-Origin']).toBe(
+      'https://example.com',
     );
-    expect(corsHeaders('https://preview.hakula.xyz', config)['Access-Control-Allow-Origin']).toBe(
-      'https://preview.hakula.xyz',
+    expect(corsHeaders('https://preview.example.com', config)['Access-Control-Allow-Origin']).toBe(
+      'https://preview.example.com',
     );
   });
 });
 
 describe('isOriginAllowed', () => {
   it('allows when origin is null (non-browser request)', () => {
-    expect(isOriginAllowed(null, { CORS_ALLOW_ORIGIN: 'https://hakula.xyz' })).toBe(true);
+    expect(isOriginAllowed(null, { CORS_ALLOW_ORIGIN: 'https://example.com' })).toBe(true);
   });
 
   it('rejects an origin missing from a non-empty allowlist', () => {
-    const config: TwikooConfig = { CORS_ALLOW_ORIGIN: 'https://hakula.xyz' };
+    const config: TwikooConfig = { CORS_ALLOW_ORIGIN: 'https://example.com' };
+
     expect(isOriginAllowed('https://other.example', config)).toBe(false);
   });
 
@@ -109,7 +120,8 @@ describe('isOriginAllowed', () => {
   });
 
   it('allows localhost regardless of allowlist', () => {
-    const config: TwikooConfig = { CORS_ALLOW_ORIGIN: 'https://hakula.xyz' };
+    const config: TwikooConfig = { CORS_ALLOW_ORIGIN: 'https://example.com' };
+
     expect(isOriginAllowed('http://localhost:5173', config)).toBe(true);
   });
 });
@@ -152,6 +164,7 @@ describe('jsonResponse', () => {
 
   it('merges extra headers without dropping the content type', () => {
     const res = jsonResponse({ code: 0 }, { 'X-Request-ID': 'request-1' });
+
     expect(res.headers.get('X-Request-ID')).toBe('request-1');
     expect(res.headers.get('Content-Type')).toBe('application/json;charset=UTF-8');
   });
