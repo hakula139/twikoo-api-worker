@@ -25,14 +25,13 @@ describe('sanitizeHtml', () => {
     expect(out).not.toMatch(/javascript:/i);
   });
 
-  it('keeps img with src/alt and code with class', () => {
-    const out = sanitizeHtml(
-      '<img src="https://example.com/a.png" alt="pic"><pre class="hljs"><code class="language-js">x</code></pre>',
-    );
+  it('keeps OWO image attributes and code classes', () => {
+    const image =
+      '<img alt=":emotion:001:" src="/assets/owo/emotion/001.png" class="tk-owo-emotion">';
 
-    expect(out).toContain('<img');
-    expect(out).toContain('src="https://example.com/a.png"');
-    expect(out).toContain('alt="pic"');
+    const out = sanitizeHtml(`${image}<pre class="hljs"><code class="language-js">x</code></pre>`);
+
+    expect(out).toContain(image);
     expect(out).toContain('class="hljs"');
     expect(out).toContain('class="language-js"');
   });
