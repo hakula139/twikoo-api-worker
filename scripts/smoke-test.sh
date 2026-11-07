@@ -33,7 +33,7 @@ wrangler dev \
   --local \
   --persist-to "${smoke_dir}/state" \
   --port 8787 \
-  > "${smoke_dir}/wrangler.log" 2>&1 &
+  >"${smoke_dir}/wrangler.log" 2>&1 &
 wrangler_pid=$!
 
 if ! curl \
@@ -51,7 +51,7 @@ if ! curl \
     -e \
     --arg version "${expected_version}" \
     '.code == 0 and .version == $version' \
-    > /dev/null; then
+    >/dev/null; then
   cat "${smoke_dir}/wrangler.log"
   exit 1
 fi
