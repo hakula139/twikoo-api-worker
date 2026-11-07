@@ -36,6 +36,7 @@ prek
 remoteip
 ruser
 sendgrid
+shfmt
 sigv4
 smfile
 statix
