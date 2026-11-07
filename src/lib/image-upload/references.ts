@@ -8,7 +8,21 @@ export const collectUploadReferences = async (
   const prefix = `${base.pathname.replace(/\/$/, '')}/`;
   const references = new Set<string>();
 
-  const rememberUrl = (value: string) => {
+  const rememberKey = (key: string, trimPunctuation: boolean) => {
+    const suffix = trimPunctuation ? /[.,!?;:)\]}]+$/.exec(key) : null;
+    const minimumLength = suffix?.index ?? key.length;
+    const bytes = new TextEncoder().encode(key).length;
+    let length = key.length - Math.max(0, bytes - 1_024);
+
+    // Trailing prose punctuation is ASCII, so excess bytes skip impossible R2 keys.
+    while (length >= minimumLength) {
+      references.add(key.slice(0, length));
+      length--;
+    }
+  };
+
+  const rememberUrl = (value: string, trimPunctuation = false) => {
+    value = value.trim();
     let url: URL;
     try {
       url = new URL(value.startsWith('//') ? `${base.protocol}${value}` : value);
@@ -21,9 +35,10 @@ export const collectUploadReferences = async (
     }
 
     const key = url.pathname.slice(prefix.length);
-    references.add(key);
+    const trimKey = trimPunctuation && !url.search && !url.hash;
+    rememberKey(key, trimKey);
     try {
-      references.add(decodeURIComponent(key));
+      rememberKey(decodeURIComponent(key), trimKey);
     } catch {
       // A literal percent sign can be part of a migrated object key.
     }
@@ -31,14 +46,7 @@ export const collectUploadReferences = async (
 
   const rememberText = (value: string) => {
     for (const match of decodeHTML(value).matchAll(/https?:\/\/[^\s<>"']+/gi)) {
-      let candidate = match[0];
-      rememberUrl(candidate);
-
-      // Prose punctuation and Markdown closers can also be literal key characters.
-      while (/[.,!?;:)\]}]$/.test(candidate)) {
-        candidate = candidate.slice(0, -1);
-        rememberUrl(candidate);
-      }
+      rememberUrl(match[0], true);
     }
   };
 
