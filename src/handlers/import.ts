@@ -24,8 +24,8 @@ type ImportSource = (typeof IMPORT_SOURCES)[number];
 const isImportSource = (s: string): s is ImportSource =>
   (IMPORT_SOURCES as readonly string[]).includes(s);
 
-// Upstream's commentImport* return loosely-typed shapes that don't match our
-// strict NewComment schema. Treat them as Records and normalize per row.
+// Upstream's commentImport* return loosely-typed shapes that don't match our strict NewComment
+// schema. Treat them as Records and normalize per row.
 type ImportedRow = Record<string, unknown>;
 
 export const commentImportForAdmin: Handler<'COMMENT_IMPORT_FOR_ADMIN'> = async (payload, ctx) => {
@@ -89,8 +89,8 @@ const runImport = async (
   }
 };
 
-// commentImportDisqus expects xml2js shape (every elem an array, attrs under
-// `$`). fast-xml-parser returns scalars, so re-wrap below.
+// commentImportDisqus expects xml2js shape (every elem an array, attrs under `$`). fast-xml-parser
+// returns scalars, so re-wrap below.
 const xmlParser = new XMLParser({
   ignoreAttributes: false,
   attributeNamePrefix: '',
@@ -148,8 +148,8 @@ const toJsonArray = (
   }
 
   if (typeof v === 'string' && v) {
-    // Validate the string parses to a string-array before granting the brand,
-    // since otherwise the corruption is silently round-tripped to D1.
+    // Validate the string parses to a string-array before granting the brand, since otherwise the
+    // corruption is silently round-tripped to D1.
     const parsed = parseJsonString<unknown>(v);
 
     if (Array.isArray(parsed) && parsed.every((e): e is string => typeof e === 'string')) {

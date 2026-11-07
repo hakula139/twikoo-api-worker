@@ -21,8 +21,8 @@ export const getQqNick: Handler<'GET_QQ_NICK'> = async (payload, ctx) => {
   return { nick };
 };
 
-// Best-effort lookup: any failure (network, non-200, malformed body) returns
-// null so the widget falls back to letting the user type their own nickname.
+// Best-effort lookup: any failure (network, non-200, malformed body) returns null so the widget
+// falls back to letting the user type their own nickname.
 const fetchQqNick = async (qq: string, apiKey?: string): Promise<string | null> => {
   const headers: Record<string, string> = {};
 

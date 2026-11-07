@@ -7,8 +7,8 @@ declare namespace Cloudflare {
   }
 }
 
-// Vite's `?raw` query loads file contents as a string at build time.
-// drizzle-kit's emitted SQL fixture is consumed via this path.
+// Vite's `?raw` query loads file contents as a string at build time. drizzle-kit's emitted SQL
+// fixture is consumed via this path.
 declare module '*.sql?raw' {
   const content: string;
   export default content;

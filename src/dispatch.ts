@@ -102,8 +102,8 @@ export const dispatch = async (
     const config = loaded.config;
     const headers = corsHeaders(origin, config);
 
-    // Reject before DB writes. Without short-circuit, the browser still drops
-    // the response on a CORS miss, but the handler has already persisted state.
+    // Reject before DB writes. Without short-circuit, the browser still drops the response on a
+    // CORS miss, but the handler has already persisted state.
     if (!isOriginAllowed(origin, config)) {
       return respond({ code: ResponseCode.FORBIDDEN, message: 'Origin not allowed.' }, headers);
     }
@@ -144,8 +144,7 @@ export const dispatch = async (
       }
       const safeError = redactDatabaseError(error);
       logger.error('Unhandled handler error:', safeError);
-      // Preserve upstream Error messages (e.g. twikoo-func's '评论内容过长')
-      // so the widget can show the original copy instead of 'Internal error.'
+      // Preserve upstream errors so the widget can display messages such as '评论内容过长'.
       const message =
         safeError instanceof Error && safeError.message ? safeError.message : 'Internal error.';
       return respond({ code: ResponseCode.FAIL, message }, headers);

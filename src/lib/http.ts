@@ -9,8 +9,8 @@ const ALLOWED_HEADERS =
 
 const LOCALHOST_REGEX = /^https?:\/\/(localhost|127\.0\.0\.1|0\.0\.0\.0)(:\d{1,5})?$/;
 
-// `*.foo.bar` matches any non-empty subdomain (one or more labels) of `foo.bar`,
-// but not `foo.bar` itself. List the apex separately to allow it too.
+// `*.foo.bar` matches any non-empty subdomain (one or more labels) of `foo.bar`. List the apex
+// separately to allow it too.
 const hostMatches = (hostname: string, pattern: string): boolean => {
   if (pattern === '*') {
     return true;

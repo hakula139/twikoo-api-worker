@@ -200,8 +200,8 @@ describe('integration: dispatch hardening', () => {
       );
 
       expect(body.code).toBe(ResponseCode.FORBIDDEN);
-      // The origin gate has to fire before handler dispatch. Otherwise the
-      // browser drops the response client-side but the row is already saved.
+      // The origin gate has to fire before handler dispatch. Otherwise the browser drops the
+      // response client-side but the row is already saved.
       expect(await fetchComments('/post/')).toHaveLength(0);
     });
   });

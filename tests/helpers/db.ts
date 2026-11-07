@@ -8,8 +8,8 @@ import { drizzle } from 'drizzle-orm/d1';
 import { buildDb } from '@/db';
 import schemaSql from '../fixtures/schema.sql?raw';
 
-// drizzle-kit emits semicolon-delimited DDL. applyD1Migrations remains idempotent
-// when Miniflare reuses the binding across suites.
+// drizzle-kit emits semicolon-delimited DDL. applyD1Migrations remains idempotent when Miniflare
+// reuses the binding across suites.
 const migrationQueries = schemaSql
   .split(';')
   .map((q: string) => q.trim())

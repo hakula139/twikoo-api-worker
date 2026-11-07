@@ -3,8 +3,8 @@ import type { RequestCtx } from '@/types';
 import { numberConfig } from './config-read';
 import { ResponseCode, TwikooError } from './errors';
 
-// 10-minute rolling window. The `LIMIT_PER_MINUTE` config keys cap
-// submissions over this window. The name is upstream parity.
+// 10-minute rolling window. The `LIMIT_PER_MINUTE` config keys cap submissions over this window.
+// The name is upstream parity.
 const FREQUENCY_WINDOW_MS = 10 * 60 * 1000;
 const DEFAULT_LIMIT_PER_IP = 10;
 

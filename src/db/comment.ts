@@ -37,8 +37,6 @@ const visibility = (showAll: boolean, uid: string) =>
 const stringListValues = (values: string[]): SQL =>
   sql`(SELECT value FROM json_each(${JSON.stringify(values)}))`;
 
-// `ups` is stored as a JSON array of voter UIDs (not a count), so popular sort
-// goes through `json_array_length`. Tiebreak on `created desc` for stability.
 const orderClause = (sort: CommentSort): SQL[] => {
   if (sort === 'oldest') {
     return [asc(comment.created)];
@@ -267,9 +265,7 @@ export const createCommentDb = (db: DrizzleD1Database, publicUrl: string) => {
       await mutate([db.insert(comment).values(c), ...referenceQueries(c._id, keys)], keys);
     },
 
-    // D1 caps each statement at 100 bound parameters. Schema currently has
-    // 22 columns, so 4 rows per chunk = 88 binds. Bump down to 3 if the row
-    // grows past 25 columns or D1 lowers the cap.
+    // Batch imports to stay within D1's 100-parameter statement limit.
     async saveMany(rows: NewComment[]): Promise<void> {
       if (rows.length === 0) {
         return;
@@ -295,8 +291,7 @@ export const createCommentDb = (db: DrizzleD1Database, publicUrl: string) => {
       await db.batch([releaseReferences(id), db.delete(comment).where(eq(comment._id, id))]);
     },
 
-    // Atomic toggle in pure SQL since concurrent voters racing through
-    // read-modify-write would lose each other. Returns false if no row matched.
+    // SQL keeps concurrent vote toggles atomic. Returns false when the comment does not exist.
     async toggleVote(id: CommentId, uid: string, type: 'up' | 'down'): Promise<boolean> {
       const target = type === 'up' ? comment.ups : comment.downs;
       const opposite = type === 'up' ? comment.downs : comment.ups;

@@ -23,8 +23,8 @@ export interface Secrets {
 
 export interface Env extends Bindings, Secrets {}
 
-// Branded primitives keep identity strings and row ids from being passed
-// interchangeably. mk* helpers localize the unavoidable cast.
+// Branded primitives keep identity strings and row ids from being passed interchangeably. mk*
+// helpers localize the unavoidable cast.
 export type Uid = string & { readonly __uid: unique symbol };
 export type Ip = string & { readonly __ip: unique symbol };
 export type CommentId = string & { readonly __commentId: unique symbol };

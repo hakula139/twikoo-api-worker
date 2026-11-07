@@ -9,8 +9,8 @@ import {
   validate,
 } from '@/twikoo';
 
-// Public-facing keys that upstream's getConfig surfaces but should never leave
-// the worker. QQ_API_KEY is consumed by GET_QQ_NICK on the server.
+// Public-facing keys that upstream's getConfig surfaces but should never leave the worker.
+// QQ_API_KEY is consumed by GET_QQ_NICK on the server.
 const PUBLIC_CONFIG_FORBIDDEN: readonly string[] = ['QQ_API_KEY'];
 
 export const getConfig: Handler<'GET_CONFIG'> = async (_payload, ctx) => {

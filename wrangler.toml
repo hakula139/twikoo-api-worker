@@ -2,7 +2,7 @@
 name = "twikoo-api-worker"
 main = "src/worker.ts"
 compatibility_date = "2025-07-29"
-# twikoo-func's Axios dependency imports node:http2, which is unavailable at this compatibility date.
+# twikoo-func's Axios imports node:http2, which is unavailable at this compatibility date.
 compatibility_flags = ["nodejs_compat", "enable_nodejs_http2_module"]
 
 routes = [{ pattern = "twikoo.hakula.xyz", custom_domain = true }]
