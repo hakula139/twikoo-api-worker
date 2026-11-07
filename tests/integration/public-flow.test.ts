@@ -212,17 +212,13 @@ describe('integration: COMMENT_GET', () => {
 
   it('hides spam from anonymous viewers', async () => {
     await seedConfig({});
-    // Distinct non-empty authors so the visibility `OR uid = viewer` clause
-    // (viewer uid is empty here) doesn't accidentally match either row.
     const visibleId = await seedComment({
       url: '/post/',
       comment: 'Visible comment',
-      uid: 'author-1',
     });
     const spamId = await seedComment({
       url: '/post/',
       comment: 'Spam comment',
-      uid: 'author-2',
       isSpam: 1,
     });
 
@@ -330,7 +326,7 @@ describe('integration: COMMENT_SUBMIT', () => {
     expect(rows[0]?._id).toBe(body.id);
   });
 
-  it('per-request log carries the event, success code, and uid', async () => {
+  it('per-request log carries the event and success code', async () => {
     await seedConfig({});
 
     await postEvent(
@@ -343,7 +339,6 @@ describe('integration: COMMENT_SUBMIT', () => {
       expect.objectContaining({
         event: 'COMMENT_SUBMIT',
         code: ResponseCode.SUCCESS,
-        uid: 'submitter-2',
       }),
       'request',
     );

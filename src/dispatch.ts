@@ -1,7 +1,7 @@
 import type { ExecutionContext } from '@cloudflare/workers-types';
 
 import type { ResponseCodeValue } from './lib/errors';
-import type { Env, EventName, EventPayloads, RequestCtx, TwikooResponse, Uid } from './types';
+import type { Env, EventName, EventPayloads, RequestCtx, TwikooResponse } from './types';
 
 import { buildDb } from './db';
 import { handlers, isEventName } from './handlers';
@@ -27,7 +27,6 @@ export const dispatch = async (
 ): Promise<Response> => {
   const startedAt = Date.now();
   let event = '';
-  let uid: Uid = mkUid('');
   let code: ResponseCodeValue = ResponseCode.SUCCESS;
 
   // Records the response code so the per-request log line in `finally`
@@ -65,26 +64,22 @@ export const dispatch = async (
       }
 
       body = parsed;
-    } catch (error) {
-      logger.error('Request body parse failed:', error);
+    } catch {
+      logger.error('Request body is not valid JSON.');
       return respond(
         { code: ResponseCode.FAIL, message: 'Body is not valid JSON.' },
         corsHeaders(origin),
       );
     }
 
-    // Pull identity fields out before the config / CORS gates so the log line
-    // on rejection paths still has a useful event / uid for triage.
     event = stringField(body, 'event');
     const accessToken = stringField(body, 'accessToken');
-    uid = mkUid(accessToken || request.headers.get('x-twikoo-recaptcha-v3') || '');
+    const uid = mkUid(accessToken || request.headers.get('x-twikoo-recaptcha-v3') || '');
 
     const loaded = await loadConfig(env, db);
     if (loaded.kind === 'corrupted') {
-      // Avoid logging the raw row because it normally contains secrets.
-      // Length and parse error are safe and the only useful triage signal.
       logger.error(
-        { length: loaded.length, parseError: loaded.parseError },
+        { length: loaded.length, reason: loaded.reason },
         'Config row is not valid JSON or not an object.',
       );
       return respond(
@@ -152,7 +147,10 @@ export const dispatch = async (
     }
 
     return respond({ code: ResponseCode.SUCCESS, ...result }, headers);
+  } catch (error) {
+    code = ResponseCode.FAIL;
+    throw error;
   } finally {
-    logger.info({ event, code, uid, duration_ms: Date.now() - startedAt }, 'request');
+    logger.info({ event, code, duration_ms: Date.now() - startedAt }, 'request');
   }
 };

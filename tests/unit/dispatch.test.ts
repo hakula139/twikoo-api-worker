@@ -127,6 +127,35 @@ describe('dispatch', () => {
       errorSpy = vi.spyOn(logger, 'error').mockImplementation(() => undefined);
     });
 
+    it('logs request JSON failures without parser excerpts', async () => {
+      const res = await dispatch(post('{"accessToken": example-secret}'), env, execCtx());
+      const body = await res.json<{ code: number; message: string }>();
+
+      expect(body).toMatchObject({ code: ResponseCode.FAIL, message: 'Body is not valid JSON.' });
+      expect(errorSpy).toHaveBeenCalledExactlyOnceWith('Request body is not valid JSON.');
+    });
+
+    it.each([
+      { raw: '{"SMTP_PASS": example-secret}', reason: 'invalid-json' },
+      { raw: '["example-secret"]', reason: 'invalid-object' },
+    ])('logs only safe $reason configuration diagnostics', async ({ raw, reason }) => {
+      await writeConfigRow(raw);
+
+      const res = await dispatch(post('{"event":"GET_FUNC_VERSION"}'), env, execCtx());
+      const body = await res.json<{ code: number; message: string }>();
+
+      expect(body.code).toBe(ResponseCode.CONFIG_NOT_EXIST);
+      expect(errorSpy).toHaveBeenCalledExactlyOnceWith(
+        { length: raw.length, reason },
+        'Config row is not valid JSON or not an object.',
+      );
+      const diagnostics = JSON.stringify(errorSpy.mock.calls, (_key, value: unknown) =>
+        value instanceof Error ? value.message : value,
+      );
+      expect(diagnostics).not.toContain('example-secret');
+      expect(JSON.stringify(body)).not.toContain('example-secret');
+    });
+
     it('logs dropped config keys when the row has values with unsupported types', async () => {
       await writeConfigRow('{"OK":"x","BAD":{"a":1}}');
 
@@ -192,7 +221,7 @@ describe('dispatch', () => {
   });
 
   describe('per-request log line', () => {
-    it('emits one log per request tagged with event, code, uid, and duration_ms', async () => {
+    it('emits one log per request tagged with event, code, and duration_ms', async () => {
       await writeConfigRow('{}');
 
       await dispatch(post('{"event":"NOT_A_REAL_EVENT"}'), env, execCtx());
@@ -202,7 +231,6 @@ describe('dispatch', () => {
         expect.objectContaining({
           event: 'NOT_A_REAL_EVENT',
           code: ResponseCode.EVENT_NOT_EXIST,
-          uid: '',
         }),
         'request',
       );
@@ -210,22 +238,11 @@ describe('dispatch', () => {
       expect(fields?.duration_ms).toBeTypeOf('number');
     });
 
-    it('still logs when the body fails to parse (event and uid stay empty)', async () => {
+    it('still logs when the body fails to parse', async () => {
       await dispatch(post('{not-json'), env, execCtx());
 
       expect(infoSpy).toHaveBeenCalledWith(
-        expect.objectContaining({ event: '', code: ResponseCode.FAIL, uid: '' }),
-        'request',
-      );
-    });
-
-    it('captures the uid from the request body', async () => {
-      await writeConfigRow('{}');
-
-      await dispatch(post('{"event":"NOT_A_REAL_EVENT","accessToken":"user-abc"}'), env, execCtx());
-
-      expect(infoSpy).toHaveBeenCalledWith(
-        expect.objectContaining({ event: 'NOT_A_REAL_EVENT', uid: 'user-abc' }),
+        expect.objectContaining({ event: '', code: ResponseCode.FAIL }),
         'request',
       );
     });

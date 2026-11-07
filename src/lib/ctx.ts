@@ -6,7 +6,7 @@ import { isPlainObject } from './guards';
 // Do not propagate the raw config row because it normally contains secrets.
 export type LoadConfigResult =
   | { kind: 'ok'; config: TwikooConfig; droppedKeys: readonly string[] }
-  | { kind: 'corrupted'; length: number; parseError: unknown };
+  | { kind: 'corrupted'; length: number; reason: 'invalid-json' | 'invalid-object' };
 
 // ADMIN_PASS_HASH keeps a fresh deployment claimable without an open first-call race.
 export const loadConfig = async (env: Env, db: DB): Promise<LoadConfigResult> => {
@@ -17,14 +17,14 @@ export const loadConfig = async (env: Env, db: DB): Promise<LoadConfigResult> =>
   let parsed: unknown;
   try {
     parsed = JSON.parse(raw);
-  } catch (parseError) {
-    return { kind: 'corrupted', length: raw.length, parseError };
+  } catch {
+    return { kind: 'corrupted', length: raw.length, reason: 'invalid-json' };
   }
   if (!isPlainObject(parsed)) {
     return {
       kind: 'corrupted',
       length: raw.length,
-      parseError: new Error(`expected JSON object, got ${typeof parsed}`),
+      reason: 'invalid-object',
     };
   }
   const { config, droppedKeys } = pruneConfig(parsed);

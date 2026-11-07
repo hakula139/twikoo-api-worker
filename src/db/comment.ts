@@ -11,9 +11,8 @@ import { comment } from './schema';
 
 export type CommentSort = 'newest' | 'oldest' | 'popular';
 
-// `showAll` lets admin views see every row; otherwise only non-spam OR own comments.
 const visibility = (showAll: boolean, uid: string) =>
-  showAll ? undefined : or(eq(comment.isSpam, 0), eq(comment.uid, uid));
+  showAll ? undefined : or(eq(comment.isSpam, 0), uid ? eq(comment.uid, uid) : undefined);
 
 // Bind each string list once to stay within D1's 100-parameter limit.
 const stringListValues = (values: string[]): SQL =>

@@ -70,6 +70,18 @@ describe('ConfigDB.writePatch', () => {
       SITE_URL: 'https://old.example',
     });
   });
+
+  it('rejects malformed stored JSON without exposing its contents or replacing it', async () => {
+    const db = dbInstance();
+    const raw = '{"SMTP_PASS": example-secret}';
+    await db.config.write(raw);
+
+    await expect(db.config.writePatch({ SITE_NAME: 'Example Site' })).rejects.toEqual(
+      new Error('Configuration is not valid JSON.'),
+    );
+
+    expect(await db.config.read()).toBe(raw);
+  });
 });
 
 describe('ConfigDB.exportAll', () => {

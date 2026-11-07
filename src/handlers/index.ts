@@ -48,4 +48,4 @@ export const handlers: Handlers = {
   UPLOAD_IMAGE: imageUpload,
 };
 
-export const isEventName = (s: string): s is keyof Handlers => s in handlers;
+export const isEventName = (s: string): s is keyof Handlers => Object.hasOwn(handlers, s);
