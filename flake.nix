@@ -117,6 +117,8 @@
           ]
           ++ preCommitCheck.enabledPackages
           ++ (with pkgs; [
+            curl
+            jq
             nodejs_26
             pnpm
           ]);
