@@ -1,4 +1,5 @@
 import type { MockInstance } from 'vitest';
+import { env } from 'cloudflare:workers';
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { MAX_BODY_BYTES } from '@/dispatch';
@@ -52,6 +53,23 @@ describe('integration: worker entry', () => {
 });
 
 describe('integration: dispatch hardening', () => {
+  it('returns a client-readable error when loading configuration fails', async () => {
+    vi.spyOn(env.DB, 'prepare').mockImplementationOnce(() => {
+      throw new Error('Database is unavailable.');
+    });
+
+    const { body } = await postEvent('UPLOAD_IMAGE', {
+      photo: 'data:image/png;base64,iVBORw0KGgo=',
+      fileName: 'sample.png',
+    });
+
+    expect(body).toEqual({
+      code: ResponseCode.FAIL,
+      message: 'Internal error.',
+      err: 'Internal error.',
+    });
+  });
+
   it('rejects an unknown event with EVENT_NOT_EXIST', async () => {
     await seedConfig({});
 
@@ -66,6 +84,7 @@ describe('integration: dispatch hardening', () => {
     });
     expect(body.code).toBe(ResponseCode.FAIL);
     expect(body.message).toMatch(/too large/i);
+    expect(body.err).toBe(body.message);
     expect(headers.get('Access-Control-Allow-Origin')).toBeTruthy();
   });
 

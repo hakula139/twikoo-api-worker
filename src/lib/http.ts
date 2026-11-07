@@ -2,6 +2,8 @@ import type { TwikooConfig, TwikooResponse } from '@/types';
 
 import { logger } from '@/twikoo';
 
+import { ResponseCode } from './errors';
+
 const ALLOWED_HEADERS =
   'X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version';
 
@@ -92,6 +94,13 @@ export const jsonResponse = (
   body: Partial<TwikooResponse>,
   extraHeaders: Record<string, string> = {},
 ): Response => {
+  if (
+    body.code !== undefined &&
+    body.code !== ResponseCode.SUCCESS &&
+    typeof body.message === 'string'
+  ) {
+    body.err ??= body.message;
+  }
   return new Response(JSON.stringify(body), {
     headers: {
       'Content-Type': 'application/json;charset=UTF-8',
