@@ -1,12 +1,22 @@
 import type { MockInstance } from 'vitest';
 import { env } from 'cloudflare:workers';
+import { DrizzleQueryError } from 'drizzle-orm';
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { MAX_BODY_BYTES } from '@/dispatch';
 import { ResponseCode } from '@/lib/errors';
 import { logger } from '@/twikoo';
 import { applyTestSchema, resetTestDb } from '@tests/helpers/db';
-import { fetchComments, postEvent, postRaw, seedConfig, sendRequest } from './helpers';
+import {
+  ADMIN_TOKEN,
+  adminAuthHeader,
+  fetchComments,
+  postEvent,
+  postRaw,
+  seedAdmin,
+  seedConfig,
+  sendRequest,
+} from './helpers';
 
 let infoSpy: MockInstance;
 
@@ -68,14 +78,96 @@ describe('integration: dispatch hardening', () => {
       message: 'Internal error.',
       err: 'Internal error.',
     });
+    expect(infoSpy).toHaveBeenCalledWith(
+      expect.objectContaining({ event: 'UPLOAD_IMAGE', code: ResponseCode.FAIL }),
+      'request',
+    );
   });
 
-  it('rejects an unknown event with EVENT_NOT_EXIST', async () => {
-    await seedConfig({});
+  it.each(['NOT_AN_EVENT', 'constructor', 'toString', '__proto__'])(
+    'rejects unsupported event %s with EVENT_NOT_EXIST',
+    async (event) => {
+      await seedConfig({});
 
-    const { body } = await postEvent('NOT_AN_EVENT');
+      const { body } = await postEvent(event);
 
-    expect(body.code).toBe(ResponseCode.EVENT_NOT_EXIST);
+      expect(body.code).toBe(ResponseCode.EVENT_NOT_EXIST);
+    },
+  );
+
+  it.each(['header', 'body'] as const)(
+    'authenticates %s credentials without logging them',
+    async (via) => {
+      await seedAdmin();
+
+      const { body } = await postEvent(
+        'GET_CONFIG_FOR_ADMIN',
+        via === 'body' ? { accessToken: ADMIN_TOKEN } : {},
+        via === 'header' ? adminAuthHeader() : undefined,
+      );
+
+      expect(body.code).toBe(ResponseCode.SUCCESS);
+      expect(infoSpy).toHaveBeenCalledTimes(1);
+      expect(JSON.stringify(infoSpy.mock.calls)).not.toContain(ADMIN_TOKEN);
+      expect(infoSpy.mock.calls[0]?.[0]).not.toHaveProperty('uid');
+    },
+  );
+
+  it('redacts stored configuration and authentication values when a D1 write fails', async () => {
+    await seedAdmin({ SMTP_PASS: 'stored-mail-key' });
+    const errorSpy = vi.spyOn(logger, 'error').mockImplementation(() => undefined);
+    const prepare = env.DB.prepare.bind(env.DB);
+    vi.spyOn(env.DB, 'prepare').mockImplementation((query) => {
+      const statement = prepare(query);
+      if (query.startsWith('insert into "config"')) {
+        vi.spyOn(statement, 'bind').mockImplementationOnce(() => {
+          throw new Error('D1 write unavailable.');
+        });
+      }
+      return statement;
+    });
+
+    const { body } = await postEvent(
+      'SET_CONFIG',
+      { config: { SITE_NAME: 'New Site' } },
+      adminAuthHeader(),
+    );
+
+    expect(body).toEqual({
+      code: ResponseCode.FAIL,
+      message: 'Database request failed.',
+      err: 'Database request failed.',
+    });
+    const diagnostics = JSON.stringify(
+      [infoSpy.mock.calls, errorSpy.mock.calls, body],
+      (_key, value: unknown) => (value instanceof Error ? value.message : value),
+    );
+    expect(diagnostics).not.toContain('stored-mail-key');
+    expect(diagnostics).not.toContain(ADMIN_TOKEN);
+    expect(diagnostics).not.toContain('insert into');
+  });
+
+  it('redacts database diagnostics from the outer Worker error log', async () => {
+    const errorSpy = vi.spyOn(logger, 'error').mockImplementation(() => undefined);
+    vi.spyOn(env.DB, 'prepare').mockImplementationOnce(() => {
+      throw new DrizzleQueryError(
+        'SELECT config',
+        ['stored-mail-key'],
+        new Error('D1 unavailable.'),
+      );
+    });
+
+    const { body } = await postEvent('GET_CONFIG');
+
+    expect(body).toEqual({
+      code: ResponseCode.FAIL,
+      message: 'Internal error.',
+      err: 'Internal error.',
+    });
+    expect(errorSpy).toHaveBeenCalledExactlyOnceWith(
+      'Unhandled fetch error:',
+      new Error('Database request failed.'),
+    );
   });
 
   it('rejects with FAIL + CORS when Content-Length exceeds the cap', async () => {
@@ -109,7 +201,7 @@ describe('integration: dispatch hardening', () => {
     });
   });
 
-  it('emits one {event, code, uid, duration_ms} log per dispatch', async () => {
+  it('emits one {event, code, duration_ms} log per dispatch', async () => {
     await seedConfig({});
 
     const { body } = await postEvent(
@@ -121,10 +213,10 @@ describe('integration: dispatch hardening', () => {
     expect(body.code).toBe(ResponseCode.FAIL);
     expect(infoSpy).toHaveBeenCalledTimes(1);
     const fields = infoSpy.mock.calls[0]?.[0] as
-      { event: string; code: number; uid: string; duration_ms: unknown } | undefined;
+      { event: string; code: number; duration_ms: unknown } | undefined;
     expect(fields?.event).toBe('COMMENT_LIKE');
     expect(fields?.code).toBe(ResponseCode.FAIL);
-    expect(fields?.uid).toBe('observer-uid');
+    expect(fields).not.toHaveProperty('uid');
     expect(fields?.duration_ms).toBeTypeOf('number');
     expect(infoSpy.mock.calls[0]?.[1]).toBe('request');
   });

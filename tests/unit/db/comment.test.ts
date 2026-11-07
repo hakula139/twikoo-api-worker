@@ -48,37 +48,53 @@ describe('CommentDB.save', () => {
 });
 
 describe('CommentDB.count > visibility', () => {
-  it('counts only non-spam top-level comments by default (showAll=false)', async () => {
-    await seed([
-      newComment({ url: '/p', isSpam: 0 }),
-      newComment({ url: '/p', isSpam: 1 }),
-      newComment({ url: '/p', isSpam: 0, rid: 'parent' }),
-    ]);
+  it.each([
+    { viewer: 'anonymous', uid: '', showAll: false, visible: ['public'] },
+    { viewer: 'owner', uid: 'owner', showAll: false, visible: ['owner', 'public'] },
+    { viewer: 'other', uid: 'other', showAll: false, visible: ['public'] },
+    { viewer: 'admin', uid: '', showAll: true, visible: ['anonymous', 'owner', 'public'] },
+  ])(
+    'applies $viewer visibility to counts, heads, pinned comments, and replies',
+    async ({ uid, showAll, visible }) => {
+      for (const author of ['public', 'anonymous', 'owner']) {
+        const authorUid = author === 'anonymous' ? '' : author;
+        const isSpam = author === 'public' ? 0 : 1;
+        await seed([
+          newComment({ _id: mkCommentId(`${author}-head`), url: '/p', uid: authorUid, isSpam }),
+          newComment({
+            _id: mkCommentId(`${author}-pinned`),
+            url: '/p',
+            uid: authorUid,
+            isSpam,
+            top: 1,
+          }),
+          newComment({
+            _id: mkCommentId(`${author}-reply`),
+            url: '/p',
+            uid: authorUid,
+            isSpam,
+            rid: 'public-head',
+            pid: 'public-head',
+          }),
+        ]);
+      }
+      const db = dbInstance();
 
-    const db = dbInstance();
-    expect(await db.comment.count(['/p'], false, 'guest')).toBe(1);
-  });
+      const count = await db.comment.count(['/p'], showAll, uid);
+      const heads = await db.comment.list(['/p'], showAll, uid, 9_999_999_999_999, 0, 10);
+      const pinned = await db.comment.list(['/p'], showAll, uid, 9_999_999_999_999, 1, 10);
+      const replies = await db.comment.replies(['/p'], showAll, uid, ['public-head']);
 
-  it('shows the caller their own spam comments (showAll=false)', async () => {
-    await seed([
-      newComment({ url: '/p', isSpam: 1, uid: 'me' }),
-      newComment({ url: '/p', isSpam: 1, uid: 'someone-else' }),
-    ]);
-
-    const db = dbInstance();
-    expect(await db.comment.count(['/p'], false, 'me')).toBe(1);
-  });
-
-  it('returns every top-level row when showAll=true regardless of spam / uid', async () => {
-    await seed([
-      newComment({ url: '/p', isSpam: 0 }),
-      newComment({ url: '/p', isSpam: 1 }),
-      newComment({ url: '/p', isSpam: 1, uid: 'someone-else' }),
-    ]);
-
-    const db = dbInstance();
-    expect(await db.comment.count(['/p'], true, 'me')).toBe(3);
-  });
+      expect(count).toBe(visible.length * 2);
+      expect(heads.map((row) => row._id).sort()).toEqual(visible.map((author) => `${author}-head`));
+      expect(pinned.map((row) => row._id).sort()).toEqual(
+        visible.map((author) => `${author}-pinned`),
+      );
+      expect(replies.map((row) => row._id).sort()).toEqual(
+        visible.map((author) => `${author}-reply`),
+      );
+    },
+  );
 
   it('short-circuits to 0 on an empty urls array', async () => {
     await seed([newComment({ url: '/p' })]);

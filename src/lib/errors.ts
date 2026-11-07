@@ -1,3 +1,5 @@
+import { DrizzleQueryError } from 'drizzle-orm';
+
 // Frontend contract: values must match upstream twikoo-func constants verbatim.
 export const ResponseCode = {
   SUCCESS: 0,
@@ -30,3 +32,6 @@ export class TwikooError extends Error {
     this.name = 'TwikooError';
   }
 }
+
+export const redactDatabaseError = (error: unknown): unknown =>
+  error instanceof DrizzleQueryError ? new Error('Database request failed.') : error;

@@ -4,6 +4,7 @@ import type { RequestCtx } from '@/types';
 import { checkAkismet } from '@/lib/akismet';
 import { stringConfig } from '@/lib/config-read';
 import { configWithSecrets, secret } from '@/lib/secret';
+import { withMailConfig } from '@/shims/mail';
 import { sendTelegramNotice } from '@/shims/telegram';
 import { equalsMail, logger, noticeMaster, noticeReply, sendNotice } from '@/twikoo';
 import { mkCommentId } from '@/types';
@@ -40,34 +41,36 @@ export const postSubmit = async (saved: NewComment, ctx: RequestCtx): Promise<vo
       return parentId ? ctx.db.comment.byId(mkCommentId(parentId)) : undefined;
     };
     const config = configWithSecrets(ctx);
-    if (saved.isSpam && config.NOTIFY_SPAM === 'false') {
-      return;
-    }
-    const pushChannel = stringConfig(config, 'PUSHOO_CHANNEL');
-    const pushToken = stringConfig(config, 'PUSHOO_TOKEN');
-    const upstreamComment = { ...saved, id: saved._id };
-    if (pushChannel && pushToken) {
-      const operations: Promise<unknown>[] = [
-        noticeReply(upstreamComment, config, getParentComment),
-      ];
-      if (config.SC_MAIL_NOTIFY === 'true') {
-        operations.push(noticeMaster(upstreamComment, config));
+    await withMailConfig(config, async () => {
+      if (saved.isSpam && config.NOTIFY_SPAM === 'false') {
+        return;
       }
-      if (pushChannel.toLowerCase() === 'telegram') {
-        if (!equalsMail(stringConfig(config, 'BLOGGER_EMAIL') ?? '', saved.mail)) {
-          operations.push(sendTelegramNotice(saved, config, pushToken));
+      const pushChannel = stringConfig(config, 'PUSHOO_CHANNEL');
+      const pushToken = stringConfig(config, 'PUSHOO_TOKEN');
+      const upstreamComment = { ...saved, id: saved._id };
+      if (pushChannel && pushToken) {
+        const operations: Promise<unknown>[] = [
+          noticeReply(upstreamComment, config, getParentComment),
+        ];
+        if (config.SC_MAIL_NOTIFY === 'true') {
+          operations.push(noticeMaster(upstreamComment, config));
+        }
+        if (pushChannel.toLowerCase() === 'telegram') {
+          if (!equalsMail(stringConfig(config, 'BLOGGER_EMAIL') ?? '', saved.mail)) {
+            operations.push(sendTelegramNotice(saved, config, pushToken));
+          }
+        } else {
+          logger.warn('Configured instant-push channel is not supported.');
+        }
+        const results = await Promise.allSettled(operations);
+        const failure = results.find((result) => result.status === 'rejected');
+        if (failure?.status === 'rejected') {
+          throw failure.reason;
         }
       } else {
-        logger.warn('Configured instant-push channel is not supported.');
+        await sendNotice(upstreamComment, config, getParentComment);
       }
-      const results = await Promise.allSettled(operations);
-      const failure = results.find((result) => result.status === 'rejected');
-      if (failure?.status === 'rejected') {
-        throw failure.reason;
-      }
-    } else {
-      await sendNotice(upstreamComment, config, getParentComment);
-    }
+    });
   } catch (error) {
     logger.error({ stage: 'notify', id: saved._id, url: saved.url, error }, 'postSubmit failed');
   }

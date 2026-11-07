@@ -1,4 +1,4 @@
-import { beforeAll, beforeEach, describe, expect, it } from 'vitest';
+import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { config } from '@/db/schema';
 
@@ -69,6 +69,66 @@ describe('ConfigDB.writePatch', () => {
       ADMIN_PASS: 'new',
       SITE_URL: 'https://old.example',
     });
+  });
+
+  it('preserves a concurrent password rotation when another configuration patch finishes later', async () => {
+    const db = dbInstance();
+    await db.config.write(
+      JSON.stringify({ ADMIN_PASS: 'previous-password', SITE_NAME: 'Old Site' }),
+    );
+    const read = db.config.read.bind(db.config);
+    vi.spyOn(db.config, 'read').mockImplementationOnce(async () => {
+      const current = await read();
+      await db.config.writePatch({ ADMIN_PASS: 'rotated-password' });
+      return current;
+    });
+
+    await db.config.writePatch({ SITE_NAME: 'New Site' });
+
+    expect(JSON.parse(await db.config.read())).toEqual({
+      ADMIN_PASS: 'rotated-password',
+      SITE_NAME: 'New Site',
+    });
+  });
+
+  it.each([
+    {
+      label: 'nested objects',
+      current: { nested: { first: 1, second: 2 } },
+      patch: { nested: { third: 3 } },
+      expected: { nested: { third: 3 } },
+    },
+    {
+      label: 'null values',
+      current: { optional: 'value', retained: true },
+      patch: { optional: null },
+      expected: { optional: null, retained: true },
+    },
+    {
+      label: 'literal keys',
+      current: { 'field.with.dot': 'previous', 'quoted"key': 'retained' },
+      patch: { 'field.with.dot': 'next' },
+      expected: { 'field.with.dot': 'next', 'quoted"key': 'retained' },
+    },
+  ])('preserves shallow patch semantics for $label', async ({ current, patch, expected }) => {
+    const db = dbInstance();
+    await db.config.write(JSON.stringify(current));
+
+    await db.config.writePatch(patch);
+
+    expect(JSON.parse(await db.config.read())).toEqual(expected);
+  });
+
+  it('rejects malformed stored JSON without exposing its contents or replacing it', async () => {
+    const db = dbInstance();
+    const raw = '{"SMTP_PASS": example-secret}';
+    await db.config.write(raw);
+
+    await expect(db.config.writePatch({ SITE_NAME: 'Example Site' })).rejects.toEqual(
+      new Error('Configuration is not valid JSON.'),
+    );
+
+    expect(await db.config.read()).toBe(raw);
   });
 });
 

@@ -3,7 +3,7 @@ import type { ExecutionContext, ExportedHandler } from '@cloudflare/workers-type
 import type { Env } from './types';
 
 import { dispatch } from './dispatch';
-import { ResponseCode } from './lib/errors';
+import { ResponseCode, redactDatabaseError } from './lib/errors';
 import { corsHeaders, jsonResponse } from './lib/http';
 import { VERSION, logger } from './twikoo';
 
@@ -34,7 +34,7 @@ export default {
         { ...headers, Allow: 'GET, OPTIONS, POST' },
       );
     } catch (error) {
-      logger.error('Unhandled fetch error:', error);
+      logger.error('Unhandled fetch error:', redactDatabaseError(error));
       return jsonResponse({ code: ResponseCode.FAIL, message: 'Internal error.' }, headers);
     }
   },

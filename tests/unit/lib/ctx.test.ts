@@ -30,18 +30,14 @@ describe('loadConfig', () => {
     });
   });
 
-  it.each<[string, string]>([
-    ['invalid JSON', '{not-json'],
-    ['JSON array', '[1,2,3]'],
-    ['JSON string', '"a string"'],
-  ])('returns corrupted with diagnostics for %s', async (_label, raw) => {
+  it.each([
+    { label: 'invalid JSON', raw: '{"SMTP_PASS": example-secret}', reason: 'invalid-json' },
+    { label: 'JSON array', raw: '["example-secret"]', reason: 'invalid-object' },
+    { label: 'JSON string', raw: '"example-secret"', reason: 'invalid-object' },
+  ])('returns safe diagnostics for $label', async ({ raw, reason }) => {
     const result = await loadConfig({} as Env, buildDb(raw));
-    expect(result.kind).toBe('corrupted');
-    if (result.kind !== 'corrupted') {
-      throw new Error('unreachable');
-    }
-    expect(result.length).toBe(raw.length);
-    expect(result.parseError).toBeInstanceOf(Error);
+
+    expect(result).toEqual({ kind: 'corrupted', length: raw.length, reason });
   });
 
   it('merges ADMIN_PASS_HASH when the parsed config lacks ADMIN_PASS', async () => {

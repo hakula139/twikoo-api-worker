@@ -11,7 +11,12 @@ import { buildCtx } from '@tests/helpers/ctx';
 
 const buildMailCtx = (uid: string, adminUid = 'admin-uid', env: Partial<RequestCtx['env']> = {}) =>
   buildCtx({
-    config: { ADMIN_PASS: md5(adminUid) },
+    config: {
+      ADMIN_PASS: md5(adminUid),
+      SMTP_SERVICE: 'resend',
+      SMTP_USER: 'example-user',
+      SMTP_PASS: 'example-key',
+    },
     uid: mkUid(uid),
     env: env as RequestCtx['env'],
   });

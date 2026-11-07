@@ -23,8 +23,6 @@ const RECENT_MAX_PAGE_SIZE = 100;
 
 const stripHtml = (html: string): string => html.replace(/<[^>]*>/g, '');
 
-const truncate = (s: string, max = 80): string => (s.length <= max ? s : `${s.slice(0, max)}...`);
-
 const parseUidArray = (
   raw: JsonString<string[]> | null | undefined,
   commentId: string,
@@ -37,7 +35,7 @@ const parseUidArray = (
     const parsed = JSON.parse(raw) as unknown;
     return Array.isArray(parsed) ? (parsed as string[]) : [];
   } catch {
-    logger.warn(`Malformed ${field} JSON on comment ${commentId}: ${truncate(raw)}`);
+    logger.warn({ id: commentId, field, length: raw.length }, 'Malformed vote JSON.');
     return [];
   }
 };

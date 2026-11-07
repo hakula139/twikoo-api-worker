@@ -30,12 +30,30 @@ export const createConfigDb = (db: DrizzleD1Database) => ({
   },
 
   async writePatch(patch: Record<string, unknown>): Promise<void> {
-    const current = await this.read();
-    const merged = {
-      ...(current ? (JSON.parse(current) as Record<string, unknown>) : {}),
-      ...patch,
-    };
-    await this.write(JSON.stringify(merged));
+    while (true) {
+      const current = await this.read();
+      let parsed: Record<string, unknown>;
+      try {
+        parsed = current ? (JSON.parse(current) as Record<string, unknown>) : {};
+      } catch {
+        throw new Error('Configuration is not valid JSON.');
+      }
+
+      const value = JSON.stringify({ ...parsed, ...patch });
+      const [written] = await db
+        .insert(config)
+        .values({ id: 1, value })
+        .onConflictDoUpdate({
+          target: config.id,
+          set: { value },
+          setWhere: eq(config.value, current),
+        })
+        .returning({ id: config.id });
+
+      if (written) {
+        return;
+      }
+    }
   },
 });
 
