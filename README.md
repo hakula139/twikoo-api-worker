@@ -39,7 +39,7 @@ pnpm wrangler r2 bucket create twikoo
 
 After `wrangler d1 create twikoo`, copy the printed `database_id` into [`wrangler.toml`](wrangler.toml) and [`drizzle.config.ts`](drizzle.config.ts). After `wrangler r2 bucket create twikoo`, set the custom R2 public URL in the Cloudflare dashboard and update `R2_PUBLIC_URL` in `wrangler.toml`.
 
-Then sync [`src/db/schema.ts`](src/db/schema.ts) to that remote D1 database. This needs `CLOUDFLARE_ACCOUNT_ID` and `CLOUDFLARE_D1_TOKEN` and applies the schema delta directly, so the repository does not keep migration files.
+Then sync [`src/db/schema.ts`](src/db/schema.ts) to that remote D1 database. This needs `CLOUDFLARE_ACCOUNT_ID` and `CLOUDFLARE_API_TOKEN` with D1 Edit permission and applies the schema delta directly, so the repository does not keep migration files.
 
 ```bash
 pnpm db:push
