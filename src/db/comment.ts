@@ -35,6 +35,15 @@ const orderClause = (sort: CommentSort): SQL[] => {
 export const createCommentDb = (db: DrizzleD1Database) => ({
   // ── Reads ──
 
+  async bodiesAfter(after: CommentId | undefined, limit: number) {
+    return db
+      .select({ _id: comment._id, comment: comment.comment })
+      .from(comment)
+      .where(after === undefined ? undefined : gt(comment._id, after))
+      .orderBy(asc(comment._id))
+      .limit(limit);
+  },
+
   async byId(id: CommentId): Promise<Comment | undefined> {
     const [row] = await db.select().from(comment).where(eq(comment._id, id)).limit(1);
 

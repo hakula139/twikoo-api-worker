@@ -99,6 +99,8 @@ Manual deploy:
 pnpm deploy
 ```
 
+Uploaded images without a reference in any stored comment are removed hourly once they are more than 24 hours old. Pending and hidden comments also preserve their images. Submit drafts within 24 hours, since unused uploads can expire after 24 to 25 hours.
+
 ## Frontend integration
 
 In [`twikoo-js`][twikoo-client]:
