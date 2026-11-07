@@ -46,6 +46,7 @@
             statix.enable = true;
             taplo.enable = true;
           };
+
           devHooks.eslint = {
             enable = true;
             entry = "${pkgs.lib.getExe (dk.nodeTool "eslint")} --fix";
