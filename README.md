@@ -73,15 +73,14 @@ For local dev secrets, create `.dev.vars` (gitignored) with one `KEY=value` pair
 ## Development
 
 ```bash
-pnpm dev           # wrangler dev on port 8787
-pnpm check         # type-check
-pnpm test          # vitest run (workerd via @cloudflare/vitest-plugin)
-pnpm test:bundle   # Wrangler dry-run and compressed size limit
-pnpm test:smoke    # real Wrangler startup and upstream version
-pnpm format        # prettier --check .
-pnpm lint          # markdownlint + eslint
-pnpm spellcheck    # cspell
-pnpm db:push       # sync schema.ts changes to remote D1
+pnpm dev                     # wrangler dev on port 8787
+prek run --all-files          # formatting, Markdown, spelling, Nix and file checks
+pnpm check                   # type-check
+pnpm test                    # vitest run (workerd via @cloudflare/vitest-plugin)
+pnpm test:bundle             # Wrangler dry-run and compressed size limit
+pnpm test:smoke              # real Wrangler startup and upstream version
+pnpm lint                    # eslint
+pnpm db:push                 # sync schema.ts changes to remote D1
 ```
 
 ## Deployment

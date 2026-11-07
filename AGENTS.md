@@ -109,12 +109,11 @@ Pre-commit hooks use the shared [devkit](https://github.com/hakula139/devkit) ba
 Run after implementation and before review:
 
 ```bash
-pnpm check        # tsc --noEmit
-pnpm test         # vitest run inside workerd
-pnpm lint         # markdownlint + eslint
-pnpm format       # prettier --check
-pnpm spellcheck   # cspell
-nix flake check   # Nix-side hooks. Optional locally because CI runs the same check separately.
+prek run --all-files          # formatting, Markdown, spelling, Nix and file checks
+pnpm check                   # tsc --noEmit
+pnpm test                    # vitest run inside workerd
+pnpm lint                    # eslint
+nix flake check              # Nix-side hooks. Optional locally because CI runs the same check separately.
 ```
 
 Use `pnpm dev` to smoke-test runtime behavior. Wrangler uses local D1 and R2 bindings by default and requires explicit opt-in per binding for remote access. Verify bundle size with `pnpm wrangler deploy --dry-run`.
