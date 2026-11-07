@@ -21,6 +21,8 @@ export const applyTestSchema = async (): Promise<void> => {
 
 export const resetTestDb = async (): Promise<void> => {
   await env.DB.batch([
+    env.DB.prepare('DELETE FROM comment_upload'),
+    env.DB.prepare('DELETE FROM upload'),
     env.DB.prepare('DELETE FROM comment'),
     env.DB.prepare('DELETE FROM config'),
     env.DB.prepare('DELETE FROM counter'),
