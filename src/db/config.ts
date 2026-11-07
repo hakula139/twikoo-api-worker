@@ -17,11 +17,10 @@ export const createConfigDb = (db: DrizzleD1Database) => ({
       .from(config)
       .where(eq(config.id, 1))
       .limit(1);
+
     return row?.value ?? '';
   },
 
-  // Atomic upsert against the pinned id = 1 row; covers fresh deploys and
-  // the hot path with the same statement.
   async write(value: string): Promise<void> {
     await db
       .insert(config)

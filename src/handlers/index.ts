@@ -21,8 +21,6 @@ import { emailTest } from './mail';
 import { getFuncVersion } from './meta';
 import { getQqNick } from './qq';
 
-// Keys are exhaustive over EventName via the Handlers type — adding or
-// renaming an event requires updating EventPayloads in types.ts in lockstep.
 export const handlers: Handlers = {
   COMMENT_DELETE_FOR_ADMIN: commentDeleteForAdmin,
   COMMENT_DELETE_FOR_USER: commentDeleteForUser,

@@ -1,13 +1,12 @@
 import type { Env, TwikooConfig } from '@/types';
 
-import { env as rawEnv } from 'cloudflare:test';
+import { env } from 'cloudflare:workers';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
 import { uploadImage } from '@/lib/image-upload';
 
 const PNG_BASE64 = 'iVBORw0KGgo=';
 const dataUrl = `data:image/png;base64,${PNG_BASE64}`;
-const env = rawEnv as unknown as Env;
 
 const r2Env = (): Pick<Env, 'R2' | 'R2_PUBLIC_URL'> => ({
   R2: env.R2,
@@ -22,11 +21,12 @@ const clearR2 = async (): Promise<void> => {
 beforeEach(clearR2);
 afterEach(clearR2);
 
-describe('uploadImage — r2 path', () => {
+describe('uploadImage > R2', () => {
   it('strips path traversal segments from the upload key', async () => {
     const config: TwikooConfig = { IMAGE_CDN: 'r2' };
     const result = await uploadImage(dataUrl, '../../etc/passwd', config, r2Env());
     const key = decodeURIComponent(new URL(result.url).pathname.slice(1));
+
     expect(key).not.toContain('/');
     expect(key).not.toContain('..');
     expect(key).toMatch(/^[^/]+-passwd$/);
@@ -42,6 +42,7 @@ describe('uploadImage — r2 path', () => {
   it('encodes URL-reserved filename characters without changing the R2 key', async () => {
     const config: TwikooConfig = { IMAGE_CDN: 'r2' };
     const result = await uploadImage(dataUrl, 'report #1?.png', config, r2Env());
+
     expect(result.url).toMatch(/report%20%231%3F\.png$/);
 
     const key = decodeURIComponent(new URL(result.url).pathname.slice(1));

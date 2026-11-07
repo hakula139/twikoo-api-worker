@@ -4,7 +4,7 @@ import { mkIp, mkUid } from '@/types';
 
 const defaultCtx = (): RequestCtx => ({
   env: {} as RequestCtx['env'],
-  request: new Request('https://twikoo.hakula.xyz/'),
+  request: new Request('https://comments.example.com/'),
   waitUntil: () => undefined,
   ip: mkIp('192.0.2.1'),
   region: '',

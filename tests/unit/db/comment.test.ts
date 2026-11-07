@@ -28,11 +28,13 @@ describe('CommentDB.byId', () => {
 
     const db = dbInstance();
     const fetched = await db.comment.byId(mkCommentId('comment-1'));
+
     expect(fetched?.comment).toBe('感谢分享。');
   });
 
   it('returns undefined when missing', async () => {
     const db = dbInstance();
+
     expect(await db.comment.byId(mkCommentId('missing'))).toBeUndefined();
   });
 });
@@ -43,6 +45,7 @@ describe('CommentDB.save', () => {
     await db.comment.save(newComment({ _id: mkCommentId('once'), comment: 'solo' }));
 
     const fetched = await db.comment.byId(mkCommentId('once'));
+
     expect(fetched?.comment).toBe('solo');
   });
 });
@@ -99,6 +102,7 @@ describe('CommentDB.count > visibility', () => {
   it('short-circuits to 0 on an empty urls array', async () => {
     await seed([newComment({ url: '/p' })]);
     const db = dbInstance();
+
     expect(await db.comment.count([], false, 'me')).toBe(0);
   });
 });
@@ -107,6 +111,7 @@ describe('CommentDB short-circuits on empty inputs', () => {
   it('list returns [] without hitting D1 when urls is empty', async () => {
     await seed([newComment({ url: '/p' })]);
     const db = dbInstance();
+
     expect(await db.comment.list([], false, 'me', 9_999_999_999_999, 0, 10)).toEqual([]);
   });
 
@@ -114,6 +119,7 @@ describe('CommentDB short-circuits on empty inputs', () => {
     await seed([newComment({ url: '/p' })]);
     const db = dbInstance();
     const map = await db.comment.countByUrls([], false);
+
     expect(map.size).toBe(0);
   });
 });
@@ -147,28 +153,25 @@ describe('CommentDB.list > orderClause', () => {
       .comment.list(['/p'], false, 'guest', 9_999_999_999_999, 0, 10, sort)
       .then((rows) => rows.map((r) => r._id));
 
-  it('newest sorts by created desc', async () => {
-    await seedOrdered();
-    expect(await ids('newest')).toEqual(['newest-without-votes', 'newer-popular', 'older-popular']);
-  });
+  it.each([
+    { sort: 'newest', expected: ['newest-without-votes', 'newer-popular', 'older-popular'] },
+    { sort: 'oldest', expected: ['older-popular', 'newer-popular', 'newest-without-votes'] },
+    { sort: 'popular', expected: ['newer-popular', 'older-popular', 'newest-without-votes'] },
+  ] satisfies { sort: CommentSort; expected: string[] }[])(
+    'orders $sort comments with deterministic ties',
+    async ({ sort, expected }) => {
+      await seedOrdered();
 
-  it('oldest sorts by created asc', async () => {
-    await seedOrdered();
-    expect(await ids('oldest')).toEqual(['older-popular', 'newer-popular', 'newest-without-votes']);
-  });
+      const result = await ids(sort);
 
-  it('popular sorts by ups length desc with created desc as tiebreak', async () => {
-    await seedOrdered();
-    expect(await ids('popular')).toEqual([
-      'newer-popular',
-      'older-popular',
-      'newest-without-votes',
-    ]);
-  });
+      expect(result).toEqual(expected);
+    },
+  );
 
   it('respects the `before` cursor (strict <)', async () => {
     await seedOrdered();
     const rows = await dbInstance().comment.list(['/p'], false, 'guest', 200, 0, 10, 'newest');
+
     expect(rows.map((r) => r._id)).toEqual(['newer-popular', 'older-popular']);
   });
 
@@ -179,6 +182,7 @@ describe('CommentDB.list > orderClause', () => {
     ]);
     const db = dbInstance();
     const tops = await db.comment.list(['/p'], false, 'guest', 9_999_999_999_999, 1, 10);
+
     expect(tops.map((r) => r._id)).toEqual(['top1']);
   });
 });
@@ -194,12 +198,14 @@ describe('CommentDB.replies', () => {
 
     const db = dbInstance();
     const replies = await db.comment.replies(['/p'], false, 'guest', ['head']);
+
     expect(replies.map((r) => r._id).sort()).toEqual(['r1', 'r2']);
   });
 
   it('returns nothing when rids is empty', async () => {
     await seed([newComment({ url: '/p' })]);
     const db = dbInstance();
+
     expect(await db.comment.replies(['/p'], false, 'guest', [])).toEqual([]);
   });
 
@@ -225,9 +231,11 @@ describe('CommentDB.replies', () => {
 
     const db = dbInstance();
     const visible = await db.comment.replies(['/p'], false, 'reader-1', ['head']);
+
     expect(visible.map((row) => row._id).sort()).toEqual(['clean-reply', 'own-reply']);
 
     const all = await db.comment.replies(['/p'], true, 'admin', ['head']);
+
     expect(all.map((row) => row._id).sort()).toEqual(['clean-reply', 'hidden-reply', 'own-reply']);
   });
 });
@@ -243,6 +251,7 @@ describe('CommentDB.countByUrls', () => {
 
     const db = dbInstance();
     const map = await db.comment.countByUrls(['/p', '/p/'], false);
+
     expect(map.get('/p')).toBe(2);
     expect(map.get('/p/')).toBe(1);
   });
@@ -251,6 +260,7 @@ describe('CommentDB.countByUrls', () => {
     await seed([newComment({ url: '/p', rid: '' }), newComment({ url: '/p', rid: 'parent' })]);
 
     const db = dbInstance();
+
     expect((await db.comment.countByUrls(['/p'], false)).get('/p')).toBe(1);
     expect((await db.comment.countByUrls(['/p'], true)).get('/p')).toBe(2);
   });
@@ -266,6 +276,7 @@ describe('CommentDB.recent', () => {
 
     const db = dbInstance();
     const rows = await db.comment.recent(undefined, false, 10);
+
     expect(rows.map((r) => r.url)).toEqual(['/b', '/a']);
   });
 
@@ -277,6 +288,7 @@ describe('CommentDB.recent', () => {
     ]);
     const db = dbInstance();
     const rows = await db.comment.recent(['/a'], false, 2);
+
     expect(rows.map((row) => row._id)).toEqual(['newest', 'middle']);
   });
 });
@@ -289,6 +301,7 @@ describe('CommentDB rate-limit counters', () => {
       newComment({ created: 3000 }),
     ]);
     const db = dbInstance();
+
     expect(await db.comment.countSince(2000)).toBe(1);
     expect(await db.comment.countSince(0)).toBe(3);
   });
@@ -300,6 +313,7 @@ describe('CommentDB rate-limit counters', () => {
       newComment({ ip: '2.2.2.2', created: 3000 }),
     ]);
     const db = dbInstance();
+
     expect(await db.comment.countSinceByIp(1500, '1.1.1.1')).toBe(2);
     expect(await db.comment.countSinceByIp(2500, '1.1.1.1')).toBe(1);
   });
@@ -316,12 +330,14 @@ describe('CommentDB.saveMany', () => {
 
     const db = dbInstance();
     const all = await db.comment.exportAll();
+
     expect(all.map((row) => row._id).sort()).toEqual(ids);
   });
 
   it('is a no-op for an empty array', async () => {
     const db = dbInstance();
     await db.comment.saveMany([]);
+
     expect(await db.comment.exportAll()).toHaveLength(0);
   });
 });
@@ -340,9 +356,11 @@ describe('CommentDB.toggleVote', () => {
   it('adds the voter to ups on first up-vote', async () => {
     await seedHead('c1');
     const db = dbInstance();
+
     expect(await db.comment.toggleVote(mkCommentId('c1'), 'voter', 'up')).toBe(true);
 
     const row = await db.comment.byId(mkCommentId('c1'));
+
     expect(JSON.parse(row?.ups ?? '[]')).toEqual(['voter']);
   });
 
@@ -352,6 +370,7 @@ describe('CommentDB.toggleVote', () => {
     await db.comment.toggleVote(mkCommentId('c1'), 'voter', 'up');
 
     const row = await db.comment.byId(mkCommentId('c1'));
+
     expect(JSON.parse(row?.ups ?? '[]')).toEqual([]);
   });
 
@@ -361,12 +380,14 @@ describe('CommentDB.toggleVote', () => {
     await db.comment.toggleVote(mkCommentId('c1'), 'voter', 'up');
 
     const row = await db.comment.byId(mkCommentId('c1'));
+
     expect(JSON.parse(row?.ups ?? '[]')).toEqual(['voter']);
     expect(JSON.parse(row?.downs ?? '[]')).toEqual([]);
   });
 
   it('returns false when no row matches the id', async () => {
     const db = dbInstance();
+
     expect(await db.comment.toggleVote(mkCommentId('missing'), 'voter', 'up')).toBe(false);
   });
 });
@@ -378,6 +399,7 @@ describe('CommentDB.updateSpam / update / delete', () => {
     await db.comment.updateSpam(mkCommentId('c1'), 1, 9999);
 
     const row = await db.comment.byId(mkCommentId('c1'));
+
     expect(row?.isSpam).toBe(1);
     expect(row?.updated).toBe(9999);
   });
@@ -388,6 +410,7 @@ describe('CommentDB.updateSpam / update / delete', () => {
     await db.comment.update(mkCommentId('c1'), { comment: 'new' });
 
     const row = await db.comment.byId(mkCommentId('c1'));
+
     expect(row?.comment).toBe('new');
     expect(row?.top).toBe(0);
   });
@@ -409,28 +432,30 @@ describe('CommentDB admin views', () => {
     ]);
 
     const db = dbInstance();
+
     expect(await db.comment.countForAdmin({ isSpam: 1 })).toBe(1);
     const rows = await db.comment.listForAdmin({ isSpam: 1 }, 10, 0);
+
     expect(rows.map((r) => r.comment)).toEqual(['flagged']);
   });
 
   it.each<
     [keyof Pick<NewComment, 'nick' | 'mail' | 'link' | 'ip' | 'comment' | 'url' | 'href'>, string]
   >([
-    ['nick', 'Hakula'],
+    ['nick', 'Reader'],
     ['mail', 'reader@example.com'],
     ['link', 'https://example.com/profile'],
     ['ip', '192.0.2.10'],
     ['comment', '感谢分享'],
     ['url', '/about-me/'],
-    ['href', 'https://hakula.xyz/about-me/'],
+    ['href', 'https://example.com/about-me/'],
   ])('keyword filter searches the %s column', async (field, value) => {
     const id = mkCommentId(`match-${field}`);
     await seed([
       newComment({ _id: id, [field]: value }),
       newComment({
         _id: mkCommentId('unrelated'),
-        nick: 'Another reader',
+        nick: 'Visitor',
         mail: 'other@example.net',
         link: 'https://example.net/profile',
         ip: '198.51.100.20',
@@ -442,42 +467,23 @@ describe('CommentDB admin views', () => {
 
     const db = dbInstance();
     const rows = await db.comment.listForAdmin({ keyword: `%${value}%` }, 10, 0);
+
     expect(rows.map((row) => row._id)).toEqual([id]);
   });
 
-  // cspell:ignore fooXbar
-  it('keyword filter treats _ literally via ESCAPE', async () => {
+  it.each([
+    { literal: 'foo_bar', other: 'foo-bar', keyword: String.raw`%foo\_bar%` },
+    { literal: '50% off', other: '50 fancy off', keyword: String.raw`%50\% off%` },
+    { literal: String.raw`path\file`, other: 'path/file', keyword: String.raw`%path\\file%` },
+  ])('matches the literal LIKE keyword $literal', async ({ literal, other, keyword }) => {
     await seed([
-      newComment({ _id: mkCommentId('lit'), comment: 'foo_bar' }),
-      newComment({ _id: mkCommentId('alt'), comment: 'fooXbar' }),
+      newComment({ _id: mkCommentId('literal'), comment: literal }),
+      newComment({ _id: mkCommentId('wildcard'), comment: other }),
     ]);
 
-    const db = dbInstance();
-    const rows = await db.comment.listForAdmin({ keyword: '%foo\\_bar%' }, 10, 0);
-    expect(rows.map((r) => r._id)).toEqual(['lit']);
-  });
+    const rows = await dbInstance().comment.listForAdmin({ keyword }, 10, 0);
 
-  it('keyword filter treats % literally via ESCAPE', async () => {
-    await seed([
-      newComment({ _id: mkCommentId('lit'), comment: '50% off' }),
-      newComment({ _id: mkCommentId('alt'), comment: '50 fancy off' }),
-    ]);
-
-    const db = dbInstance();
-    const rows = await db.comment.listForAdmin({ keyword: '%50\\% off%' }, 10, 0);
-    expect(rows.map((r) => r._id)).toEqual(['lit']);
-  });
-
-  // cspell:ignore pathXfile
-  it('keyword filter treats backslash literally via ESCAPE', async () => {
-    await seed([
-      newComment({ _id: mkCommentId('lit'), comment: 'path\\file' }),
-      newComment({ _id: mkCommentId('alt'), comment: 'pathXfile' }),
-    ]);
-
-    const db = dbInstance();
-    const rows = await db.comment.listForAdmin({ keyword: '%path\\\\file%' }, 10, 0);
-    expect(rows.map((r) => r._id)).toEqual(['lit']);
+    expect(rows.map((row) => row._id)).toEqual(['literal']);
   });
 
   it('listForAdmin defaults to newest order on the created column', async () => {
@@ -489,6 +495,7 @@ describe('CommentDB admin views', () => {
 
     const db = dbInstance();
     const rows = await db.comment.listForAdmin({}, 10, 0);
+
     expect(rows.map((r) => r._id)).toEqual(['newest-comment', 'middle-comment', 'oldest-comment']);
   });
 
@@ -501,6 +508,7 @@ describe('CommentDB admin views', () => {
 
     const db = dbInstance();
     const rows = await db.comment.listForAdmin({}, 10, 0, 'oldest');
+
     expect(rows.map((r) => r._id)).toEqual(['oldest-comment', 'middle-comment', 'newest-comment']);
   });
 
@@ -519,6 +527,7 @@ describe('CommentDB admin views', () => {
 
     const db = dbInstance();
     const rows = await db.comment.listForAdmin({}, 10, 0, 'popular');
+
     expect(rows.map((r) => r._id)).toEqual(['most-votes', 'one-vote', 'no-votes']);
   });
 });

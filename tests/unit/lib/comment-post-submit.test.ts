@@ -51,7 +51,7 @@ const baseSaved = (overrides: Partial<NewComment> = {}): Comment => {
     ipRegion: '',
     master: 0,
     url: '/about-me/',
-    href: 'https://hakula.xyz/about-me/',
+    href: 'https://example.com/about-me/',
     comment: '感谢分享。',
     pid: '',
     rid: '',
@@ -64,6 +64,7 @@ const baseSaved = (overrides: Partial<NewComment> = {}): Comment => {
     avatar: '',
     ...overrides,
   };
+
   return row as Comment;
 };
 
@@ -79,6 +80,7 @@ describe('postSubmit', () => {
     expect(saved.isSpam).toBe(1);
     expect(updateSpam).toHaveBeenCalledTimes(1);
     const [id, isSpam] = updateSpam.mock.calls[0] as unknown as [string, number];
+
     expect(id).toBe('saved-1');
     expect(isSpam).toBe(1);
   });
@@ -95,21 +97,10 @@ describe('postSubmit', () => {
     expect(updateSpam).not.toHaveBeenCalled();
   });
 
-  it('skips Akismet when the key is unset', async () => {
+  it.each([undefined, 'MANUAL_REVIEW'])('skips Akismet for key %s', async (apiKey) => {
     const fetchSpy = vi.spyOn(globalThis, 'fetch');
     const updateSpam = vi.fn(async () => undefined);
-    const ctx = buildPostCtx({ byIdRows: new Map(), updateSpam });
-
-    await postSubmit(baseSaved(), ctx);
-
-    expect(fetchSpy).not.toHaveBeenCalled();
-    expect(updateSpam).not.toHaveBeenCalled();
-  });
-
-  it('skips Akismet when the key is the MANUAL_REVIEW sentinel', async () => {
-    const fetchSpy = vi.spyOn(globalThis, 'fetch');
-    const updateSpam = vi.fn(async () => undefined);
-    const ctx = buildPostCtx({ byIdRows: new Map(), updateSpam }, { AKISMET_KEY: 'MANUAL_REVIEW' });
+    const ctx = buildPostCtx({ byIdRows: new Map(), updateSpam }, { AKISMET_KEY: apiKey });
 
     await postSubmit(baseSaved(), ctx);
 
@@ -141,6 +132,7 @@ describe('postSubmit', () => {
     vi.mocked(twikoo.sendNotice).mockImplementationOnce(async (_curr, _config, getParent) => {
       captured = await getParent({ pid: 'parent-1' });
       const undef = await getParent({});
+
       expect(undef).toBeUndefined();
     });
     const updateSpam = vi.fn(async () => undefined);
@@ -166,7 +158,7 @@ describe('postSubmit', () => {
       {
         PUSHOO_CHANNEL: 'telegram',
         SC_MAIL_NOTIFY: 'true',
-        SITE_NAME: 'HAKULA†CHANNEL',
+        SITE_NAME: 'Example†Site',
       },
     );
 
@@ -192,7 +184,7 @@ describe('postSubmit', () => {
         PUSHOO_CHANNEL: 'telegram',
         PUSHOO_TOKEN: '123456:bot_token#-100123456',
         NOTIFY_SPAM: 'false',
-        SITE_NAME: 'HAKULA†CHANNEL',
+        SITE_NAME: 'Example†Site',
       },
     );
 
@@ -301,7 +293,7 @@ describe('postSubmit', () => {
       {
         PUSHOO_CHANNEL: 'telegram',
         PUSHOO_TOKEN: '123456:bot_token#-100123456',
-        SITE_NAME: 'HAKULA†CHANNEL',
+        SITE_NAME: 'Example†Site',
       },
     );
 
@@ -312,9 +304,11 @@ describe('postSubmit', () => {
 
     await vi.waitFor(() => expect(fetchMock).toHaveBeenCalledOnce());
     await Promise.resolve();
+
     expect(resolved).toBe(false);
 
     releaseReply();
+
     await expect(submission).resolves.toBeUndefined();
 
     expect(errorSpy).toHaveBeenCalledWith(

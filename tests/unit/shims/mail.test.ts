@@ -3,7 +3,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { mailShim } from '@/shims/mail';
 
 const message = {
-  from: '"HAKULA†CHANNEL" <comments@notify.hakula.xyz>',
+  from: '"Example†Site" <comments@notify.example.com>',
   to: 'reader@example.com',
   subject: '您的评论有了新回复',
   html: '<p>感谢您的评论。</p>',
@@ -24,7 +24,7 @@ describe('mailShim', () => {
       },
       body: {
         personalizations: [{ to: [{ email: 'reader@example.com' }] }],
-        from: { email: 'comments@notify.hakula.xyz', name: 'HAKULA†CHANNEL' },
+        from: { email: 'comments@notify.example.com', name: 'Example†Site' },
         subject: '您的评论有了新回复',
         content: [{ type: 'text/html', value: '<p>感谢您的评论。</p>' }],
       },
@@ -39,7 +39,7 @@ describe('mailShim', () => {
       },
       body: {
         personalizations: [{ to: [{ email: 'reader@example.com' }] }],
-        from: { email: 'comments@notify.hakula.xyz', name: 'HAKULA†CHANNEL' },
+        from: { email: 'comments@notify.example.com', name: 'Example†Site' },
         subject: '您的评论有了新回复',
         content: [{ type: 'text/html', value: '<p>感谢您的评论。</p>' }],
       },
@@ -54,7 +54,7 @@ describe('mailShim', () => {
         'User-Agent': 'twikoo-api-worker',
       },
       body: {
-        from: '"HAKULA†CHANNEL" <comments@notify.hakula.xyz>',
+        from: '"Example†Site" <comments@notify.example.com>',
         to: 'reader@example.com',
         subject: '您的评论有了新回复',
         html: '<p>感谢您的评论。</p>',
@@ -74,11 +74,13 @@ describe('mailShim', () => {
 
     expect(fetchSpy).toHaveBeenCalledOnce();
     const [requestUrl, init] = fetchSpy.mock.calls[0] as [string, RequestInit];
+
     expect(requestUrl).toBe(url);
     const requestHeaders = new Headers(init.headers);
     for (const [name, value] of Object.entries(headers)) {
       expect(requestHeaders.get(name)).toBe(value);
     }
+
     expect(JSON.parse(init.body as string)).toEqual(body);
   });
 
@@ -91,11 +93,12 @@ describe('mailShim', () => {
       auth: { user: service, pass: 'test-api-key' },
     });
 
-    await transport.sendMail({ ...message, from: 'comments@notify.hakula.xyz' });
+    await transport.sendMail({ ...message, from: 'comments@notify.example.com' });
 
     const init = fetchSpy.mock.calls[0]?.[1] as RequestInit;
     const body = JSON.parse(init.body as string) as { from: unknown };
-    expect(body.from).toEqual({ email: 'comments@notify.hakula.xyz' });
+
+    expect(body.from).toEqual({ email: 'comments@notify.example.com' });
   });
 
   it.each([

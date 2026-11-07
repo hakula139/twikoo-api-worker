@@ -20,10 +20,13 @@ export const uploadEasyImage = async (
   config: TwikooConfig,
 ): Promise<UploadResult> => {
   const apiUrl = stringConfig(config, 'IMAGE_CDN_URL');
+
   if (!apiUrl) {
     throw new Error('未配置 EasyImage2.0 的 API 地址 (IMAGE_CDN_URL)');
   }
+
   const token = stringConfig(config, 'IMAGE_CDN_TOKEN');
+
   if (!token) {
     throw new Error('未配置 EasyImage2.0 的 Token (IMAGE_CDN_TOKEN)');
   }
@@ -37,11 +40,14 @@ export const uploadEasyImage = async (
     body: formData,
   });
   const data: EasyImageResponse = await response.json();
+
   if (data.code !== 200 || data.result !== 'success') {
     throw new Error(`EasyImage2.0 上传失败: API 返回错误 (CODE: ${data.code ?? 'unknown'})`);
   }
+
   if (!data.url) {
     throw new Error('EasyImage2.0 上传失败: 未找到有效图片 URL');
   }
+
   return { url: data.url, thumb: data.thumb, del: data.del };
 };

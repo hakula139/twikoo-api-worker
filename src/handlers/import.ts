@@ -18,21 +18,14 @@ import {
   validate,
 } from '@/twikoo';
 
-type ImportSource = 'twikoo' | 'valine' | 'disqus' | 'artalk' | 'artalk2';
-
-const IMPORT_SOURCES = [
-  'twikoo',
-  'valine',
-  'disqus',
-  'artalk',
-  'artalk2',
-] as const satisfies readonly ImportSource[];
+const IMPORT_SOURCES = ['twikoo', 'valine', 'disqus', 'artalk', 'artalk2'] as const;
+type ImportSource = (typeof IMPORT_SOURCES)[number];
 
 const isImportSource = (s: string): s is ImportSource =>
   (IMPORT_SOURCES as readonly string[]).includes(s);
 
 // Upstream's commentImport* return loosely-typed shapes that don't match our
-// strict NewComment schema; treat them as Records and normalize per row.
+// strict NewComment schema. Treat them as Records and normalize per row.
 type ImportedRow = Record<string, unknown>;
 
 export const commentImportForAdmin: Handler<'COMMENT_IMPORT_FOR_ADMIN'> = async (payload, ctx) => {
@@ -51,6 +44,7 @@ export const commentImportForAdmin: Handler<'COMMENT_IMPORT_FOR_ADMIN'> = async 
   append(`开始导入 ${payload.source}`);
 
   let imported: ImportedRow[] | undefined;
+
   try {
     imported = await runImport(payload.source, payload.file, append);
   } catch (e) {
@@ -77,6 +71,7 @@ const runImport = async (
   if (source === 'disqus') {
     const parsed = parseDisqusXml(file);
     log('评论文件 XML 解析成功');
+
     return commentImportDisqus(parsed, log) as Promise<ImportedRow[] | undefined>;
   }
 
@@ -95,7 +90,7 @@ const runImport = async (
 };
 
 // commentImportDisqus expects xml2js shape (every elem an array, attrs under
-// `$`); fast-xml-parser returns scalars, so re-wrap below.
+// `$`). fast-xml-parser returns scalars, so re-wrap below.
 const xmlParser = new XMLParser({
   ignoreAttributes: false,
   attributeNamePrefix: '',
@@ -107,6 +102,7 @@ const xmlParser = new XMLParser({
 
 const parseDisqusXml = (text: string): unknown => {
   const raw = xmlParser.parse(text) as Record<string, unknown>;
+
   return wrapElementsAsArrays(raw);
 };
 
@@ -114,6 +110,7 @@ const wrapElementsAsArrays = (value: unknown): unknown => {
   if (Array.isArray(value)) {
     return value.map(wrapElementsAsArrays);
   }
+
   if (value && typeof value === 'object') {
     const out: Record<string, unknown> = {};
     for (const [k, v] of Object.entries(value as Record<string, unknown>)) {
@@ -125,8 +122,10 @@ const wrapElementsAsArrays = (value: unknown): unknown => {
         out[k] = [wrapElementsAsArrays(v)];
       }
     }
+
     return out;
   }
+
   return value;
 };
 
@@ -140,20 +139,26 @@ const toJsonArray = (
 ): JsonString<string[]> => {
   if (Array.isArray(v)) {
     const strings = v.filter((e): e is string => typeof e === 'string');
+
     if (strings.length !== v.length) {
       warn(`row ${rowId} ${field} dropped ${v.length - strings.length} non-string entries`);
     }
+
     return toJsonString<string[]>(strings);
   }
+
   if (typeof v === 'string' && v) {
     // Validate the string parses to a string-array before granting the brand,
     // since otherwise the corruption is silently round-tripped to D1.
     const parsed = parseJsonString<unknown>(v);
+
     if (Array.isArray(parsed) && parsed.every((e): e is string => typeof e === 'string')) {
       return v as JsonString<string[]>;
     }
+
     warn(`row ${rowId} ${field} dropped: not a string array`);
   }
+
   return EMPTY_STRING_ARRAY_JSON;
 };
 
@@ -163,6 +168,7 @@ const str = (v: unknown): string => (typeof v === 'string' ? v : '');
 const normalizeRow = (raw: ImportedRow, warn: (msg: string) => void): NewComment => {
   const now = Date.now();
   const _id = typeof raw._id === 'string' && raw._id ? mkCommentId(raw._id) : newCommentId();
+
   return {
     _id,
     uid: str(raw.uid),

@@ -10,8 +10,10 @@ export const uploadR2 = async (
   if (!env.R2 || !env.R2_PUBLIC_URL) {
     throw new Error('R2 binding 或 R2_PUBLIC_URL 未配置');
   }
+
   const { mimeType, bytes } = decodePhoto(photo);
   const key = newUploadKey(fileName);
   await env.R2.put(key, bytes, { httpMetadata: { contentType: mimeType } });
+
   return { url: `${stripTrailingSlash(env.R2_PUBLIC_URL)}/${encodePath(key)}` };
 };

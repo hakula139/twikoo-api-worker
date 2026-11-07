@@ -25,8 +25,10 @@ export const uploadPicList = async (
     : `${stripTrailingSlash(imageCdn)}/upload`;
   const response = await fetch(url, { method: 'POST', body: formData });
   const data: PicListResponse = await response.json();
+
   if (!data.success || !data.result?.[0]) {
     throw new Error(data.message ?? 'PicList upload failed');
   }
+
   return { ...data, url: data.result[0] };
 };

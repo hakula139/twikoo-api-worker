@@ -19,16 +19,19 @@ export const getConfig: Handler<'GET_CONFIG'> = async (_payload, ctx) => {
     VERSION,
     isAdmin: isAdmin(ctx.uid, ctx.config),
   })) as { config?: Record<string, unknown> } & Record<string, unknown>;
+
   if (result.config) {
     for (const key of PUBLIC_CONFIG_FORBIDDEN) {
       delete result.config[key];
     }
   }
+
   return result;
 };
 
 export const getConfigForAdmin: Handler<'GET_CONFIG_FOR_ADMIN'> = async (_payload, ctx) => {
   requireAdmin(ctx);
+
   return stripCode(await getConfigForAdminFn({ config: ctx.config, isAdmin: true }));
 };
 
@@ -37,5 +40,6 @@ export const setConfig: Handler<'SET_CONFIG'> = async (payload, ctx) => {
   validate(payload, ['config']);
 
   await ctx.db.config.writePatch(payload.config);
+
   return {};
 };

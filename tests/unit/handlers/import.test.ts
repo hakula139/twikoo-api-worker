@@ -19,6 +19,7 @@ const buildImportCtx = (uid: string) => {
     config: { ADMIN_PASS: md5(ADMIN) },
     db: { comment: { saveMany } } as unknown as RequestCtx['db'],
   });
+
   return { ctx, saveMany };
 };
 
@@ -29,6 +30,7 @@ afterEach(() => {
 describe('commentImportForAdmin', () => {
   it('rejects a non-admin caller', async () => {
     const { ctx, saveMany } = buildImportCtx('guest');
+
     await expect(
       commentImportForAdmin({ source: 'twikoo', file: '[]' }, ctx),
     ).rejects.toMatchObject({ code: ResponseCode.NEED_LOGIN });
@@ -37,6 +39,7 @@ describe('commentImportForAdmin', () => {
 
   it('rejects an unsupported source', async () => {
     const { ctx, saveMany } = buildImportCtx(ADMIN);
+
     await expect(
       commentImportForAdmin({ source: 'wordpress', file: '[]' }, ctx),
     ).rejects.toMatchObject({ code: ResponseCode.FAIL });
@@ -48,6 +51,7 @@ describe('commentImportForAdmin', () => {
     const err = await commentImportForAdmin({ source: 'twikoo', file: '{not-json' }, ctx).catch(
       (e: unknown) => e,
     );
+
     expect(err).toBeInstanceOf(TwikooError);
     expect((err as TwikooError).code).toBe(ResponseCode.FAIL);
     expect((err as TwikooError).message).toContain('解析失败');
@@ -58,21 +62,24 @@ describe('commentImportForAdmin', () => {
     vi.mocked(twikoo.commentImportTwikoo).mockResolvedValueOnce([]);
     const { ctx, saveMany } = buildImportCtx(ADMIN);
     const result = await commentImportForAdmin({ source: 'twikoo', file: '[]' }, ctx);
+
     expect(saveMany).not.toHaveBeenCalled();
     expect(result.log).toContain('未发现可导入的评论');
   });
 
   it('dispatches twikoo source to commentImportTwikoo and forwards rows to saveMany', async () => {
     vi.mocked(twikoo.commentImportTwikoo).mockResolvedValueOnce([
-      { _id: 'pre-existing', nick: 'Hakula', comment: '感谢分享。' },
+      { _id: 'pre-existing', nick: 'Reader', comment: '感谢分享。' },
     ]);
     const { ctx, saveMany } = buildImportCtx(ADMIN);
     const result = await commentImportForAdmin({ source: 'twikoo', file: '[]' }, ctx);
+
     expect(saveMany).toHaveBeenCalledTimes(1);
     const rows = saveMany.mock.calls[0]?.[0] as NewComment[] | undefined;
+
     expect(rows).toHaveLength(1);
     expect(rows?.[0]?._id).toBe('pre-existing');
-    expect(rows?.[0]?.nick).toBe('Hakula');
+    expect(rows?.[0]?.nick).toBe('Reader');
     expect(result.log).toContain('导入成功 1 条评论');
   });
 
@@ -81,6 +88,7 @@ describe('commentImportForAdmin', () => {
     const { ctx, saveMany } = buildImportCtx(ADMIN);
     await commentImportForAdmin({ source: 'twikoo', file: '[]' }, ctx);
     const rows = saveMany.mock.calls[0]?.[0] as NewComment[] | undefined;
+
     expect(rows?.[0]?._id).toMatch(/^[0-9a-z]+$/i);
     expect(rows?.[0]?._id).not.toBe('');
   });
@@ -94,6 +102,7 @@ describe('commentImportForAdmin', () => {
     vi.mocked(fn).mockResolvedValueOnce([]);
     const { ctx } = buildImportCtx(ADMIN);
     await commentImportForAdmin({ source, file: '[]' }, ctx);
+
     expect(fn).toHaveBeenCalledTimes(1);
   });
 
@@ -102,8 +111,10 @@ describe('commentImportForAdmin', () => {
     const { ctx } = buildImportCtx(ADMIN);
     const xml = '<disqus><post id="post-1"><message>Thanks for sharing.</message></post></disqus>';
     await commentImportForAdmin({ source: 'disqus', file: xml }, ctx);
+
     expect(twikoo.commentImportDisqus).toHaveBeenCalledTimes(1);
     const [parsed] = vi.mocked(twikoo.commentImportDisqus).mock.calls[0] ?? [];
+
     expect(parsed).toEqual({
       disqus: [
         {
@@ -134,6 +145,7 @@ describe('commentImportForAdmin', () => {
     const result = await commentImportForAdmin({ source: 'twikoo', file: '[]' }, ctx);
     const rows = saveMany.mock.calls[0]?.[0] as NewComment[] | undefined;
     const row = rows?.[0];
+
     expect(row?.nick).toBe('');
     expect(row?.master).toBe(1);
     expect(row?.isSpam).toBe(1);
@@ -150,6 +162,7 @@ describe('commentImportForAdmin', () => {
     const { ctx, saveMany } = buildImportCtx(ADMIN);
     const result = await commentImportForAdmin({ source: 'twikoo', file: '[]' }, ctx);
     const row = (saveMany.mock.calls[0]?.[0] as NewComment[] | undefined)?.[0];
+
     expect(row?.ups).toBe('["a","b"]');
     expect(row?.downs).toBe('[]');
     expect(result.log).toMatch(/row r1 downs dropped/);
@@ -163,6 +176,7 @@ describe('commentImportForAdmin', () => {
     const { ctx, saveMany } = buildImportCtx(ADMIN);
     const result = await commentImportForAdmin({ source: 'twikoo', file: '[]' }, ctx);
     const row = (saveMany.mock.calls[0]?.[0] as NewComment[] | undefined)?.[0];
+
     expect(row?.ups).toBe('[]');
     expect(row?.downs).toBe('[]');
     expect(result.log).toMatch(/row r1 ups dropped: not a string array/);
@@ -176,6 +190,7 @@ describe('commentImportForAdmin', () => {
     const { ctx, saveMany } = buildImportCtx(ADMIN);
     const result = await commentImportForAdmin({ source: 'twikoo', file: '[]' }, ctx);
     const row = (saveMany.mock.calls[0]?.[0] as NewComment[] | undefined)?.[0];
+
     expect(row?.ups).toBe('["a","b"]');
     expect(result.log).toMatch(/row r1 ups dropped 2 non-string entries/);
   });

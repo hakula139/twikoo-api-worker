@@ -6,8 +6,7 @@ import { configWithSecrets } from '@/lib/secret';
 import { mailShim, withMailConfig } from '@/shims/mail';
 import { emailTest as emailTestFn } from '@/twikoo';
 
-// Upstream `emailTest` swallows send failures into `{message}`; throw so the
-// client sees the error envelope instead of a misleading `code: 0`.
+// Upstream `emailTest` returns send failures as `{message}`. Expose them as errors.
 export const emailTest: Handler<'EMAIL_TEST'> = async (payload, ctx) => {
   requireAdmin(ctx);
 

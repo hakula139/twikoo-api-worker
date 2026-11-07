@@ -115,6 +115,7 @@ describe('enforceTurnstile', () => {
     await enforceTurnstile(submitPayload({ turnstileToken: 'tk' }), ctx);
 
     const [, init] = fetchSpy.mock.calls[0] as [string, RequestInit];
+
     expect((init.body as URLSearchParams).get('secret')).toBe('sk-from-config');
   });
 });

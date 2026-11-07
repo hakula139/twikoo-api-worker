@@ -24,9 +24,11 @@ const orderClause = (sort: CommentSort): SQL[] => {
   if (sort === 'oldest') {
     return [asc(comment.created)];
   }
+
   if (sort === 'popular') {
     return [sql`json_array_length(${comment.ups}) desc`, desc(comment.created)];
   }
+
   return [desc(comment.created)];
 };
 
@@ -35,6 +37,7 @@ export const createCommentDb = (db: DrizzleD1Database) => ({
 
   async byId(id: CommentId): Promise<Comment | undefined> {
     const [row] = await db.select().from(comment).where(eq(comment._id, id)).limit(1);
+
     return row;
   },
 
@@ -42,10 +45,12 @@ export const createCommentDb = (db: DrizzleD1Database) => ({
     if (urls.length === 0) {
       return 0;
     }
+
     const [row] = await db
       .select({ count: count() })
       .from(comment)
       .where(and(inArray(comment.url, urls), eq(comment.rid, ''), visibility(showAll, uid)));
+
     return row?.count ?? 0;
   },
 
@@ -61,6 +66,7 @@ export const createCommentDb = (db: DrizzleD1Database) => ({
     if (urls.length === 0) {
       return [];
     }
+
     return db
       .select()
       .from(comment)
@@ -81,6 +87,7 @@ export const createCommentDb = (db: DrizzleD1Database) => ({
     if (rids.length === 0 || urls.length === 0) {
       return [];
     }
+
     return db
       .select()
       .from(comment)
@@ -93,12 +100,11 @@ export const createCommentDb = (db: DrizzleD1Database) => ({
       );
   },
 
-  // Returns a `url → count` map; callers fan out url variants via `getUrlsQuery`
-  // and collapse the variant counts back per requested url.
   async countByUrls(urls: string[], includeReply: boolean): Promise<Map<string, number>> {
     if (urls.length === 0) {
       return new Map();
     }
+
     const rows = await db
       .select({ url: comment.url, count: count() })
       .from(comment)
@@ -110,6 +116,7 @@ export const createCommentDb = (db: DrizzleD1Database) => ({
         ),
       )
       .groupBy(comment.url);
+
     return new Map(rows.map((r) => [r.url, r.count]));
   },
 
@@ -137,6 +144,7 @@ export const createCommentDb = (db: DrizzleD1Database) => ({
       .select({ count: count() })
       .from(comment)
       .where(gt(comment.created, since));
+
     return row?.count ?? 0;
   },
 
@@ -145,6 +153,7 @@ export const createCommentDb = (db: DrizzleD1Database) => ({
       .select({ count: count() })
       .from(comment)
       .where(and(gt(comment.created, since), eq(comment.ip, ip)));
+
     return row?.count ?? 0;
   },
 
@@ -161,6 +170,7 @@ export const createCommentDb = (db: DrizzleD1Database) => ({
     if (rows.length === 0) {
       return;
     }
+
     const CHUNK = 4;
     for (let i = 0; i < rows.length; i += CHUNK) {
       await db.insert(comment).values(rows.slice(i, i + CHUNK));
@@ -190,6 +200,7 @@ export const createCommentDb = (db: DrizzleD1Database) => ({
         )
       WHERE ${comment._id} = ${id}
     `);
+
     return result.meta.changes > 0;
   },
 
@@ -205,6 +216,7 @@ export const createCommentDb = (db: DrizzleD1Database) => ({
 
   async countForAdmin(filter: AdminFilter): Promise<number> {
     const [row] = await db.select({ count: count() }).from(comment).where(adminWhere(filter));
+
     return row?.count ?? 0;
   },
 
@@ -241,9 +253,7 @@ const adminWhere = (filter: AdminFilter): SQL | undefined =>
     filter.keyword ? adminKeywordFilter(filter.keyword) : undefined,
   );
 
-// Single bind across seven LIKE columns; builder chains would re-bind. The
-// ESCAPE clause makes `_` `%` `\` literal — admins searching for `foo_bar`
-// or `50%` see exact matches instead of wildcard expansions.
+// ESCAPE makes LIKE metacharacters literal in admin search.
 const adminKeywordFilter = (
   keyword: string,
 ): SQL => sql`(${comment.nick} LIKE ${keyword} ESCAPE '\\'

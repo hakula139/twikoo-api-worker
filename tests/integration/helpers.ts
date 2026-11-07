@@ -10,19 +10,22 @@ interface JsonResponseBody {
   [key: string]: unknown;
 }
 
-const ORIGIN = 'https://hakula.xyz';
+const ORIGIN = 'https://example.com';
 
 // Runs in the same isolate, so `vi.mock('@/twikoo')` from setup.ts still applies.
 const callWorker = (init: RequestInit, headers?: HeadersInit): Promise<Response> => {
   const merged = new Headers(headers);
+
   if (!merged.has('Origin')) {
     merged.set('Origin', ORIGIN);
   }
+
   if (init.body !== undefined && init.body !== null && !merged.has('Content-Type')) {
     merged.set('Content-Type', 'application/json');
   }
+
   return exports.default.fetch(
-    new Request('https://twikoo.hakula.xyz/', { ...init, headers: merged }),
+    new Request('https://comments.example.com/', { ...init, headers: merged }),
   );
 };
 
@@ -38,6 +41,7 @@ export const postEvent = async (
     headers,
   );
   const body = await res.json<JsonResponseBody>();
+
   return { status: res.status, body, headers: res.headers };
 };
 
@@ -47,6 +51,7 @@ export const postRaw = async (
 ): Promise<{ status: number; body: JsonResponseBody; headers: Headers }> => {
   const res = await callWorker({ method: 'POST', body }, headers);
   const json = await res.json<JsonResponseBody>();
+
   return { status: res.status, body: json, headers: res.headers };
 };
 
@@ -125,6 +130,7 @@ export const seedComment = async (row: CommentRowSeed = {}): Promise<string> => 
       '',
     )
     .run();
+
   return id;
 };
 
@@ -134,5 +140,6 @@ export const fetchComments = async (url = '/post/'): Promise<Array<Record<string
   )
     .bind(url)
     .all<Record<string, unknown>>();
+
   return result.results;
 };

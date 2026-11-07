@@ -12,6 +12,7 @@ const bytesToHex = (bytes: Uint8Array): string =>
 
 const sha256Hex = async (input: BufferSource): Promise<string> => {
   const hash = await crypto.subtle.digest('SHA-256', input);
+
   return bytesToHex(new Uint8Array(hash));
 };
 
@@ -24,6 +25,7 @@ const hmacSha256 = async (key: BufferSource, data: string): Promise<Uint8Array> 
     ['sign'],
   );
   const sig = await crypto.subtle.sign('HMAC', cryptoKey, new TextEncoder().encode(data));
+
   return new Uint8Array(sig);
 };
 
@@ -35,6 +37,7 @@ export const uploadS3 = async (
   const bucket = stringConfig(config, 'S3_BUCKET');
   const accessKeyId = stringConfig(config, 'S3_ACCESS_KEY_ID');
   const secretAccessKey = stringConfig(config, 'S3_SECRET_ACCESS_KEY');
+
   if (!bucket || !accessKeyId || !secretAccessKey) {
     throw new Error('未配置 S3 图床参数（S3_BUCKET、S3_ACCESS_KEY_ID、S3_SECRET_ACCESS_KEY）');
   }
@@ -101,19 +104,13 @@ export const uploadS3 = async (
     },
     body: bytes,
   });
+
   if (!response.ok) {
     const text = await response.text().catch(() => '');
     throw new Error(`S3 上传失败: ${response.status} ${text || response.statusText}`);
   }
 
   const cdnUrl = stringConfig(config, 'S3_CDN_URL');
-  let fileUrl: string;
-  if (cdnUrl) {
-    fileUrl = `${stripTrailingSlash(cdnUrl)}/${encodedKey}`;
-  } else if (customEndpoint) {
-    fileUrl = `${stripTrailingSlash(customEndpoint)}/${bucket}/${encodedKey}`;
-  } else {
-    fileUrl = `https://${bucket}.s3.${region}.amazonaws.com/${encodedKey}`;
-  }
-  return { url: fileUrl };
+
+  return { url: cdnUrl ? `${stripTrailingSlash(cdnUrl)}/${encodedKey}` : endpoint };
 };

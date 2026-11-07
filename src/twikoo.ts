@@ -30,8 +30,7 @@ import twikooFuncPkg from 'twikoo-func/package.json';
 import { mailShim } from './shims/mail';
 import { sanitizeShim } from './shims/sanitize';
 
-// Must run before any twikoo-func code path resolves DOMPurify / nodemailer —
-// hence top-level (import-order matters); sanitizeShim and mailShim are V8-safe.
+// Initialize V8-compatible shims before twikoo-func resolves DOMPurify or nodemailer.
 setCustomLibs({
   DOMPurify: sanitizeShim,
   nodemailer: mailShim,
@@ -40,13 +39,12 @@ setCustomLibs({
 export const VERSION: string = twikooFuncPkg.version;
 export const htmlToText = getHtmlToText();
 
-// getMd5() / getSha256() are factories — cache once for stable references.
 export const md5 = getMd5();
 export const sha256 = getSha256();
 
-// Strip the inner `code` so dispatch's outer `code: 0` doesn't double-wrap.
 export const stripCode = <T extends { code: number }>(result: T): Omit<T, 'code'> => {
   const { code: _code, ...rest } = result;
+
   return rest;
 };
 

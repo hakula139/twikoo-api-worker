@@ -28,6 +28,7 @@ afterEach(() => {
 describe('decodePhoto', () => {
   it('decodes a valid data URL into blob, bytes, and mimeType', async () => {
     const result = decodePhoto(dataUrl);
+
     expect(result.mimeType).toBe('image/png');
     expect(result.bytes).toEqual(PNG_BYTES);
     expect(result.blob).toBeInstanceOf(Blob);
@@ -37,6 +38,7 @@ describe('decodePhoto', () => {
 
   it('preserves the supplied MIME type', () => {
     const jpeg = `data:image/jpeg;base64,${PNG_BASE64}`;
+
     expect(decodePhoto(jpeg).mimeType).toBe('image/jpeg');
   });
 
@@ -63,51 +65,38 @@ describe('isUrl', () => {
 });
 
 describe('stripTrailingSlash', () => {
-  it('removes a single trailing slash', () => {
-    expect(stripTrailingSlash('https://hakula.xyz/')).toBe('https://hakula.xyz');
-  });
+  it.each([
+    ['https://example.com/', 'https://example.com'],
+    ['https://example.com', 'https://example.com'],
+    ['https://example.com//', 'https://example.com/'],
+  ])('strips at most one trailing slash from %s', (input, expected) => {
+    const result = stripTrailingSlash(input);
 
-  it('leaves un-trailed strings alone', () => {
-    expect(stripTrailingSlash('https://hakula.xyz')).toBe('https://hakula.xyz');
-  });
-
-  it('only strips one trailing slash even if the string ends with multiple', () => {
-    expect(stripTrailingSlash('https://hakula.xyz//')).toBe('https://hakula.xyz/');
+    expect(result).toBe(expected);
   });
 });
 
 describe('encodePath', () => {
   it('encodes each segment with the AWS URI rules without escaping separators', () => {
-    expect(encodePath("articles/Hakula's notes (draft) #1?.png")).toBe(
-      'articles/Hakula%27s%20notes%20%28draft%29%20%231%3F.png',
+    expect(encodePath("articles/Reader's notes (draft) #1?.png")).toBe(
+      'articles/Reader%27s%20notes%20%28draft%29%20%231%3F.png',
     );
   });
 });
 
 describe('safeBaseName', () => {
-  it('drops leading directory components', () => {
-    expect(safeBaseName('a/b/c.png')).toBe('c.png');
-  });
+  it.each([
+    ['a/b/c.png', 'c.png'],
+    [String.raw`a\b\c.png`, 'c.png'],
+    ['../../etc/passwd', 'passwd'],
+    ['weird..name.png', 'weird.name.png'],
+    ['', 'upload'],
+    ['a/', 'upload'],
+    ['report #1?.png', 'report #1?.png'],
+  ])('normalizes %s', (input, expected) => {
+    const result = safeBaseName(input);
 
-  it('drops Windows-style backslash separators', () => {
-    expect(safeBaseName('a\\b\\c.png')).toBe('c.png');
-  });
-
-  it('strips path traversal so the basename cannot escape the prefix', () => {
-    expect(safeBaseName('../../etc/passwd')).toBe('passwd');
-  });
-
-  it('collapses repeated dots to a single dot', () => {
-    expect(safeBaseName('weird..name.png')).toBe('weird.name.png');
-  });
-
-  it('falls back to "upload" on an empty basename', () => {
-    expect(safeBaseName('')).toBe('upload');
-    expect(safeBaseName('a/')).toBe('upload');
-  });
-
-  it('preserves URL-reserved characters for storage-key identity', () => {
-    expect(safeBaseName('report #1?.png')).toBe('report #1?.png');
+    expect(result).toBe(expected);
   });
 });
 
@@ -115,6 +104,7 @@ describe('checkNsfw', () => {
   it('passes through (no rejection) when NSFW_API_URL is unset', async () => {
     const fetchSpy = vi.spyOn(globalThis, 'fetch');
     const result = await checkNsfw(dataUrl, {});
+
     expect(result).toEqual({ rejected: false, message: '' });
     expect(fetchSpy).not.toHaveBeenCalled();
   });
@@ -128,6 +118,7 @@ describe('checkNsfw', () => {
       NSFW_THRESHOLD: '0.5',
     };
     const result = await checkNsfw(dataUrl, config);
+
     expect(result.rejected).toBe(true);
     expect(result.message).toContain('0.900');
     expect(result.message).toContain('0.5');
@@ -138,12 +129,14 @@ describe('checkNsfw', () => {
       okResponse({ porn: 0.1, hentai: 0.1, sexy: 0.1 }),
     );
     const config: TwikooConfig = { NSFW_API_URL: 'https://nsfw.example' };
+
     expect(await checkNsfw(dataUrl, config)).toEqual({ rejected: false, message: '' });
   });
 
   it('falls through (best-effort) when the fetch rejects', async () => {
     vi.spyOn(globalThis, 'fetch').mockRejectedValueOnce(new Error('network down'));
     const config: TwikooConfig = { NSFW_API_URL: 'https://nsfw.example' };
+
     expect(await checkNsfw(dataUrl, config)).toEqual({ rejected: false, message: '' });
   });
 
@@ -153,6 +146,7 @@ describe('checkNsfw', () => {
     );
     const config: TwikooConfig = { NSFW_API_URL: 'https://nsfw.example' };
     const result = await checkNsfw(dataUrl, config);
+
     expect(result.rejected).toBe(true);
   });
 
@@ -161,6 +155,7 @@ describe('checkNsfw', () => {
       .spyOn(globalThis, 'fetch')
       .mockResolvedValueOnce(okResponse({ porn: 0, hentai: 0, sexy: 0 }));
     await checkNsfw(dataUrl, { NSFW_API_URL: 'https://nsfw.example/' });
+
     expect(fetchSpy).toHaveBeenCalledWith(
       'https://nsfw.example/classify',
       expect.objectContaining({ method: 'POST' }),

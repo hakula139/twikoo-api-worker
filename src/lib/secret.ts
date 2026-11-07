@@ -1,48 +1,38 @@
 import type { RequestCtx, TwikooConfig } from '@/types';
 
 import { stringConfig } from './config-read';
-import { ResponseCode, type ResponseCodeValue, TwikooError } from './errors';
 
-// Env binding name == admin-config field name. Wrangler secret wins.
-const SECRET_PAIRS = {
-  AKISMET_KEY: 'AKISMET_KEY',
-  PUSHOO_TOKEN: 'PUSHOO_TOKEN',
-  QQ_API_KEY: 'QQ_API_KEY',
-  SENDER_EMAIL: 'SENDER_EMAIL',
-  SMTP_PASS: 'SMTP_PASS',
-  SMTP_USER: 'SMTP_USER',
-  TURNSTILE_SECRET_KEY: 'TURNSTILE_SECRET_KEY',
-} as const satisfies Record<string, string>;
+const SECRET_KEYS = [
+  'AKISMET_KEY',
+  'PUSHOO_TOKEN',
+  'QQ_API_KEY',
+  'SENDER_EMAIL',
+  'SMTP_PASS',
+  'SMTP_USER',
+  'TURNSTILE_SECRET_KEY',
+] as const;
 
-type SecretEnvKey = keyof typeof SECRET_PAIRS;
+type SecretEnvKey = (typeof SECRET_KEYS)[number];
 
 export const secret = (ctx: RequestCtx, key: SecretEnvKey): string | undefined => {
   const fromEnv = ctx.env[key];
+
   if (fromEnv) {
     return fromEnv;
   }
-  return stringConfig(ctx.config, SECRET_PAIRS[key]);
-};
 
-export const requireSecret = (
-  ctx: RequestCtx,
-  key: SecretEnvKey,
-  errorCode: ResponseCodeValue = ResponseCode.CONFIG_NOT_EXIST,
-): string => {
-  const value = secret(ctx, key);
-  if (!value) {
-    throw new TwikooError(errorCode, `${key} is not configured.`);
-  }
-  return value;
+  return stringConfig(ctx.config, key);
 };
 
 export const configWithSecrets = (ctx: RequestCtx): TwikooConfig => {
   const merged: TwikooConfig = { ...ctx.config };
-  for (const [envKey, configKey] of Object.entries(SECRET_PAIRS) as Array<[SecretEnvKey, string]>) {
-    const fromEnv = ctx.env[envKey];
+  for (const key of SECRET_KEYS) {
+    const fromEnv = ctx.env[key];
+
     if (fromEnv) {
-      merged[configKey] = fromEnv;
+      merged[key] = fromEnv;
     }
   }
+
   return merged;
 };

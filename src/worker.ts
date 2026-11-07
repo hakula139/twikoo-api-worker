@@ -16,6 +16,7 @@ export default {
       if (request.method === 'OPTIONS') {
         return new Response(null, { status: 204, headers });
       }
+
       if (request.method === 'GET') {
         return jsonResponse(
           {
@@ -26,9 +27,11 @@ export default {
           headers,
         );
       }
+
       if (request.method === 'POST') {
         return await dispatch(request, env, ctx);
       }
+
       return jsonResponse(
         { code: ResponseCode.FAIL, message: `Method ${request.method} is not allowed.` },
         { ...headers, Allow: 'GET, OPTIONS, POST' },

@@ -39,6 +39,7 @@ vi.mock('@/twikoo', () => ({
     const toDto = (row: Record<string, unknown>, replies: unknown[] = []) => {
       const ups = Array.isArray(row.ups) ? row.ups : [];
       const downs = Array.isArray(row.downs) ? row.downs : [];
+
       return {
         id: row._id,
         nick: row.nick,
@@ -66,6 +67,7 @@ vi.mock('@/twikoo', () => ({
         updated: row.updated,
       };
     };
+
     return rows
       .filter((row) => !row.rid)
       .map((head) =>
@@ -83,6 +85,7 @@ vi.mock('@/twikoo', () => ({
   sha256: (s: string) => `sha256(${s})`,
   stripCode: <T extends { code?: number }>(o: T): Omit<T, 'code'> => {
     const { code: _code, ...rest } = o;
+
     return rest;
   },
   validate: (event: Record<string, unknown>, requiredFields: readonly string[]) => {

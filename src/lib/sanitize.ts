@@ -1,4 +1,4 @@
-// xss is CJS; vitest's pool sees only the default callable, so named ESM
+// xss is CJS. Vitest's pool sees only the default callable, so named ESM
 // imports throw at runtime. Pull through the default and reuse xss's own types.
 import xss, {
   type FilterXSS as FilterXSSInstance,
@@ -11,16 +11,12 @@ const { FilterXSS, getDefaultWhiteList } = xss as unknown as {
   getDefaultWhiteList: () => IWhiteList;
 };
 
-// Comments are sanitized at write time. Mirror DOMPurify's defaults that the
-// upstream widget expects: keep formatting and links, allow images and code
-// blocks, drop scripts / iframes / event handlers / `javascript:` URLs.
 const TAG_EXTRAS: Record<string, string[]> = {
-  img: ['src', 'alt', 'title', 'width', 'height'],
-  a: ['href', 'title', 'target', 'rel'],
-  pre: ['class'],
+  a: ['rel'],
   code: ['class'],
-  span: ['class', 'style'],
   div: ['class', 'style'],
+  pre: ['class'],
+  span: ['class', 'style'],
 };
 
 const whiteList = getDefaultWhiteList();

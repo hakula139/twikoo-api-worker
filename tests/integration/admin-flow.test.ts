@@ -98,53 +98,30 @@ describe('integration: COMMENT_GET_FOR_ADMIN sort options', () => {
       { per: 10, page: 1, ...(sort ? { sort } : {}) },
       adminAuthHeader(),
     );
+
     expect(body.code).toBe(ResponseCode.SUCCESS);
+
     return body as unknown as {
       count: number;
       data: Array<{ _id: string; comment: string }>;
     };
   };
 
-  it('omitting `sort` yields newest-first (default loads behave like the old widget)', async () => {
-    const result = await fetchAdminList(undefined);
+  it.each([
+    { sort: undefined, order: ['newestWithoutVotes', 'newerPopular', 'olderPopular'] },
+    { sort: 'newest', order: ['newestWithoutVotes', 'newerPopular', 'olderPopular'] },
+    { sort: 'oldest', order: ['olderPopular', 'newerPopular', 'newestWithoutVotes'] },
+    { sort: 'popular', order: ['newerPopular', 'olderPopular', 'newestWithoutVotes'] },
+    { sort: 'unsupported-sort', order: ['newestWithoutVotes', 'newerPopular', 'olderPopular'] },
+  ] satisfies { sort: string | undefined; order: (keyof typeof ids)[] }[])(
+    'returns comments for sort=$sort',
+    async ({ sort, order }) => {
+      const result = await fetchAdminList(sort);
 
-    expect(result.count).toBe(3);
-    expect(result.data.map((r) => r._id)).toEqual([
-      ids.newestWithoutVotes,
-      ids.newerPopular,
-      ids.olderPopular,
-    ]);
-  });
-
-  it('sort=oldest reverses the order', async () => {
-    const result = await fetchAdminList('oldest');
-
-    expect(result.data.map((r) => r._id)).toEqual([
-      ids.olderPopular,
-      ids.newerPopular,
-      ids.newestWithoutVotes,
-    ]);
-  });
-
-  it('sort=popular ranks by ups length, breaking ties on created desc', async () => {
-    const result = await fetchAdminList('popular');
-
-    expect(result.data.map((r) => r._id)).toEqual([
-      ids.newerPopular,
-      ids.olderPopular,
-      ids.newestWithoutVotes,
-    ]);
-  });
-
-  it('an unrecognized sort value falls back to newest', async () => {
-    const result = await fetchAdminList('unsupported-sort');
-
-    expect(result.data.map((r) => r._id)).toEqual([
-      ids.newestWithoutVotes,
-      ids.newerPopular,
-      ids.olderPopular,
-    ]);
-  });
+      expect(result.count).toBe(3);
+      expect(result.data.map((row) => row._id)).toEqual(order.map((key) => ids[key]));
+    },
+  );
 
   it('non-admin callers get NEED_LOGIN', async () => {
     const { body } = await postEvent('COMMENT_GET_FOR_ADMIN', { per: 10, page: 1 });
@@ -154,39 +131,23 @@ describe('integration: COMMENT_GET_FOR_ADMIN sort options', () => {
 });
 
 describe('integration: COMMENT_SET_FOR_ADMIN boolean flags', () => {
-  it('stores { isSpam: true } as 1', async () => {
+  it.each([
+    { field: 'isSpam', value: true, previous: 0, expected: 1 },
+    { field: 'isSpam', value: false, previous: 1, expected: 0 },
+    { field: 'top', value: true, previous: 0, expected: 1 },
+  ] as const)('stores $field=$value as $expected', async ({ field, value, previous, expected }) => {
     await seedAdmin();
-    const id = await seedComment({ url: '/post/', isSpam: 0 });
+    const id = await seedComment({ url: '/post/', [field]: previous });
 
     const { body } = await postEvent(
       'COMMENT_SET_FOR_ADMIN',
-      { id, set: { isSpam: true } },
+      { id, set: { [field]: value } },
       adminAuthHeader(),
     );
 
     expect(body.code).toBe(ResponseCode.SUCCESS);
     const rows = await fetchComments('/post/');
-    expect(rows[0]?.isSpam).toBe(1);
-  });
-
-  it('un-hides via { isSpam: false }', async () => {
-    await seedAdmin();
-    const id = await seedComment({ url: '/post/', isSpam: 1 });
-
-    await postEvent('COMMENT_SET_FOR_ADMIN', { id, set: { isSpam: false } }, adminAuthHeader());
-
-    const rows = await fetchComments('/post/');
-    expect(rows[0]?.isSpam).toBe(0);
-  });
-
-  it('pins a comment via { top: true }', async () => {
-    await seedAdmin();
-    const id = await seedComment({ url: '/post/', top: 0 });
-
-    await postEvent('COMMENT_SET_FOR_ADMIN', { id, set: { top: true } }, adminAuthHeader());
-
-    const rows = await fetchComments('/post/');
-    expect(rows[0]?.top).toBe(1);
+    expect(rows[0]?.[field]).toBe(expected);
   });
 
   it('rejects a non-string `comment` field with FAIL', async () => {
@@ -235,6 +196,7 @@ describe('integration: COMMENT_EXPORT_FOR_ADMIN', () => {
 
     expect(body.code).toBe(ResponseCode.SUCCESS);
     const data = body.data as Array<{ _id: string }>;
+
     expect(data.map((r) => r._id)).toContain(id);
   });
 
@@ -249,8 +211,10 @@ describe('integration: COMMENT_EXPORT_FOR_ADMIN', () => {
 
     expect(body.code).toBe(ResponseCode.SUCCESS);
     const data = body.data as Array<{ id: number; value: string }>;
+
     expect(data).toHaveLength(1);
     const parsed = JSON.parse(data[0]?.value ?? '{}') as Record<string, unknown>;
+
     expect(parsed.NSFW_THRESHOLD).toBe('0.8');
     expect(parsed.ADMIN_PASS).toBe(`md5(${ADMIN_TOKEN})`);
   });

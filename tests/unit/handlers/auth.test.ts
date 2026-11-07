@@ -16,6 +16,7 @@ const buildAuthCtx = (uid: string, config: TwikooConfig) => {
     config,
     db: { config: { writePatch } } as unknown as RequestCtx['db'],
   });
+
   return { ctx, writePatch };
 };
 
@@ -43,6 +44,7 @@ describe('setPassword', () => {
       expect(e).toBeInstanceOf(TwikooError);
       expect((e as TwikooError).code).toBe(ResponseCode.NEED_LOGIN);
     }
+
     expect(writePatch).not.toHaveBeenCalled();
   });
 
@@ -56,6 +58,7 @@ describe('setPassword', () => {
       expect(e).toBeInstanceOf(TwikooError);
       expect((e as TwikooError).code).toBe(ResponseCode.NEED_LOGIN);
     }
+
     expect(writePatch).not.toHaveBeenCalled();
   });
 });
@@ -63,6 +66,7 @@ describe('setPassword', () => {
 describe('login', () => {
   it('rejects when no admin password is configured', async () => {
     const ctx = buildCtx({ config: {} });
+
     await expect(login({ password: 'anything' }, ctx)).rejects.toMatchObject({
       code: ResponseCode.PASS_NOT_EXIST,
     });
@@ -70,6 +74,7 @@ describe('login', () => {
 
   it('rejects when the supplied password does not match the stored hash', async () => {
     const ctx = buildCtx({ config: { ADMIN_PASS: md5('correct') } });
+
     await expect(login({ password: 'wrong' }, ctx)).rejects.toMatchObject({
       code: ResponseCode.PASS_NOT_MATCH,
     });
@@ -78,6 +83,7 @@ describe('login', () => {
   it('returns an empty envelope when the password matches', async () => {
     const ctx = buildCtx({ config: { ADMIN_PASS: md5('correct') } });
     const result = await login({ password: 'correct' }, ctx);
+
     expect(result).toEqual({});
   });
 });

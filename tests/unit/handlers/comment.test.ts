@@ -20,31 +20,9 @@ import * as twikoo from '@/twikoo';
 import { md5 } from '@/twikoo';
 import { mkCommentId, mkIp, mkUid } from '@/types';
 import { buildCtx } from '@tests/helpers/ctx';
+import { newComment } from '@tests/helpers/comment-fixture';
 
-const baseRow: Comment = {
-  _id: mkCommentId('c1'),
-  uid: 'reader-1',
-  nick: 'Reader',
-  mail: '',
-  mailMd5: '',
-  link: '',
-  ua: 'Mozilla/5.0',
-  ip: '192.0.2.1',
-  ipRegion: '',
-  master: 0,
-  url: '/about-me/',
-  href: '',
-  comment: '感谢分享。',
-  pid: '',
-  rid: '',
-  isSpam: 0,
-  created: 0,
-  updated: 0,
-  ups: '[]' as JsonString<string[]>,
-  downs: '[]' as JsonString<string[]>,
-  top: 0,
-  avatar: '',
-};
+const baseRow = newComment({ _id: mkCommentId('c1'), created: 0, updated: 0, href: '' });
 
 interface FakeDb {
   saved: NewComment[];
@@ -64,6 +42,7 @@ const buildSubmitCtx = (config: TwikooConfig, fake: FakeDb): RequestCtx => {
       updateSpam: vi.fn(async () => undefined),
     },
   };
+
   return buildCtx({
     ip: mkIp('192.0.2.1'),
     uid: mkUid('guest-uid'),
@@ -84,31 +63,41 @@ afterEach(() => {
   vi.restoreAllMocks();
 });
 
-describe('commentGet > malformed votes JSON', () => {
-  const buildGetCtx = (rows: Comment[]): RequestCtx => {
-    const db = {
-      comment: {
-        count: vi.fn(async () => rows.length),
-        list: vi
-          .fn<(...args: unknown[]) => Promise<Comment[]>>()
-          .mockResolvedValueOnce(rows)
-          .mockResolvedValue([]),
-        replies: vi.fn(async () => [] as Comment[]),
-      },
-    };
-    return buildCtx({ uid: mkUid('guest-uid'), db: db as unknown as RequestCtx['db'] });
+const buildGetCtx = (
+  rows: Comment[],
+  config: TwikooConfig = {},
+): { ctx: RequestCtx; list: ReturnType<typeof vi.fn> } => {
+  const list = vi
+    .fn<(...args: unknown[]) => Promise<Comment[]>>()
+    .mockResolvedValueOnce(rows)
+    .mockResolvedValue([]);
+  const db = {
+    comment: {
+      count: vi.fn(async () => rows.length),
+      list,
+      replies: vi.fn(async () => [] as Comment[]),
+    },
   };
 
+  return {
+    ctx: buildCtx({ uid: mkUid('guest-uid'), config, db: db as unknown as RequestCtx['db'] }),
+    list,
+  };
+};
+
+describe('commentGet > malformed votes JSON', () => {
   it('treats malformed ups as zero votes and still returns the comment', async () => {
     const bad: Comment = {
       ...baseRow,
       _id: mkCommentId('bad'),
       ups: '{not-json' as JsonString<string[]>,
     };
-    const ctx = buildGetCtx([bad]);
+    const { ctx } = buildGetCtx([bad]);
     const result = await commentGet({ url: '/post' }, ctx);
+
     expect(result.count).toBe(1);
     const data = result.data as Array<{ ups?: unknown }>;
+
     expect(data[0]?.ups).toBe(0);
   });
 
@@ -121,7 +110,7 @@ describe('commentGet > malformed votes JSON', () => {
       ups: raw as JsonString<string[]>,
     };
 
-    await commentGet({ url: '/post' }, buildGetCtx([bad]));
+    await commentGet({ url: '/post' }, buildGetCtx([bad]).ctx);
 
     expect(warnSpy).toHaveBeenCalledExactlyOnceWith(
       { id: 'long', field: 'ups', length: raw.length },
@@ -132,36 +121,17 @@ describe('commentGet > malformed votes JSON', () => {
 });
 
 describe('commentGet > config-driven branches', () => {
-  const buildGetCtx = (
-    rows: Comment[],
-    config: TwikooConfig = {},
-  ): { ctx: RequestCtx; list: ReturnType<typeof vi.fn> } => {
-    const list = vi
-      .fn<(...args: unknown[]) => Promise<Comment[]>>()
-      .mockResolvedValueOnce(rows)
-      .mockResolvedValue([]);
-    const db = {
-      comment: {
-        count: vi.fn(async () => rows.length),
-        list,
-        replies: vi.fn(async () => [] as Comment[]),
-      },
-    };
-    return {
-      ctx: buildCtx({ uid: mkUid('guest-uid'), config, db: db as unknown as RequestCtx['db'] }),
-      list,
-    };
-  };
-
   it('skips the top-pinned query when TOP_DISABLED=true', async () => {
     const { ctx, list } = buildGetCtx([baseRow], { TOP_DISABLED: 'true' });
     await commentGet({ url: '/post' }, ctx);
+
     expect(list).toHaveBeenCalledTimes(1);
   });
 
   it('runs the top-pinned query when TOP_DISABLED is unset and `before` is absent', async () => {
     const { ctx, list } = buildGetCtx([baseRow]);
     await commentGet({ url: '/post' }, ctx);
+
     expect(list).toHaveBeenCalledTimes(2);
   });
 
@@ -169,6 +139,7 @@ describe('commentGet > config-driven branches', () => {
   const stripIpRegion = (rows: readonly unknown[]): unknown[] =>
     rows.map((r) => {
       const { ipRegion: _ipRegion, ...rest } = r as Comment;
+
       return { ...rest, id: rest._id };
     });
 
@@ -178,6 +149,7 @@ describe('commentGet > config-driven branches', () => {
     const { ctx } = buildGetCtx([row], { SHOW_REGION: 'true' });
     const result = await commentGet({ url: '/post' }, ctx);
     const data = result.data as Array<{ ipRegion?: string }>;
+
     expect(data[0]?.ipRegion).toBe('Beijing');
   });
 
@@ -187,6 +159,7 @@ describe('commentGet > config-driven branches', () => {
     const { ctx } = buildGetCtx([row]);
     const result = await commentGet({ url: '/post' }, ctx);
     const data = result.data as Array<{ ipRegion?: string }>;
+
     expect(data[0]?.ipRegion).toBeUndefined();
   });
 });
@@ -198,11 +171,13 @@ describe('getCommentsCount > urls validation', () => {
         countByUrls: vi.fn(async () => new Map<string, number>()),
       },
     };
+
     return buildCtx({ db: db as unknown as RequestCtx['db'] });
   };
 
   it('rejects when urls is a string instead of an array', async () => {
     const ctx = buildCountCtx();
+
     try {
       await getCommentsCount({ urls: 'https://x' as unknown as string[] }, ctx);
       throw new Error('expected getCommentsCount to throw');
@@ -214,6 +189,7 @@ describe('getCommentsCount > urls validation', () => {
 
   it('rejects when urls contains a non-string element', async () => {
     const ctx = buildCountCtx();
+
     await expect(
       getCommentsCount({ urls: ['/a', 1 as unknown as string] }, ctx),
     ).rejects.toMatchObject({ code: ResponseCode.FAIL });
@@ -228,17 +204,20 @@ describe('getRecentComments > urls validation', () => {
         recent,
       },
     };
+
     return { ctx: buildCtx({ db: db as unknown as RequestCtx['db'] }), recent };
   };
 
   it('accepts an omitted urls field', async () => {
     const { ctx } = buildRecentCtx();
     const result = await getRecentComments({}, ctx);
+
     expect(result.data).toEqual([]);
   });
 
   it('rejects when urls is present but not an array of strings', async () => {
     const { ctx } = buildRecentCtx();
+
     await expect(
       getRecentComments({ urls: 'https://x' as unknown as string[] }, ctx),
     ).rejects.toMatchObject({ code: ResponseCode.FAIL });
@@ -265,11 +244,13 @@ describe('commentLike', () => {
       uid: mkUid('voter-uid'),
       db: { comment: { toggleVote } } as unknown as RequestCtx['db'],
     });
+
     return { ctx, toggleVote };
   };
 
   it('rejects an unknown like type', async () => {
     const { ctx, toggleVote } = buildLikeCtx(true);
+
     await expect(commentLike({ id: 'c1', type: 'sideways' }, ctx)).rejects.toMatchObject({
       code: ResponseCode.FAIL,
     });
@@ -278,6 +259,7 @@ describe('commentLike', () => {
 
   it('throws when the comment is missing (toggleVote returns false)', async () => {
     const { ctx } = buildLikeCtx(false);
+
     await expect(commentLike({ id: 'missing' }, ctx)).rejects.toMatchObject({
       code: ResponseCode.FAIL,
     });
@@ -286,6 +268,7 @@ describe('commentLike', () => {
   it('defaults type to up and forwards id + uid to toggleVote', async () => {
     const { ctx, toggleVote } = buildLikeCtx(true);
     const result = await commentLike({ id: 'c1' }, ctx);
+
     expect(result).toEqual({ updated: 1 });
     expect(toggleVote).toHaveBeenCalledWith('c1', 'voter-uid', 'up');
   });
@@ -345,11 +328,13 @@ describe('commentGetForAdmin', () => {
       config: { ADMIN_PASS: md5(ADMIN) },
       db: { comment: { countForAdmin, listForAdmin } } as unknown as RequestCtx['db'],
     });
+
     return { ctx, countForAdmin, listForAdmin };
   };
 
   it('rejects a non-admin caller', async () => {
     const { ctx, listForAdmin } = buildAdminCtx('guest');
+
     await expect(commentGetForAdmin({ per: 10, page: 1 }, ctx)).rejects.toMatchObject({
       code: ResponseCode.NEED_LOGIN,
     });
@@ -363,6 +348,7 @@ describe('commentGetForAdmin', () => {
   ])('maps payload.type=$type to filter.isSpam=$isSpam', async ({ type, isSpam }) => {
     const { ctx, listForAdmin, countForAdmin } = buildAdminCtx(ADMIN);
     await commentGetForAdmin({ per: 10, page: 1, type }, ctx);
+
     expect(listForAdmin.mock.calls[0]?.[0]).toMatchObject({ isSpam });
     expect(countForAdmin.mock.calls[0]?.[0]).toMatchObject({ isSpam });
   });
@@ -370,12 +356,14 @@ describe('commentGetForAdmin', () => {
   it('wraps and escapes the LIKE keyword', async () => {
     const { ctx, listForAdmin } = buildAdminCtx(ADMIN);
     await commentGetForAdmin({ per: 10, page: 1, keyword: '50%_off\\' }, ctx);
+
     expect(listForAdmin.mock.calls[0]?.[0]).toMatchObject({ keyword: '%50\\%\\_off\\\\%' });
   });
 
   it('passes per/page through as limit/offset and defaults sort to newest', async () => {
     const { ctx, listForAdmin } = buildAdminCtx(ADMIN);
     await commentGetForAdmin({ per: 20, page: 3 }, ctx);
+
     expect(listForAdmin).toHaveBeenCalledWith(expect.anything(), 20, 40, 'newest');
   });
 
@@ -384,6 +372,7 @@ describe('commentGetForAdmin', () => {
     async (sort) => {
       const { ctx, listForAdmin } = buildAdminCtx(ADMIN);
       await commentGetForAdmin({ per: 10, page: 1, sort }, ctx);
+
       expect(listForAdmin).toHaveBeenCalledWith(expect.anything(), 10, 0, sort);
     },
   );
@@ -391,6 +380,7 @@ describe('commentGetForAdmin', () => {
   it('falls back to newest for an unrecognized sort value', async () => {
     const { ctx, listForAdmin } = buildAdminCtx(ADMIN);
     await commentGetForAdmin({ per: 10, page: 1, sort: 'random' }, ctx);
+
     expect(listForAdmin).toHaveBeenCalledWith(expect.anything(), 10, 0, 'newest');
   });
 
@@ -400,6 +390,7 @@ describe('commentGetForAdmin', () => {
     const result = (await commentGetForAdmin({ per: 10, page: 1 }, ctx)) as {
       data: Array<{ ipRegion: string }>;
     };
+
     expect(result.data[0]?.ipRegion).toBe('China · Beijing');
   });
 });
@@ -414,11 +405,13 @@ describe('commentSetForAdmin', () => {
       config: { ADMIN_PASS: md5(ADMIN) },
       db: { comment: { update } } as unknown as RequestCtx['db'],
     });
+
     return { ctx, update };
   };
 
   it('rejects a non-admin caller', async () => {
     const { ctx, update } = buildSetCtx('guest');
+
     await expect(
       commentSetForAdmin({ id: 'c1', set: { comment: 'edited' } }, ctx),
     ).rejects.toMatchObject({ code: ResponseCode.NEED_LOGIN });
@@ -427,6 +420,7 @@ describe('commentSetForAdmin', () => {
 
   it('rejects when set is not a plain object', async () => {
     const { ctx } = buildSetCtx(ADMIN);
+
     await expect(
       commentSetForAdmin(
         { id: 'c1', set: 'not-an-object' as unknown as Record<string, unknown> },
@@ -446,12 +440,16 @@ describe('commentSetForAdmin', () => {
       },
       ctx,
     );
+
     expect(update).toHaveBeenCalledTimes(1);
     const call = update.mock.calls[0];
+
     if (!call) {
       throw new Error('expected update to have been called');
     }
+
     const [id, fields] = call as [string, Record<string, unknown> & { updated: number }];
+
     expect(id).toBe('c1');
     expect(fields).toMatchObject({ comment: 'edited', isSpam: 1, top: 0 });
     expect(fields).not.toHaveProperty('uid');
@@ -459,33 +457,30 @@ describe('commentSetForAdmin', () => {
     expect(fields.updated).toBe(Date.now());
   });
 
-  it('hides + un-pins (isSpam: true, top: false) via truthiness', async () => {
+  it.each([
+    { isSpam: true, top: false, expected: { isSpam: 1, top: 0 } },
+    { isSpam: false, top: true, expected: { isSpam: 0, top: 1 } },
+  ])('coerces isSpam=$isSpam and top=$top', async ({ isSpam, top, expected }) => {
     const { ctx, update } = buildSetCtx(ADMIN);
-    await commentSetForAdmin({ id: 'c1', set: { isSpam: true, top: false } }, ctx);
-    const fields = update.mock.calls[0]?.[1] as Record<string, unknown> | undefined;
-    expect(fields?.isSpam).toBe(1);
-    expect(fields?.top).toBe(0);
+
+    await commentSetForAdmin({ id: 'c1', set: { isSpam, top } }, ctx);
+
+    expect(update.mock.calls[0]?.[1]).toMatchObject(expected);
   });
 
-  it('un-hides + pins (isSpam: false, top: true) via truthiness', async () => {
-    const { ctx, update } = buildSetCtx(ADMIN);
-    await commentSetForAdmin({ id: 'c1', set: { isSpam: false, top: true } }, ctx);
-    const fields = update.mock.calls[0]?.[1] as Record<string, unknown> | undefined;
-    expect(fields?.isSpam).toBe(0);
-    expect(fields?.top).toBe(1);
-  });
-
-  it('coerces non-canonical truthy values to 1 (no longer rejected)', async () => {
+  it('coerces non-canonical truthy values to 1', async () => {
     const { ctx, update } = buildSetCtx(ADMIN);
     await commentSetForAdmin({ id: 'c1', set: { isSpam: 2 } }, ctx);
     const fields = update.mock.calls[0]?.[1] as Record<string, unknown> | undefined;
+
     expect(fields?.isSpam).toBe(1);
   });
 
-  it('writes only updated when the set is comment-only (skips isSpam / top branches)', async () => {
+  it('writes the comment without changing flags', async () => {
     const { ctx, update } = buildSetCtx(ADMIN);
     await commentSetForAdmin({ id: 'c1', set: { comment: 'edited' } }, ctx);
     const fields = update.mock.calls[0]?.[1] as Record<string, unknown> | undefined;
+
     expect(fields?.comment).toBe('edited');
     expect(fields).not.toHaveProperty('isSpam');
     expect(fields).not.toHaveProperty('top');
@@ -493,6 +488,7 @@ describe('commentSetForAdmin', () => {
 
   it('rejects a non-string comment field', async () => {
     const { ctx } = buildSetCtx(ADMIN);
+
     await expect(commentSetForAdmin({ id: 'c1', set: { comment: 42 } }, ctx)).rejects.toMatchObject(
       { code: ResponseCode.FAIL },
     );
@@ -509,11 +505,13 @@ describe('commentDeleteForAdmin', () => {
       config: { ADMIN_PASS: md5(ADMIN) },
       db: { comment: { delete: del } } as unknown as RequestCtx['db'],
     });
+
     return { ctx, del };
   };
 
   it('rejects a non-admin caller', async () => {
     const { ctx, del } = buildDelCtx('guest');
+
     await expect(commentDeleteForAdmin({ id: 'c1' }, ctx)).rejects.toMatchObject({
       code: ResponseCode.NEED_LOGIN,
     });
@@ -523,6 +521,7 @@ describe('commentDeleteForAdmin', () => {
   it('forwards the id and returns deleted:1 when admin', async () => {
     const { ctx, del } = buildDelCtx(ADMIN);
     const result = await commentDeleteForAdmin({ id: 'c1' }, ctx);
+
     expect(result).toEqual({ deleted: 1 });
     expect(del).toHaveBeenCalledWith('c1');
   });
@@ -536,11 +535,13 @@ describe('commentDeleteForUser', () => {
       uid: mkUid(uid),
       db: { comment: { byId, delete: del } } as unknown as RequestCtx['db'],
     });
+
     return { ctx, byId, del };
   };
 
   it('rejects an anonymous caller (empty uid)', async () => {
     const { ctx, del } = buildOwnerCtx('');
+
     await expect(commentDeleteForUser({ id: 'c1' }, ctx)).rejects.toMatchObject({
       code: ResponseCode.NEED_LOGIN,
     });
@@ -549,6 +550,7 @@ describe('commentDeleteForUser', () => {
 
   it('rejects when the row is missing', async () => {
     const { ctx, del } = buildOwnerCtx('owner-uid', undefined);
+
     await expect(commentDeleteForUser({ id: 'c1' }, ctx)).rejects.toMatchObject({
       code: ResponseCode.FAIL,
     });
@@ -558,6 +560,7 @@ describe('commentDeleteForUser', () => {
   it('rejects when the caller is not the author', async () => {
     const row: Comment = { ...baseRow, uid: 'other-uid' };
     const { ctx, del } = buildOwnerCtx('owner-uid', row);
+
     await expect(commentDeleteForUser({ id: 'c1' }, ctx)).rejects.toMatchObject({
       code: ResponseCode.FAIL,
     });
@@ -568,6 +571,7 @@ describe('commentDeleteForUser', () => {
     const row: Comment = { ...baseRow, uid: 'owner-uid' };
     const { ctx, del } = buildOwnerCtx('owner-uid', row);
     const result = await commentDeleteForUser({ id: 'c1' }, ctx);
+
     expect(result).toEqual({ deleted: 1 });
     expect(del).toHaveBeenCalledWith('c1');
   });
@@ -589,11 +593,13 @@ describe('commentExportForAdmin', () => {
         config: { exportAll: configExport },
       } as unknown as RequestCtx['db'],
     });
+
     return { ctx, commentExport, counterExport, configExport };
   };
 
   it('rejects a non-admin caller', async () => {
     const { ctx, commentExport } = buildExportCtx('guest');
+
     await expect(commentExportForAdmin({}, ctx)).rejects.toMatchObject({
       code: ResponseCode.NEED_LOGIN,
     });
@@ -603,6 +609,7 @@ describe('commentExportForAdmin', () => {
   it('defaults to the comment collection', async () => {
     const { ctx, commentExport, counterExport, configExport } = buildExportCtx(ADMIN);
     const result = await commentExportForAdmin({}, ctx);
+
     expect(commentExport).toHaveBeenCalled();
     expect(counterExport).not.toHaveBeenCalled();
     expect(configExport).not.toHaveBeenCalled();
@@ -613,7 +620,9 @@ describe('commentExportForAdmin', () => {
     'routes collection=%s to the matching DB.exportAll',
     async (collection) => {
       const { ctx, commentExport, counterExport, configExport } = buildExportCtx(ADMIN);
-      await commentExportForAdmin({ collection }, ctx);
+      const result = await commentExportForAdmin({ collection }, ctx);
+
+      expect(result).toEqual({ data: [{ kind: collection }] });
       const map = { comment: commentExport, counter: counterExport, config: configExport };
       for (const [name, spy] of Object.entries(map)) {
         if (name === collection) {
@@ -627,6 +636,7 @@ describe('commentExportForAdmin', () => {
 
   it('rejects an unsupported collection', async () => {
     const { ctx } = buildExportCtx(ADMIN);
+
     await expect(commentExportForAdmin({ collection: 'evil' }, ctx)).rejects.toBeInstanceOf(
       TwikooError,
     );

@@ -16,12 +16,13 @@ const comment = {
 const config = {
   PUSHOO_CHANNEL: 'telegram',
   PUSHOO_TOKEN: '123456:bot_token#-100123456',
-  SITE_NAME: 'HAKULA†CHANNEL',
-  SITE_URL: 'https://hakula.xyz/',
+  SITE_NAME: 'Example†Site',
+  SITE_URL: 'https://example.com/',
 };
 
 const sentText = (fetchMock: MockInstance): string => {
   const init = fetchMock.mock.calls[0]?.[1] as RequestInit;
+
   return (JSON.parse(init.body as string) as { text: string }).text;
 };
 
@@ -41,18 +42,19 @@ describe('sendTelegramNotice', () => {
     await sendTelegramNotice(comment, config, config.PUSHOO_TOKEN);
 
     const expectedText = `
-<b>您在 HAKULA†CHANNEL 发表的文章有了新评论～</b>
+<b>您在 Example†Site 发表的文章有了新评论～</b>
 
 <b>Alice &lt;Admin&gt;</b>
 <blockquote>Research &amp; development.</blockquote>
 
-<a href="https://hakula.xyz/about-me/#comment-1">查看原文</a>
+<a href="https://example.com/about-me/#comment-1">查看原文</a>
 
 <code>alice@example.com</code> · <code>192.0.2.1</code>`.trim();
 
     expect(fetchMock).toHaveBeenCalledOnce();
     expect(twikoo.htmlToText).toHaveBeenCalledWith(comment.comment);
     const [url, init] = fetchMock.mock.calls[0] as [string, RequestInit];
+
     expect(url).toBe('https://api.telegram.org/bot123456:bot_token/sendMessage');
     expect(init).toMatchObject({
       method: 'POST',
@@ -95,43 +97,31 @@ describe('sendTelegramNotice', () => {
     expect(fetchMock).not.toHaveBeenCalled();
   });
 
-  it('omits the article link when the site URL is not configured', async () => {
-    const fetchMock = vi.spyOn(globalThis, 'fetch').mockResolvedValue(Response.json({ ok: true }));
-
-    await sendTelegramNotice(comment, { ...config, SITE_URL: undefined }, config.PUSHOO_TOKEN);
-
-    expect(sentText(fetchMock)).not.toContain('<a href=');
-  });
-
-  it.each(['not a URL', 'ftp://hakula.xyz/', 'file:///tmp/'])(
-    'omits the article link for site URL %s',
-    async (siteUrl) => {
-      const fetchMock = vi
-        .spyOn(globalThis, 'fetch')
-        .mockResolvedValue(Response.json({ ok: true }));
-
-      await sendTelegramNotice(comment, { ...config, SITE_URL: siteUrl }, config.PUSHOO_TOKEN);
-
-      expect(sentText(fetchMock)).not.toContain('<a href=');
+  it.each([
+    { name: 'missing site URL', siteUrl: undefined, url: '/about-me/' },
+    { name: 'malformed site URL', siteUrl: 'not a URL', url: '/about-me/' },
+    { name: 'FTP site URL', siteUrl: 'ftp://example.com/', url: '/about-me/' },
+    { name: 'file site URL', siteUrl: 'file:///tmp/', url: '/about-me/' },
+    {
+      name: 'different origin',
+      siteUrl: 'https://safe.example/',
+      url: String.raw`\evil.example/post`,
     },
-  );
-
-  it('rejects links that escape the configured site origin', async () => {
+    { name: 'invalid path', siteUrl: config.SITE_URL, url: String.raw`\[` },
+    { name: 'oversized URL', siteUrl: config.SITE_URL, url: `/${'x'.repeat(900)}` },
+    {
+      name: 'oversized escaped URL',
+      siteUrl: config.SITE_URL,
+      url: `/about-me/?${'topic=research&'.repeat(45)}`,
+    },
+  ])('omits the article link for $name', async ({ siteUrl, url }) => {
     const fetchMock = vi.spyOn(globalThis, 'fetch').mockResolvedValue(Response.json({ ok: true }));
 
     await sendTelegramNotice(
-      { ...comment, url: String.raw`\evil.example/post` },
-      { ...config, SITE_URL: 'https://safe.example/' },
+      { ...comment, url },
+      { ...config, SITE_URL: siteUrl },
       config.PUSHOO_TOKEN,
     );
-
-    expect(sentText(fetchMock)).not.toContain('<a href=');
-  });
-
-  it('omits the article link for an invalid comment path', async () => {
-    const fetchMock = vi.spyOn(globalThis, 'fetch').mockResolvedValue(Response.json({ ok: true }));
-
-    await sendTelegramNotice({ ...comment, url: String.raw`\[` }, config, config.PUSHOO_TOKEN);
 
     expect(sentText(fetchMock)).not.toContain('<a href=');
   });
@@ -146,31 +136,9 @@ describe('sendTelegramNotice', () => {
     );
 
     expect(sentText(fetchMock)).toContain(
-      '<a href="https://hakula.xyz/about-me/#comment-1">查看原文</a>',
+      '<a href="https://example.com/about-me/#comment-1">查看原文</a>',
     );
     expect(sentText(fetchMock)).not.toContain('old-anchor');
-  });
-
-  it('omits an article link that exceeds the message budget', async () => {
-    const fetchMock = vi.spyOn(globalThis, 'fetch').mockResolvedValue(Response.json({ ok: true }));
-
-    await sendTelegramNotice(
-      { ...comment, url: `/${'x'.repeat(900)}` },
-      config,
-      config.PUSHOO_TOKEN,
-    );
-
-    expect(sentText(fetchMock)).not.toContain('<a href=');
-  });
-
-  it('omits an article link whose HTML escaping exceeds the message budget', async () => {
-    const fetchMock = vi.spyOn(globalThis, 'fetch').mockResolvedValue(Response.json({ ok: true }));
-    const url = `/about-me/?${'topic=research&'.repeat(45)}`;
-    expect(url.length).toBeLessThan(800);
-
-    await sendTelegramNotice({ ...comment, url }, config, config.PUSHOO_TOKEN);
-
-    expect(sentText(fetchMock)).not.toContain('<a href=');
   });
 
   it('uses a clean default title without a site name', async () => {
@@ -197,21 +165,23 @@ describe('sendTelegramNotice', () => {
       },
       {
         ...config,
-        SITE_NAME: `HAKULA†CHANNEL <${'😀'.repeat(500)}>`,
+        SITE_NAME: `Example†Site <${'😀'.repeat(500)}>`,
         SITE_URL: 'https://safe.example/base/',
       },
       config.PUSHOO_TOKEN,
     );
 
     const text = sentText(fetchMock);
+
     expect(text.length).toBeLessThanOrEqual(4_096);
     expect(
       [...text].some((char) => {
         const point = char.codePointAt(0) ?? 0;
+
         return point >= 0xd800 && point <= 0xdfff;
       }),
     ).toBe(false);
-    expect(text).toMatch(/^<b>您在 HAKULA†CHANNEL &lt;😀/);
+    expect(text).toMatch(/^<b>您在 Example†Site &lt;😀/);
     expect(text).toMatch(/<b>Alice 😀+\.\.\.<\/b>/u);
     expect(text).toMatch(/<blockquote>Long comment 😀+\.\.\.<\/blockquote>/u);
     expect(text).toContain(

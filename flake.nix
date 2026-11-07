@@ -1,14 +1,5 @@
-# ==============================================================================
-# twikoo-api-worker Development Flake
-# ==============================================================================
-#
-# Provides Node.js, pnpm, wrangler runtime, and pre-commit hooks.
-#
-#   nix develop        # interactive shell (auto-installs hooks)
-#   nix flake check    # Nix-side hooks (Node-side run in CI's `check` job)
-
 {
-  description = "twikoo-api-worker — Cloudflare Workers backend for Twikoo (dev environment)";
+  description = "twikoo-api-worker: Cloudflare Workers backend for Twikoo (dev environment)";
 
   # ----------------------------------------------------------------------------
   # Inputs
@@ -39,7 +30,7 @@
         # ----------------------------------------------------------------------
         # `pnpm exec` needs node + pnpm on PATH and the project's
         # `node_modules` materialised. The Nix sandbox lacks the latter, so
-        # `nix flake check` skips these hooks; the equivalent checks run in
+        # `nix flake check` skips these hooks. Equivalent checks run in
         # CI via direct `pnpm` scripts.
         nodeHook =
           name: cmd:
@@ -133,11 +124,19 @@
           # git-hooks.nix stores a main-checkout-relative path that linked worktrees cannot
           # resolve (cachix/git-hooks.nix#688). Serialize installation before clearing it.
           shellHook = ''
-            if common=$(${git} rev-parse --path-format=absolute --git-common-dir 2>/dev/null); then
+            if common=$(
+              ${git} rev-parse \
+                --path-format=absolute \
+                --git-common-dir \
+                2>/dev/null
+            ); then
               (
                 ${flock} 9
                 ${preCommitCheck.config.installationScript}
-                ${git} config --local --unset-all core.hooksPath || true
+                ${git} config \
+                  --local \
+                  --unset-all core.hooksPath \
+                  || true
               ) 9>"$common/git-hooks.lock"
             fi
           '';

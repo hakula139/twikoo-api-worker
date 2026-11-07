@@ -15,9 +15,9 @@ const env = rawEnv as unknown as Env;
 const execCtx = () => createExecutionContext();
 
 const post = (body: string): Request =>
-  new Request('https://twikoo.hakula.xyz/', {
+  new Request('https://comments.example.com/', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', 'Origin': 'https://hakula.xyz' },
+    headers: { 'Content-Type': 'application/json', 'Origin': 'https://example.com' },
     body,
   });
 
@@ -43,9 +43,11 @@ afterEach(async () => {
 describe('dispatch', () => {
   it('returns FAIL with a CORS-safe body when the request body is not JSON', async () => {
     const res = await dispatch(post('{not-json'), env, execCtx());
+
     expect(res.status).toBe(200);
     expect(res.headers.get('Access-Control-Allow-Origin')).toBeTruthy();
     const body = await res.json<{ code: number; message: string }>();
+
     expect(body.code).toBe(ResponseCode.FAIL);
     expect(body.message).toMatch(/JSON/);
   });
@@ -53,6 +55,7 @@ describe('dispatch', () => {
   it('returns FAIL when the request body parses to a non-object', async () => {
     const res = await dispatch(post('[1,2,3]'), env, execCtx());
     const body = await res.json<{ code: number; message: string }>();
+
     expect(body.code).toBe(ResponseCode.FAIL);
   });
 
@@ -64,6 +67,7 @@ describe('dispatch', () => {
     expect(res.status).toBe(200);
     expect(res.headers.get('Access-Control-Allow-Origin')).toBeTruthy();
     const body = await res.json<{ code: number; message: string }>();
+
     expect(body.code).toBe(ResponseCode.CONFIG_NOT_EXIST);
     expect(body.message).toMatch(/corrupted/i);
   });
@@ -72,6 +76,7 @@ describe('dispatch', () => {
     await writeConfigRow('[1,2,3]');
     const res = await dispatch(post('{"event":"GET_FUNC_VERSION"}'), env, execCtx());
     const body = await res.json<{ code: number; message: string }>();
+
     expect(body.code).toBe(ResponseCode.CONFIG_NOT_EXIST);
   });
 
@@ -79,16 +84,17 @@ describe('dispatch', () => {
     await writeConfigRow('{}');
     const res = await dispatch(post('{"event":"NOT_A_REAL_EVENT"}'), env, execCtx());
     const body = await res.json<{ code: number; message: string }>();
+
     expect(body.code).toBe(ResponseCode.EVENT_NOT_EXIST);
   });
 
   describe('body size cap', () => {
     const postWithLength = (body: string, length: number): Request =>
-      new Request('https://twikoo.hakula.xyz/', {
+      new Request('https://comments.example.com/', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Origin': 'https://hakula.xyz',
+          'Origin': 'https://example.com',
           'Content-Length': String(length),
         },
         body,
@@ -96,9 +102,11 @@ describe('dispatch', () => {
 
     it('rejects when Content-Length exceeds the cap', async () => {
       const res = await dispatch(postWithLength('{}', MAX_BODY_BYTES + 1), env, execCtx());
+
       expect(res.status).toBe(200);
       expect(res.headers.get('Access-Control-Allow-Origin')).toBeTruthy();
       const body = await res.json<{ code: number; message: string }>();
+
       expect(body.code).toBe(ResponseCode.FAIL);
       expect(body.message).toMatch(/too large/i);
     });
@@ -110,12 +118,14 @@ describe('dispatch', () => {
         execCtx(),
       );
       const body = await res.json<{ code: number; message: string }>();
+
       expect(body.code).toBe(ResponseCode.SUCCESS);
     });
 
     it('falls through to parse when Content-Length is absent', async () => {
       const res = await dispatch(post('{not-json'), env, execCtx());
       const body = await res.json<{ code: number; message: string }>();
+
       expect(body.message).toMatch(/JSON/);
     });
   });
@@ -173,6 +183,7 @@ describe('dispatch', () => {
       const res = await dispatch(post('{"event":"GET_FUNC_VERSION"}'), env, execCtx());
 
       const body = await res.json<{ code: number; message: string }>();
+
       expect(body.code).toBe(ResponseCode.FORBIDDEN);
     });
 
@@ -185,6 +196,7 @@ describe('dispatch', () => {
       const res = await dispatch(post('{"event":"GET_FUNC_VERSION"}'), env, execCtx());
 
       const body = await res.json<{ code: number; message: string }>();
+
       expect(body.code).toBe(ResponseCode.PASS_NOT_MATCH);
       expect(body.message).toBe('密码错误');
     });
@@ -198,11 +210,13 @@ describe('dispatch', () => {
       const res = await dispatch(post('{"event":"GET_FUNC_VERSION"}'), env, execCtx());
 
       const body = await res.json<{ code: number; message: string }>();
+
       expect(body.code).toBe(ResponseCode.FAIL);
       expect(body.message).toBe('upstream timeout');
       const sawUnhandled = errorSpy.mock.calls.some(
         (args) => args[0] === 'Unhandled handler error:',
       );
+
       expect(sawUnhandled).toBe(true);
     });
 
@@ -215,6 +229,7 @@ describe('dispatch', () => {
       const res = await dispatch(post('{"event":"GET_FUNC_VERSION"}'), env, execCtx());
 
       const body = await res.json<{ code: number; message: string }>();
+
       expect(body.code).toBe(ResponseCode.FAIL);
       expect(body.message).toBe('Internal error.');
     });
@@ -235,6 +250,7 @@ describe('dispatch', () => {
         'request',
       );
       const fields = infoSpy.mock.calls[0]?.[0] as { duration_ms: unknown } | undefined;
+
       expect(fields?.duration_ms).toBeTypeOf('number');
     });
 

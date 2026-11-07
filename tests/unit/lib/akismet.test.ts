@@ -4,7 +4,7 @@ import { checkAkismet } from '@/lib/akismet';
 
 const baseOpts = {
   apiKey: 'test-api-key',
-  blog: 'https://hakula.xyz',
+  blog: 'https://example.com',
   userIp: '192.0.2.1',
   userAgent: 'Mozilla/5.0',
   content: '感谢分享。',
@@ -21,14 +21,17 @@ describe('checkAkismet', () => {
     const fetchSpy = vi.spyOn(globalThis, 'fetch').mockResolvedValue(textResponse('true'));
 
     const isSpam = await checkAkismet(baseOpts);
+
     expect(isSpam).toBe(true);
 
     const [url, init] = fetchSpy.mock.calls[0] as [string, RequestInit];
+
     expect(url).toBe('https://test-api-key.rest.akismet.com/1.1/comment-check');
     expect(init.method).toBe('POST');
 
     const body = init.body as URLSearchParams;
-    expect(body.get('blog')).toBe('https://hakula.xyz');
+
+    expect(body.get('blog')).toBe('https://example.com');
     expect(body.get('user_ip')).toBe('192.0.2.1');
     expect(body.get('user_agent')).toBe('Mozilla/5.0');
     expect(body.get('comment_type')).toBe('comment');
@@ -37,6 +40,7 @@ describe('checkAkismet', () => {
 
   it('returns false when body is "false"', async () => {
     vi.spyOn(globalThis, 'fetch').mockResolvedValue(textResponse('false'));
+
     expect(await checkAkismet(baseOpts)).toBe(false);
   });
 
@@ -45,7 +49,7 @@ describe('checkAkismet', () => {
 
     await checkAkismet({
       ...baseOpts,
-      permalink: 'https://hakula.xyz/about-me/',
+      permalink: 'https://example.com/about-me/',
       author: 'Reader',
       authorEmail: 'reader@example.com',
       authorUrl: 'https://reader.example.com',
@@ -53,7 +57,8 @@ describe('checkAkismet', () => {
 
     const [, init] = fetchSpy.mock.calls[0] as [string, RequestInit];
     const body = init.body as URLSearchParams;
-    expect(body.get('permalink')).toBe('https://hakula.xyz/about-me/');
+
+    expect(body.get('permalink')).toBe('https://example.com/about-me/');
     expect(body.get('comment_author')).toBe('Reader');
     expect(body.get('comment_author_email')).toBe('reader@example.com');
     expect(body.get('comment_author_url')).toBe('https://reader.example.com');
@@ -63,6 +68,7 @@ describe('checkAkismet', () => {
     vi.spyOn(globalThis, 'fetch').mockResolvedValue(textResponse('true', 500));
     const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
     const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+
     expect(await checkAkismet(baseOpts)).toBe(false);
     expect(warnSpy).toHaveBeenCalledTimes(1);
     expect(errorSpy).not.toHaveBeenCalled();
@@ -72,6 +78,7 @@ describe('checkAkismet', () => {
     vi.spyOn(globalThis, 'fetch').mockResolvedValue(textResponse('', 401));
     const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
     const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+
     expect(await checkAkismet(baseOpts)).toBe(false);
     expect(errorSpy).toHaveBeenCalledTimes(1);
     expect(warnSpy).not.toHaveBeenCalled();
@@ -79,6 +86,7 @@ describe('checkAkismet', () => {
 
   it('propagates network errors (caller wraps for fail-open)', async () => {
     vi.spyOn(globalThis, 'fetch').mockRejectedValue(new Error('ENETDOWN'));
+
     await expect(checkAkismet(baseOpts)).rejects.toThrow('ENETDOWN');
   });
 });

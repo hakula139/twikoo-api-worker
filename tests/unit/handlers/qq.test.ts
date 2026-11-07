@@ -53,29 +53,21 @@ describe('getQqNick', () => {
     });
   });
 
-  it('returns null when the upstream returns a non-2xx status', async () => {
-    vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce(new Response('boom', { status: 500 }));
+  it.each([
+    { name: 'non-2xx HTTP status', response: () => new Response('boom', { status: 500 }) },
+    { name: 'non-success API code', response: () => jsonResponse({ code: 401 }) },
+    { name: 'missing nick', response: () => jsonResponse({ code: 200, data: {} }) },
+    {
+      name: 'network failure',
+      response: () => {
+        throw new Error('fetch failed');
+      },
+    },
+  ])('returns null for $name', async ({ response }) => {
+    vi.spyOn(globalThis, 'fetch').mockImplementationOnce(async () => response());
 
-    await expect(getQqNick({ qq: '1' }, buildCtx())).resolves.toEqual({ nick: null });
-  });
+    const result = await getQqNick({ qq: '1' }, buildCtx());
 
-  it('returns null when the upstream replies 200 but with a non-success code', async () => {
-    vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce(
-      jsonResponse({ code: 401, message: 'unauthorized' }),
-    );
-
-    await expect(getQqNick({ qq: '1' }, buildCtx())).resolves.toEqual({ nick: null });
-  });
-
-  it('returns null when fetch rejects (network error)', async () => {
-    vi.spyOn(globalThis, 'fetch').mockRejectedValueOnce(new Error('TypeError: fetch failed'));
-
-    await expect(getQqNick({ qq: '1' }, buildCtx())).resolves.toEqual({ nick: null });
-  });
-
-  it('returns null when the response body is missing the nick field', async () => {
-    vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce(jsonResponse({ code: 200, data: {} }));
-
-    await expect(getQqNick({ qq: '1' }, buildCtx())).resolves.toEqual({ nick: null });
+    expect(result).toEqual({ nick: null });
   });
 });

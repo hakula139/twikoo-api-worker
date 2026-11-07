@@ -122,22 +122,27 @@ describe('integration: notifications', () => {
     const recipients = masterEmail
       ? ['owner@example.com', 'parent@example.com']
       : ['parent@example.com'];
+
     expect(emails.map(({ body }) => body.to).sort()).toEqual(recipients);
     for (const { body } of emails) {
       expect(body.from).toBe('"Example Site" <comments@example.com>');
       expect(body.html).toContain('href="https://example.com/post/#reply-1"');
     }
+
     expect(requests.map(({ url }) => url).sort()).toEqual(
       [
         ...recipients.map(() => 'https://api.resend.com/emails'),
         ...(telegram ? ['https://api.telegram.org/bot123456:example_token/sendMessage'] : []),
       ].sort(),
     );
+
     if (telegram) {
       const message = requests.find(({ url }) => url.includes('api.telegram.org'))?.body;
+
       expect(message).toMatchObject({ chat_id: '-100123456', parse_mode: 'HTML' });
       expect(message?.text).toContain('href="https://example.com/post/#reply-1"');
     }
+
     expect(errorSpy).not.toHaveBeenCalled();
   });
 
