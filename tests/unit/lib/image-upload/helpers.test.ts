@@ -103,6 +103,7 @@ describe('safeBaseName', () => {
 describe('checkNsfw', () => {
   it('passes through (no rejection) when NSFW_API_URL is unset', async () => {
     const fetchSpy = vi.spyOn(globalThis, 'fetch');
+
     const result = await checkNsfw(dataUrl, {});
 
     expect(result).toEqual({ rejected: false, message: '' });
@@ -117,6 +118,7 @@ describe('checkNsfw', () => {
       NSFW_API_URL: 'https://nsfw.example/',
       NSFW_THRESHOLD: '0.5',
     };
+
     const result = await checkNsfw(dataUrl, config);
 
     expect(result.rejected).toBe(true);
@@ -145,6 +147,7 @@ describe('checkNsfw', () => {
       okResponse({ porn: 0.6, hentai: 0, sexy: 0 }),
     );
     const config: TwikooConfig = { NSFW_API_URL: 'https://nsfw.example' };
+
     const result = await checkNsfw(dataUrl, config);
 
     expect(result.rejected).toBe(true);
@@ -154,6 +157,7 @@ describe('checkNsfw', () => {
     const fetchSpy = vi
       .spyOn(globalThis, 'fetch')
       .mockResolvedValueOnce(okResponse({ porn: 0, hentai: 0, sexy: 0 }));
+
     await checkNsfw(dataUrl, { NSFW_API_URL: 'https://nsfw.example/' });
 
     expect(fetchSpy).toHaveBeenCalledWith(

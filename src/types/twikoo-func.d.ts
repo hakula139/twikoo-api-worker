@@ -63,7 +63,6 @@ declare module 'twikoo-func/utils/notify' {
     config: unknown,
     getParentComment: (current: unknown) => Promise<unknown>,
   ): Promise<void>;
-  // Upstream returns {} without admin access, { result } on success, or { message } on failure.
   export function emailTest(
     event: unknown,
     config: unknown,

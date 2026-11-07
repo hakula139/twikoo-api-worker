@@ -248,6 +248,14 @@ describe('commentLike', () => {
     return { ctx, toggleVote };
   };
 
+  it('defaults type to up and forwards id + uid to toggleVote', async () => {
+    const { ctx, toggleVote } = buildLikeCtx(true);
+    const result = await commentLike({ id: 'c1' }, ctx);
+
+    expect(result).toEqual({ updated: 1 });
+    expect(toggleVote).toHaveBeenCalledWith('c1', 'voter-uid', 'up');
+  });
+
   it('rejects an unknown like type', async () => {
     const { ctx, toggleVote } = buildLikeCtx(true);
 
@@ -263,14 +271,6 @@ describe('commentLike', () => {
     await expect(commentLike({ id: 'missing' }, ctx)).rejects.toMatchObject({
       code: ResponseCode.FAIL,
     });
-  });
-
-  it('defaults type to up and forwards id + uid to toggleVote', async () => {
-    const { ctx, toggleVote } = buildLikeCtx(true);
-    const result = await commentLike({ id: 'c1' }, ctx);
-
-    expect(result).toEqual({ updated: 1 });
-    expect(toggleVote).toHaveBeenCalledWith('c1', 'voter-uid', 'up');
   });
 });
 
@@ -332,15 +332,6 @@ describe('commentGetForAdmin', () => {
     return { ctx, countForAdmin, listForAdmin };
   };
 
-  it('rejects a non-admin caller', async () => {
-    const { ctx, listForAdmin } = buildAdminCtx('guest');
-
-    await expect(commentGetForAdmin({ per: 10, page: 1 }, ctx)).rejects.toMatchObject({
-      code: ResponseCode.NEED_LOGIN,
-    });
-    expect(listForAdmin).not.toHaveBeenCalled();
-  });
-
   it.each<{ type: string; isSpam: Bit | undefined }>([
     { type: 'HIDDEN', isSpam: 1 },
     { type: 'VISIBLE', isSpam: 0 },
@@ -393,6 +384,15 @@ describe('commentGetForAdmin', () => {
 
     expect(result.data[0]?.ipRegion).toBe('China · Beijing');
   });
+
+  it('rejects a non-admin caller', async () => {
+    const { ctx, listForAdmin } = buildAdminCtx('guest');
+
+    await expect(commentGetForAdmin({ per: 10, page: 1 }, ctx)).rejects.toMatchObject({
+      code: ResponseCode.NEED_LOGIN,
+    });
+    expect(listForAdmin).not.toHaveBeenCalled();
+  });
 });
 
 describe('commentSetForAdmin', () => {
@@ -408,26 +408,6 @@ describe('commentSetForAdmin', () => {
 
     return { ctx, update };
   };
-
-  it('rejects a non-admin caller', async () => {
-    const { ctx, update } = buildSetCtx('guest');
-
-    await expect(
-      commentSetForAdmin({ id: 'c1', set: { comment: 'edited' } }, ctx),
-    ).rejects.toMatchObject({ code: ResponseCode.NEED_LOGIN });
-    expect(update).not.toHaveBeenCalled();
-  });
-
-  it('rejects when set is not a plain object', async () => {
-    const { ctx } = buildSetCtx(ADMIN);
-
-    await expect(
-      commentSetForAdmin(
-        { id: 'c1', set: 'not-an-object' as unknown as Record<string, unknown> },
-        ctx,
-      ),
-    ).rejects.toMatchObject({ code: ResponseCode.FAIL });
-  });
 
   it('writes only allowlisted fields and stamps `updated`', async () => {
     vi.useFakeTimers();
@@ -486,6 +466,26 @@ describe('commentSetForAdmin', () => {
     expect(fields).not.toHaveProperty('top');
   });
 
+  it('rejects a non-admin caller', async () => {
+    const { ctx, update } = buildSetCtx('guest');
+
+    await expect(
+      commentSetForAdmin({ id: 'c1', set: { comment: 'edited' } }, ctx),
+    ).rejects.toMatchObject({ code: ResponseCode.NEED_LOGIN });
+    expect(update).not.toHaveBeenCalled();
+  });
+
+  it('rejects when set is not a plain object', async () => {
+    const { ctx } = buildSetCtx(ADMIN);
+
+    await expect(
+      commentSetForAdmin(
+        { id: 'c1', set: 'not-an-object' as unknown as Record<string, unknown> },
+        ctx,
+      ),
+    ).rejects.toMatchObject({ code: ResponseCode.FAIL });
+  });
+
   it('rejects a non-string comment field', async () => {
     const { ctx } = buildSetCtx(ADMIN);
 
@@ -509,6 +509,14 @@ describe('commentDeleteForAdmin', () => {
     return { ctx, del };
   };
 
+  it('forwards the id and returns deleted:1 when admin', async () => {
+    const { ctx, del } = buildDelCtx(ADMIN);
+    const result = await commentDeleteForAdmin({ id: 'c1' }, ctx);
+
+    expect(result).toEqual({ deleted: 1 });
+    expect(del).toHaveBeenCalledWith('c1');
+  });
+
   it('rejects a non-admin caller', async () => {
     const { ctx, del } = buildDelCtx('guest');
 
@@ -516,14 +524,6 @@ describe('commentDeleteForAdmin', () => {
       code: ResponseCode.NEED_LOGIN,
     });
     expect(del).not.toHaveBeenCalled();
-  });
-
-  it('forwards the id and returns deleted:1 when admin', async () => {
-    const { ctx, del } = buildDelCtx(ADMIN);
-    const result = await commentDeleteForAdmin({ id: 'c1' }, ctx);
-
-    expect(result).toEqual({ deleted: 1 });
-    expect(del).toHaveBeenCalledWith('c1');
   });
 });
 
@@ -538,6 +538,15 @@ describe('commentDeleteForUser', () => {
 
     return { ctx, byId, del };
   };
+
+  it('deletes when the caller owns the row', async () => {
+    const row: Comment = { ...baseRow, uid: 'owner-uid' };
+    const { ctx, del } = buildOwnerCtx('owner-uid', row);
+    const result = await commentDeleteForUser({ id: 'c1' }, ctx);
+
+    expect(result).toEqual({ deleted: 1 });
+    expect(del).toHaveBeenCalledWith('c1');
+  });
 
   it('rejects an anonymous caller (empty uid)', async () => {
     const { ctx, del } = buildOwnerCtx('');
@@ -566,15 +575,6 @@ describe('commentDeleteForUser', () => {
     });
     expect(del).not.toHaveBeenCalled();
   });
-
-  it('deletes when the caller owns the row', async () => {
-    const row: Comment = { ...baseRow, uid: 'owner-uid' };
-    const { ctx, del } = buildOwnerCtx('owner-uid', row);
-    const result = await commentDeleteForUser({ id: 'c1' }, ctx);
-
-    expect(result).toEqual({ deleted: 1 });
-    expect(del).toHaveBeenCalledWith('c1');
-  });
 });
 
 describe('commentExportForAdmin', () => {
@@ -596,15 +596,6 @@ describe('commentExportForAdmin', () => {
 
     return { ctx, commentExport, counterExport, configExport };
   };
-
-  it('rejects a non-admin caller', async () => {
-    const { ctx, commentExport } = buildExportCtx('guest');
-
-    await expect(commentExportForAdmin({}, ctx)).rejects.toMatchObject({
-      code: ResponseCode.NEED_LOGIN,
-    });
-    expect(commentExport).not.toHaveBeenCalled();
-  });
 
   it('defaults to the comment collection', async () => {
     const { ctx, commentExport, counterExport, configExport } = buildExportCtx(ADMIN);
@@ -633,6 +624,15 @@ describe('commentExportForAdmin', () => {
       }
     },
   );
+
+  it('rejects a non-admin caller', async () => {
+    const { ctx, commentExport } = buildExportCtx('guest');
+
+    await expect(commentExportForAdmin({}, ctx)).rejects.toMatchObject({
+      code: ResponseCode.NEED_LOGIN,
+    });
+    expect(commentExport).not.toHaveBeenCalled();
+  });
 
   it('rejects an unsupported collection', async () => {
     const { ctx } = buildExportCtx(ADMIN);

@@ -342,6 +342,7 @@ describe('uploadImage > providers', () => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date('2026-01-15T00:00:00Z'));
     vi.spyOn(crypto, 'randomUUID').mockReturnValue('00000000-0000-4000-8000-000000000000');
+
     try {
       const fetchSpy = vi
         .spyOn(globalThis, 'fetch')

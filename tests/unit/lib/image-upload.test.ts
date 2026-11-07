@@ -24,6 +24,7 @@ afterEach(clearR2);
 describe('uploadImage > R2', () => {
   it('strips path traversal segments from the upload key', async () => {
     const config: TwikooConfig = { IMAGE_CDN: 'r2' };
+
     const result = await uploadImage(dataUrl, '../../etc/passwd', config, r2Env());
     const key = decodeURIComponent(new URL(result.url).pathname.slice(1));
 
@@ -34,13 +35,16 @@ describe('uploadImage > R2', () => {
 
   it('falls back to "upload" when the filename collapses to empty', async () => {
     const config: TwikooConfig = { IMAGE_CDN: 'r2' };
+
     const result = await uploadImage(dataUrl, '/', config, r2Env());
     const key = result.url.replace('https://r2.example.test/', '');
+
     expect(key).toMatch(/^[^/]+-upload$/);
   });
 
   it('encodes URL-reserved filename characters without changing the R2 key', async () => {
     const config: TwikooConfig = { IMAGE_CDN: 'r2' };
+
     const result = await uploadImage(dataUrl, 'report #1?.png', config, r2Env());
 
     expect(result.url).toMatch(/report%20%231%3F\.png$/);

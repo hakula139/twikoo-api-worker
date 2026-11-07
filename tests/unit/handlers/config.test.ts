@@ -55,15 +55,6 @@ describe('getConfig', () => {
 });
 
 describe('getConfigForAdmin', () => {
-  it('rejects a non-admin caller', async () => {
-    const ctx = buildCtx({ config: { ADMIN_PASS: md5('admin-uid') }, uid: mkUid('guest') });
-
-    await expect(getConfigForAdmin({}, ctx)).rejects.toMatchObject({
-      code: ResponseCode.NEED_LOGIN,
-    });
-    expect(twikoo.getConfigForAdmin).not.toHaveBeenCalled();
-  });
-
   it('forwards the full config to the upstream helper and strips the inner code', async () => {
     vi.mocked(twikoo.getConfigForAdmin).mockResolvedValueOnce({
       config: { SMTP_PASS: 'secret' },
@@ -77,6 +68,15 @@ describe('getConfigForAdmin', () => {
 
     expect(twikoo.getConfigForAdmin).toHaveBeenCalledWith({ config: ctx.config, isAdmin: true });
     expect(result).toEqual({ config: { SMTP_PASS: 'secret' } });
+  });
+
+  it('rejects a non-admin caller', async () => {
+    const ctx = buildCtx({ config: { ADMIN_PASS: md5('admin-uid') }, uid: mkUid('guest') });
+
+    await expect(getConfigForAdmin({}, ctx)).rejects.toMatchObject({
+      code: ResponseCode.NEED_LOGIN,
+    });
+    expect(twikoo.getConfigForAdmin).not.toHaveBeenCalled();
   });
 });
 
@@ -92,15 +92,6 @@ describe('setConfig', () => {
     return { ctx, writePatch };
   };
 
-  it('rejects a non-admin caller', async () => {
-    const { ctx, writePatch } = buildSetCtx('guest');
-
-    await expect(setConfig({ config: { SITE_NAME: 'Example†Site' } }, ctx)).rejects.toBeInstanceOf(
-      TwikooError,
-    );
-    expect(writePatch).not.toHaveBeenCalled();
-  });
-
   it('writes the supplied patch when the caller is admin', async () => {
     const adminUid = 'admin-uid';
     const { ctx, writePatch } = buildSetCtx(adminUid, adminUid);
@@ -115,5 +106,14 @@ describe('setConfig', () => {
       SHOW_REGION: 'true',
     });
     expect(result).toEqual({});
+  });
+
+  it('rejects a non-admin caller', async () => {
+    const { ctx, writePatch } = buildSetCtx('guest');
+
+    await expect(setConfig({ config: { SITE_NAME: 'Example†Site' } }, ctx)).rejects.toBeInstanceOf(
+      TwikooError,
+    );
+    expect(writePatch).not.toHaveBeenCalled();
   });
 });

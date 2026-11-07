@@ -28,45 +28,6 @@ afterEach(() => {
 });
 
 describe('commentImportForAdmin', () => {
-  it('rejects a non-admin caller', async () => {
-    const { ctx, saveMany } = buildImportCtx('guest');
-
-    await expect(
-      commentImportForAdmin({ source: 'twikoo', file: '[]' }, ctx),
-    ).rejects.toMatchObject({ code: ResponseCode.NEED_LOGIN });
-    expect(saveMany).not.toHaveBeenCalled();
-  });
-
-  it('rejects an unsupported source', async () => {
-    const { ctx, saveMany } = buildImportCtx(ADMIN);
-
-    await expect(
-      commentImportForAdmin({ source: 'wordpress', file: '[]' }, ctx),
-    ).rejects.toMatchObject({ code: ResponseCode.FAIL });
-    expect(saveMany).not.toHaveBeenCalled();
-  });
-
-  it('captures JSON parse failures into the log and surfaces them as FAIL', async () => {
-    const { ctx, saveMany } = buildImportCtx(ADMIN);
-    const err = await commentImportForAdmin({ source: 'twikoo', file: '{not-json' }, ctx).catch(
-      (e: unknown) => e,
-    );
-
-    expect(err).toBeInstanceOf(TwikooError);
-    expect((err as TwikooError).code).toBe(ResponseCode.FAIL);
-    expect((err as TwikooError).message).toContain('解析失败');
-    expect(saveMany).not.toHaveBeenCalled();
-  });
-
-  it('reports the empty-result branch when upstream returns no rows', async () => {
-    vi.mocked(twikoo.commentImportTwikoo).mockResolvedValueOnce([]);
-    const { ctx, saveMany } = buildImportCtx(ADMIN);
-    const result = await commentImportForAdmin({ source: 'twikoo', file: '[]' }, ctx);
-
-    expect(saveMany).not.toHaveBeenCalled();
-    expect(result.log).toContain('未发现可导入的评论');
-  });
-
   it('dispatches twikoo source to commentImportTwikoo and forwards rows to saveMany', async () => {
     vi.mocked(twikoo.commentImportTwikoo).mockResolvedValueOnce([
       { _id: 'pre-existing', nick: 'Reader', comment: '感谢分享。' },
@@ -193,5 +154,44 @@ describe('commentImportForAdmin', () => {
 
     expect(row?.ups).toBe('["a","b"]');
     expect(result.log).toMatch(/row r1 ups dropped 2 non-string entries/);
+  });
+
+  it('rejects a non-admin caller', async () => {
+    const { ctx, saveMany } = buildImportCtx('guest');
+
+    await expect(
+      commentImportForAdmin({ source: 'twikoo', file: '[]' }, ctx),
+    ).rejects.toMatchObject({ code: ResponseCode.NEED_LOGIN });
+    expect(saveMany).not.toHaveBeenCalled();
+  });
+
+  it('rejects an unsupported source', async () => {
+    const { ctx, saveMany } = buildImportCtx(ADMIN);
+
+    await expect(
+      commentImportForAdmin({ source: 'wordpress', file: '[]' }, ctx),
+    ).rejects.toMatchObject({ code: ResponseCode.FAIL });
+    expect(saveMany).not.toHaveBeenCalled();
+  });
+
+  it('captures JSON parse failures into the log and surfaces them as FAIL', async () => {
+    const { ctx, saveMany } = buildImportCtx(ADMIN);
+    const err = await commentImportForAdmin({ source: 'twikoo', file: '{not-json' }, ctx).catch(
+      (e: unknown) => e,
+    );
+
+    expect(err).toBeInstanceOf(TwikooError);
+    expect((err as TwikooError).code).toBe(ResponseCode.FAIL);
+    expect((err as TwikooError).message).toContain('解析失败');
+    expect(saveMany).not.toHaveBeenCalled();
+  });
+
+  it('reports the empty-result branch when upstream returns no rows', async () => {
+    vi.mocked(twikoo.commentImportTwikoo).mockResolvedValueOnce([]);
+    const { ctx, saveMany } = buildImportCtx(ADMIN);
+    const result = await commentImportForAdmin({ source: 'twikoo', file: '[]' }, ctx);
+
+    expect(saveMany).not.toHaveBeenCalled();
+    expect(result.log).toContain('未发现可导入的评论');
   });
 });
