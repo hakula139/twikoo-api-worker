@@ -24,6 +24,7 @@
   },
   "dependencies": {
     "drizzle-orm": "^0.45.4",
+    "entities": "^8.1.0",
     "fast-xml-parser": "^5.11.2",
     "twikoo-func": "1.7.24",
     "xss": "^1.0.17"

@@ -12,7 +12,6 @@ import {
   unique,
 } from 'drizzle-orm/sqlite-core';
 
-// SQLite booleans ride on INTEGER. `Bit` narrows the surface to 0/1.
 export type Bit = 0 | 1;
 
 export const comment = sqliteTable(
@@ -48,11 +47,6 @@ export const comment = sqliteTable(
   ],
 );
 
-export const config = sqliteTable('config', {
-  id: integer('id').notNull().primaryKey().default(1),
-  value: text('value').notNull().default(''),
-});
-
 export const upload = sqliteTable(
   'upload',
   {
@@ -63,7 +57,7 @@ export const upload = sqliteTable(
   (t) => [
     unique('upload_key_deleting').on(t.key, t.deleting),
     index('idx_upload_delete_after')
-      .on(t.deleteAfter)
+      .on(t.deleteAfter, t.key)
       .where(sql`${t.deleteAfter} IS NOT NULL`),
   ],
 );
@@ -90,6 +84,11 @@ export const commentUpload = sqliteTable(
       .onDelete('restrict'),
   ],
 );
+
+export const config = sqliteTable('config', {
+  id: integer('id').notNull().primaryKey().default(1),
+  value: text('value').notNull().default(''),
+});
 
 export const counter = sqliteTable('counter', {
   url: text('url').notNull().primaryKey(),

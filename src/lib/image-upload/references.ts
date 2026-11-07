@@ -1,8 +1,4 @@
-import xss from 'xss';
-
-const { friendlyAttrValue } = xss as unknown as {
-  friendlyAttrValue: (value: string) => string;
-};
+import { decodeHTML, decodeHTMLAttribute } from 'entities';
 
 export const collectUploadReferences = async (
   body: string,
@@ -15,7 +11,7 @@ export const collectUploadReferences = async (
   const rememberUrl = (value: string) => {
     let url: URL;
     try {
-      url = new URL(value);
+      url = new URL(value.startsWith('//') ? `${base.protocol}${value}` : value);
     } catch {
       return;
     }
@@ -34,7 +30,7 @@ export const collectUploadReferences = async (
   };
 
   const rememberText = (value: string) => {
-    for (const match of friendlyAttrValue(value).matchAll(/https?:\/\/[^\s<>"']+/g)) {
+    for (const match of decodeHTML(value).matchAll(/https?:\/\/[^\s<>"']+/gi)) {
       let candidate = match[0];
       rememberUrl(candidate);
 
@@ -53,7 +49,7 @@ export const collectUploadReferences = async (
         for (const name of ['src', 'href']) {
           const value = element.getAttribute(name);
           if (value !== null) {
-            rememberUrl(friendlyAttrValue(value));
+            rememberUrl(decodeHTMLAttribute(value));
           }
         }
       },
