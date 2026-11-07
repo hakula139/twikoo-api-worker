@@ -48,6 +48,9 @@ export const safeBaseName = (name: string): string => {
   return base || 'upload';
 };
 
+export const newUploadKey = (fileName: string): string =>
+  `${crypto.randomUUID()}-${safeBaseName(fileName)}`;
+
 interface NsfwResult {
   rejected: boolean;
   message: string;

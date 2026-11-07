@@ -1,6 +1,6 @@
 import type { R2Env, UploadResult } from './types';
 
-import { decodePhoto, encodePath, safeBaseName, stripTrailingSlash } from './helpers';
+import { decodePhoto, encodePath, newUploadKey, stripTrailingSlash } from './helpers';
 
 export const uploadR2 = async (
   photo: string,
@@ -11,7 +11,7 @@ export const uploadR2 = async (
     throw new Error('R2 binding 或 R2_PUBLIC_URL 未配置');
   }
   const { mimeType, bytes } = decodePhoto(photo);
-  const key = `${Date.now()}-${safeBaseName(fileName)}`;
+  const key = newUploadKey(fileName);
   await env.R2.put(key, bytes, { httpMetadata: { contentType: mimeType } });
   return { url: `${stripTrailingSlash(env.R2_PUBLIC_URL)}/${encodePath(key)}` };
 };
