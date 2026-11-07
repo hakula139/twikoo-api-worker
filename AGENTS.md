@@ -11,7 +11,6 @@ The worker is a thin TypeScript dispatcher that delegates business logic to the 
 ```text
 .
 ├── .github/
-│   ├── actions/setup-nix/   # Composite action: install Nix + Cachix
 │   └── workflows/
 │       ├── ci.yml           # PR validation: flake check + type/format/lint/spell/test + Codecov upload
 │       └── deploy.yml       # Push-to-main → wrangler deploy
@@ -99,7 +98,7 @@ D1 database IDs are committed as operational config: they are not secrets on the
 
 ### Pre-commit hooks
 
-Pre-commit hooks are configured in `flake.nix` with [git-hooks-nix](https://github.com/cachix/git-hooks.nix), and entering the dev shell installs `.git/hooks/pre-commit` automatically. The hooks run Prettier (TS / JS / JSON / TOML / YAML), markdownlint, cspell, nixfmt / statix / deadnix, and basic file hygiene. Node-side hooks no-op when `node_modules/` is absent in the Nix sandbox, while CI's `check` job runs the equivalent commands directly via `pnpm`.
+Pre-commit hooks use the shared [devkit](https://github.com/hakula139/devkit) baseline, configured in `flake.nix`. Entering the dev shell installs its hooks automatically. The hooks run Prettier for TypeScript, JavaScript, JSON, and YAML, Taplo for TOML, and the shared Markdown, spelling, Nix, and file hygiene checks. The ESLint development hook runs through the locked pnpm tool and is excluded from the Nix sandbox. CI's `check` job also runs the project checks directly via `pnpm`.
 
 ### Spell checking
 
