@@ -1,10 +1,8 @@
+import type { FilterXSS as FilterXSSInstance, IFilterXSSOptions, IWhiteList } from 'xss';
+
 // xss is CJS. Vitest's pool sees only the default callable, so named ESM
 // imports throw at runtime. Pull through the default and reuse xss's own types.
-import xss, {
-  type FilterXSS as FilterXSSInstance,
-  type IFilterXSSOptions,
-  type IWhiteList,
-} from 'xss';
+import xss from 'xss';
 
 const { FilterXSS, getDefaultWhiteList } = xss as unknown as {
   FilterXSS: new (options?: IFilterXSSOptions) => FilterXSSInstance;
