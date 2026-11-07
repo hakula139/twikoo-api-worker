@@ -53,6 +53,7 @@ describe('integration: image uploads', () => {
       expect(new Uint8Array(await stored.arrayBuffer())).toEqual(bytes);
       expect(stored.httpMetadata?.contentType).toBe('image/png');
     }
+
     const urls = uploads.map(({ body }) => (body.data as { url: string }).url);
     expect(urls[0]).not.toBe(urls[1]);
     expect(fetchSpy).not.toHaveBeenCalled();

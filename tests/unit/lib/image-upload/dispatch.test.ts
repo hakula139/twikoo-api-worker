@@ -183,6 +183,7 @@ describe('uploadImage routes IMAGE_CDN to the right provider', () => {
     const urls = fetchSpy.mock.calls.map(([url]) => url);
     expect(results.map(({ url }) => url).sort()).toEqual([...urls].sort());
     expect(urls[0]).not.toBe(urls[1]);
+
     for (const [url, init] of fetchSpy.mock.calls as [string, RequestInit][]) {
       expect(url).toMatch(
         /^https:\/\/my-bucket\.s3\.us-east-1\.amazonaws\.com\/uploads\/images\/[^/]+-a\.png$/,
