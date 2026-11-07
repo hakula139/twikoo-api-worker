@@ -9,11 +9,11 @@ import { createCounterDb } from './counter';
 export type { AdminFilter, CommentSort } from './comment';
 export type { Bit, Comment, Config, Counter, NewComment } from './schema';
 
-export const buildDb = (d1: D1Database) => {
+export const buildDb = (d1: D1Database, publicUrl: string) => {
   const client = drizzle(d1);
 
   return {
-    comment: createCommentDb(client),
+    comment: createCommentDb(client, publicUrl),
     config: createConfigDb(client),
     counter: createCounterDb(client),
   };

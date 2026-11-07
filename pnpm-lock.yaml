@@ -175,6 +175,9 @@ importers:
       drizzle-orm:
         specifier: ^0.45.4
         version: 0.45.4(@cloudflare/workers-types@5.20261031.1)
+      entities:
+        specifier: ^8.1.0
+        version: 8.1.0
       fast-xml-parser:
         specifier: ^5.11.2
         version: 5.11.2

@@ -5,9 +5,14 @@ import type { Env } from './types';
 import { dispatch } from './dispatch';
 import { ResponseCode, redactDatabaseError } from './lib/errors';
 import { corsHeaders, jsonResponse } from './lib/http';
+import { collectUnusedUploads } from './lib/image-upload/cleanup';
 import { VERSION, logger } from './twikoo';
 
 export default {
+  async scheduled(controller, env): Promise<void> {
+    logger.log('Upload cleanup:', await collectUnusedUploads(env, controller.scheduledTime));
+  },
+
   async fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
     const origin = request.headers.get('Origin');
     const headers = corsHeaders(origin);

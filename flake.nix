@@ -28,10 +28,9 @@
         # ----------------------------------------------------------------------
         # Node Hook Wrapper
         # ----------------------------------------------------------------------
-        # `pnpm exec` needs node + pnpm on PATH and the project's
-        # `node_modules` materialised. The Nix sandbox lacks the latter, so
-        # `nix flake check` skips these hooks. Equivalent checks run in
-        # CI via direct `pnpm` scripts.
+        # `pnpm exec` needs node + pnpm on PATH and the project's `node_modules` materialised. The
+        # Nix sandbox lacks the latter, so `nix flake check` skips these hooks. Equivalent checks
+        # run in CI via direct `pnpm` scripts.
         nodeHook =
           name: cmd:
           let
@@ -123,8 +122,8 @@
             pnpm
           ]);
 
-          # git-hooks.nix stores a main-checkout-relative path that linked worktrees cannot
-          # resolve (cachix/git-hooks.nix#688). Serialize installation before clearing it.
+          # git-hooks.nix stores a main-checkout-relative path that linked worktrees cannot resolve
+          # (cachix/git-hooks.nix#688). Serialize installation before clearing it.
           shellHook = ''
             if common=$(
               ${git} rev-parse \

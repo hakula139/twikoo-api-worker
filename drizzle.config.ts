@@ -1,7 +1,6 @@
 import { defineConfig } from 'drizzle-kit';
 
-// drizzle-kit uses D1's REST API, so the shell needs the account ID and a token
-// with D1 Edit permission.
+// drizzle-kit's D1 REST API requires an account ID and a token with D1 Edit permission.
 export default defineConfig({
   schema: './src/db/schema.ts',
   out: './migrations',

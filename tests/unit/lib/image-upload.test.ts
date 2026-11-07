@@ -1,14 +1,16 @@
 import type { Env, TwikooConfig } from '@/types';
 
 import { env } from 'cloudflare:workers';
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 
 import { uploadImage } from '@/lib/image-upload';
+import { applyTestSchema, resetTestDb } from '@tests/helpers/db';
 
 const PNG_BASE64 = 'iVBORw0KGgo=';
 const dataUrl = `data:image/png;base64,${PNG_BASE64}`;
 
-const r2Env = (): Pick<Env, 'R2' | 'R2_PUBLIC_URL'> => ({
+const r2Env = (): Pick<Env, 'DB' | 'R2' | 'R2_PUBLIC_URL'> => ({
+  DB: env.DB,
   R2: env.R2,
   R2_PUBLIC_URL: 'https://r2.example.test',
 });
@@ -18,8 +20,12 @@ const clearR2 = async (): Promise<void> => {
   await Promise.all(list.objects.map((o) => env.R2.delete(o.key)));
 };
 
+beforeAll(applyTestSchema);
 beforeEach(clearR2);
-afterEach(clearR2);
+afterEach(async () => {
+  await resetTestDb();
+  await clearR2();
+});
 
 describe('uploadImage > R2', () => {
   it('strips path traversal segments from the upload key', async () => {

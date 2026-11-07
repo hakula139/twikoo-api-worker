@@ -29,8 +29,8 @@ const callWorker = (init: RequestInit, headers?: HeadersInit): Promise<Response>
   );
 };
 
-// `string & {}` keeps autocomplete on the known event names while still
-// admitting deliberate negative-path strings like 'NOT_AN_EVENT'.
+// `string & {}` keeps autocomplete on the known event names while still admitting deliberate
+// negative-path strings like 'NOT_AN_EVENT'.
 export const postEvent = async (
   event: EventName | (string & {}),
   payload: Record<string, unknown> = {},
@@ -64,8 +64,8 @@ export const seedConfig = async (config: Record<string, unknown>): Promise<void>
     .run();
 };
 
-// Mocked `md5(s)` returns `md5(${s})`, so seeding ADMIN_PASS=md5(<token>) and
-// sending the same <token> as the auth header bypasses real hashing.
+// Mocked `md5(s)` returns `md5(${s})`, so seeding ADMIN_PASS=md5(<token>) and sending the same
+// <token> as the auth header bypasses real hashing.
 export const ADMIN_TOKEN = 'integration-admin';
 export const ADMIN_PASS_PLAINTEXT = 'integration-password';
 

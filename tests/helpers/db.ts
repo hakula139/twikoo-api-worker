@@ -8,8 +8,8 @@ import { drizzle } from 'drizzle-orm/d1';
 import { buildDb } from '@/db';
 import schemaSql from '../fixtures/schema.sql?raw';
 
-// drizzle-kit emits semicolon-delimited DDL. applyD1Migrations remains idempotent
-// when Miniflare reuses the binding across suites.
+// drizzle-kit emits semicolon-delimited DDL. applyD1Migrations remains idempotent when Miniflare
+// reuses the binding across suites.
 const migrationQueries = schemaSql
   .split(';')
   .map((q: string) => q.trim())
@@ -21,6 +21,8 @@ export const applyTestSchema = async (): Promise<void> => {
 
 export const resetTestDb = async (): Promise<void> => {
   await env.DB.batch([
+    env.DB.prepare('DELETE FROM comment_upload'),
+    env.DB.prepare('DELETE FROM upload'),
     env.DB.prepare('DELETE FROM comment'),
     env.DB.prepare('DELETE FROM config'),
     env.DB.prepare('DELETE FROM counter'),
@@ -29,4 +31,4 @@ export const resetTestDb = async (): Promise<void> => {
 
 export const drizzleClient = (): DrizzleD1Database => drizzle(env.DB);
 
-export const dbInstance = (): DB => buildDb(env.DB);
+export const dbInstance = (): DB => buildDb(env.DB, env.R2_PUBLIC_URL);

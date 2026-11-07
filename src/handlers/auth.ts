@@ -23,8 +23,8 @@ export const setPassword: Handler<'SET_PASSWORD'> = async (payload, ctx) => {
   return {};
 };
 
-// Don't return `ticket`. It routes the widget through tcb signIn (crashes on
-// URL envId). isAdmin recovers the role from later accessToken headers.
+// Don't return `ticket`. It routes the widget through tcb signIn (crashes on URL envId). isAdmin
+// recovers the role from later accessToken headers.
 export const login: Handler<'LOGIN'> = async (payload, ctx) => {
   validate(payload, ['password']);
 

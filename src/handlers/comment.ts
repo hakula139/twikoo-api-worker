@@ -63,8 +63,8 @@ const isCommentSort = (s: string): s is CommentSort =>
 export const commentGet: Handler<'COMMENT_GET'> = async (payload, ctx) => {
   validate(payload, ['url']);
 
-  // Fan out `/path` and `/path/` so a viewer arriving at either form sees
-  // comments posted on the other. Matches getCommentsCount / getRecentComments.
+  // Fan out `/path` and `/path/` so a viewer arriving at either form sees comments posted on the
+  // other. Matches getCommentsCount / getRecentComments.
   const urls = getUrlsQuery([payload.url]);
   const beforeRaw = Number(payload.before);
   const before = Number.isFinite(beforeRaw) && beforeRaw > 0 ? beforeRaw : MAX_TIMESTAMP_MILLIS;
@@ -74,8 +74,8 @@ export const commentGet: Handler<'COMMENT_GET'> = async (payload, ctx) => {
 
   const total = await ctx.db.comment.count(urls, showAll, ctx.uid);
 
-  // The widget's `before` cursor (min rendered created) is only meaningful for
-  // `newest`. `oldest` / `popular` fetch up to NON_NEWEST_LIMIT in one shot.
+  // The widget's `before` cursor (min rendered created) is only meaningful for `newest`. `oldest` /
+  // `popular` fetch up to NON_NEWEST_LIMIT in one shot.
   const isNewest = sort === 'newest';
   let probed: Comment[];
   let more = false;
@@ -113,8 +113,8 @@ export const commentGet: Handler<'COMMENT_GET'> = async (payload, ctx) => {
   );
   const all = [...heads, ...replies];
 
-  // Force SHOW_REGION off so parseComment skips its Node-only ip2region
-  // lookup. We patch ipRegion from the stored value below.
+  // Force SHOW_REGION off so parseComment skips its Node-only ip2region lookup. We patch ipRegion
+  // from the stored value below.
   const configForParse = { ...ctx.config, SHOW_REGION: 'false' };
   const parsed = parseComment(all.map(decodeVotes), ctx.uid, configForParse) as ParsedComment[];
 
@@ -253,8 +253,8 @@ export const commentGetForAdmin: Handler<'COMMENT_GET_FOR_ADMIN'> = async (paylo
     ctx.db.comment.listForAdmin(filter, per, per * (page - 1), sort),
   ]);
 
-  // Skip upstream parseCommentForAdmin (Node-only ip2region lookup). Reformat
-  // the stored region populated at submit time from request.cf.
+  // Skip upstream parseCommentForAdmin (Node-only ip2region lookup). Reformat the stored region
+  // populated at submit time from request.cf.
   const data = rows.map((c) => ({
     ...c,
     ipRegion: c.ipRegion ? formatIpRegion(c.ipRegion) : '',
@@ -312,8 +312,8 @@ export const commentDeleteForUser: Handler<'COMMENT_DELETE_FOR_USER'> = async (p
   const id = mkCommentId(payload.id);
 
   if (!ctx.uid) {
-    // Anonymous comments have empty uid. An empty equality match would
-    // collapse all anon authors into one delete-able pool.
+    // Anonymous comments have empty uid. An empty equality match would collapse all anon authors
+    // into one delete-able pool.
     throw new TwikooError(ResponseCode.NEED_LOGIN, '请先登录');
   }
 

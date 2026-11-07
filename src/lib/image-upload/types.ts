@@ -1,6 +1,6 @@
 import type { Env } from '@/types';
 
-export type R2Env = Pick<Env, 'R2' | 'R2_PUBLIC_URL'>;
+export type R2Env = Pick<Env, 'DB' | 'R2' | 'R2_PUBLIC_URL'>;
 
 export interface UploadResult {
   url: string;

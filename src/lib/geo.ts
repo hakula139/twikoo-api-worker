@@ -1,7 +1,7 @@
 import type { IncomingRequestCfProperties } from '@cloudflare/workers-types';
 
-// `region` mirrors ip2region's `country|0|province|city|isp` shape so
-// twikoo-func's display logic can consume it. Cloudflare has no ISP data.
+// `region` mirrors ip2region's `country|0|province|city|isp` shape so twikoo-func's display logic
+// can consume it. Cloudflare has no ISP data.
 export interface RequestGeo {
   ip: string;
   region: string;

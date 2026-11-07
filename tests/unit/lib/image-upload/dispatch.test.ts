@@ -11,7 +11,8 @@ import { uploadImage } from '@/lib/image-upload';
 const PNG_BASE64 = 'iVBORw0KGgo=';
 const dataUrl = `data:image/png;base64,${PNG_BASE64}`;
 
-const r2Env = (): Pick<Env, 'R2' | 'R2_PUBLIC_URL'> => ({
+const r2Env = (): Pick<Env, 'DB' | 'R2' | 'R2_PUBLIC_URL'> => ({
+  DB: env.DB,
   R2: env.R2,
   R2_PUBLIC_URL: 'https://r2.example.test',
 });
@@ -403,7 +404,7 @@ describe('uploadImage > providers', () => {
 
   it('rejects when r2 is selected but R2_PUBLIC_URL is unset', async () => {
     const config: TwikooConfig = { IMAGE_CDN: 'r2' };
-    const env = { R2: r2Env().R2 } as Pick<Env, 'R2' | 'R2_PUBLIC_URL'>;
+    const env = { DB: r2Env().DB, R2: r2Env().R2, R2_PUBLIC_URL: '' };
 
     await expect(uploadImage(dataUrl, 'a.png', config, env)).rejects.toMatchObject({
       code: ResponseCode.UPLOAD_FAILED,
