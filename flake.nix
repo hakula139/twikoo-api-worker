@@ -7,7 +7,10 @@
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-26.05";
     flake-utils.url = "github:numtide/flake-utils";
-    git-hooks-nix.url = "github:cachix/git-hooks.nix";
+    devkit = {
+      url = "github:hakula139/devkit/v1.0.0-rc.3";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
   };
 
   # ----------------------------------------------------------------------------
@@ -17,93 +20,24 @@
     {
       nixpkgs,
       flake-utils,
-      git-hooks-nix,
+      devkit,
       ...
     }:
     flake-utils.lib.eachDefaultSystem (
       system:
       let
         pkgs = nixpkgs.legacyPackages.${system};
+        dk = devkit.lib.mkLib pkgs;
 
-        # ----------------------------------------------------------------------
-        # Node Hook Wrapper
-        # ----------------------------------------------------------------------
-        # `pnpm exec` needs node + pnpm on PATH and the project's
-        # `node_modules` materialised. The Nix sandbox lacks the latter, so
-        # `nix flake check` skips these hooks. Equivalent checks run in
-        # CI via direct `pnpm` scripts.
-        nodeHook =
-          name: cmd:
-          let
-            wrapper = pkgs.writeShellApplication {
-              inherit name;
-              runtimeInputs = [
-                pkgs.nodejs_26
-                pkgs.pnpm
-              ];
-              text = ''
-                if [ ! -d node_modules ]; then
-                  exit 0
-                fi
-                pnpm exec ${cmd} "$@"
-              '';
-            };
-          in
-          "${wrapper}/bin/${name}";
-
-        # ----------------------------------------------------------------------
-        # Pre-commit Hooks
-        # ----------------------------------------------------------------------
-        preCommitCheck = git-hooks-nix.lib.${system}.run {
+        preCommit = dk.preCommit {
           src = ./.;
-          hooks = {
-            check-added-large-files.enable = true;
-            check-yaml.enable = true;
-            end-of-file-fixer.enable = true;
-            trim-trailing-whitespace = {
-              enable = true;
-              args = [ "--markdown-linebreak-ext=md" ];
-            };
-
-            nixfmt.enable = true;
-            statix.enable = true;
-            deadnix.enable = true;
-
-            prettier-write = {
-              enable = true;
-              name = "prettier";
-              entry = nodeHook "prettier-write" "prettier --write --ignore-unknown";
-              types = [ "text" ];
-              pass_filenames = true;
-            };
-
-            eslint = {
-              enable = true;
-              name = "eslint";
-              entry = nodeHook "eslint" "eslint --fix";
-              files = "\\.(ts|tsx|js|mjs|cjs)$";
-              pass_filenames = true;
-            };
-
-            markdownlint = {
-              enable = true;
-              name = "markdownlint-cli2";
-              entry = nodeHook "markdownlint" "markdownlint-cli2 --fix";
-              files = "\\.md$";
-              pass_filenames = true;
-            };
-
-            cspell = {
-              enable = true;
-              entry = nodeHook "cspell" "cspell --no-must-find-files --no-progress";
-              types = [ "text" ];
-              pass_filenames = true;
-            };
+          hooks.prettier.files = "\\.(ts|tsx|js|mjs|cjs|json|jsonc|ya?ml)$";
+          devHooks.eslint = {
+            enable = true;
+            entry = "${pkgs.lib.getExe (dk.nodeTool "eslint")} --fix";
+            files = "\\.(ts|tsx|js|mjs|cjs)$";
           };
         };
-
-        flock = nixpkgs.lib.getExe pkgs.flock;
-        git = nixpkgs.lib.getExe pkgs.git;
       in
       {
         # ----------------------------------------------------------------------
@@ -112,43 +46,20 @@
         devShells.default = pkgs.mkShell {
           name = "twikoo-api-worker-dev";
 
-          packages = [
-            preCommitCheck.config.package
-          ]
-          ++ preCommitCheck.enabledPackages
-          ++ (with pkgs; [
+          inputsFrom = [ preCommit.shell ];
+          packages = with pkgs; [
             curl
             jq
             nodejs_26
             pnpm
-          ]);
-
-          # git-hooks.nix stores a main-checkout-relative path that linked worktrees cannot
-          # resolve (cachix/git-hooks.nix#688). Serialize installation before clearing it.
-          shellHook = ''
-            if common=$(
-              ${git} rev-parse \
-                --path-format=absolute \
-                --git-common-dir \
-                2>/dev/null
-            ); then
-              (
-                ${flock} 9
-                ${preCommitCheck.config.installationScript}
-                ${git} config \
-                  --local \
-                  --unset-all core.hooksPath \
-                  || true
-              ) 9>"$common/git-hooks.lock"
-            fi
-          '';
+          ];
         };
 
         # ----------------------------------------------------------------------
         # Checks (`nix flake check`)
         # ----------------------------------------------------------------------
         checks = {
-          pre-commit = preCommitCheck;
+          pre-commit = preCommit.check;
         };
 
         # ----------------------------------------------------------------------
