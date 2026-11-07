@@ -148,8 +148,6 @@ const toJsonArray = (
   }
 
   if (typeof v === 'string' && v) {
-    // Validate the string parses to a string-array before granting the brand, since otherwise the
-    // corruption is silently round-tripped to D1.
     const parsed = parseJsonString<unknown>(v);
 
     if (Array.isArray(parsed) && parsed.every((e): e is string => typeof e === 'string')) {
