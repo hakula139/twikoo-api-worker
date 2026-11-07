@@ -8,7 +8,7 @@
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-26.05";
     flake-utils.url = "github:numtide/flake-utils";
     devkit = {
-      url = "github:hakula139/devkit/d3958e313d1c13d44e3cebb75afb610e3c712d3d";
+      url = "github:hakula139/devkit/61682dd34d15732234bac835f3603de8de5b86f1";
       inputs.nixpkgs.follows = "nixpkgs";
     };
   };
