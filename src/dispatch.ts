@@ -6,7 +6,7 @@ import type { Env, EventName, EventPayloads, RequestCtx, TwikooResponse } from '
 import { buildDb } from './db';
 import { handlers, isEventName } from './handlers';
 import { loadConfig } from './lib/ctx';
-import { ResponseCode, TwikooError } from './lib/errors';
+import { ResponseCode, TwikooError, redactDatabaseError } from './lib/errors';
 import { extractGeo } from './lib/geo';
 import { isPlainObject } from './lib/guards';
 import { corsHeaders, isOriginAllowed, jsonResponse } from './lib/http';
@@ -139,10 +139,12 @@ export const dispatch = async (
       if (error instanceof TwikooError) {
         return respond({ code: error.code, message: error.message }, headers);
       }
-      logger.error('Unhandled handler error:', error);
+      const safeError = redactDatabaseError(error);
+      logger.error('Unhandled handler error:', safeError);
       // Preserve upstream Error messages (e.g. twikoo-func's '评论内容过长')
       // so the widget can show the original copy instead of 'Internal error.'
-      const message = error instanceof Error && error.message ? error.message : 'Internal error.';
+      const message =
+        safeError instanceof Error && safeError.message ? safeError.message : 'Internal error.';
       return respond({ code: ResponseCode.FAIL, message }, headers);
     }
 

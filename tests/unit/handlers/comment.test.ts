@@ -112,20 +112,22 @@ describe('commentGet > malformed votes JSON', () => {
     expect(data[0]?.ups).toBe(0);
   });
 
-  it('truncates very long malformed JSON in the warning log', async () => {
+  it('logs malformed vote diagnostics without exposing voter credentials', async () => {
     const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
-    const longBad = '{not-json-'.repeat(20);
+    const raw = '["example-admin-token"';
     const bad: Comment = {
       ...baseRow,
       _id: mkCommentId('long'),
-      ups: longBad as JsonString<string[]>,
+      ups: raw as JsonString<string[]>,
     };
 
     await commentGet({ url: '/post' }, buildGetCtx([bad]));
 
-    const logged = String(warnSpy.mock.calls[0]?.[0] ?? '');
-    expect(logged).toContain('...');
-    expect(logged).not.toContain(longBad);
+    expect(warnSpy).toHaveBeenCalledExactlyOnceWith(
+      { id: 'long', field: 'ups', length: raw.length },
+      'Malformed vote JSON.',
+    );
+    expect(JSON.stringify(warnSpy.mock.calls)).not.toContain('example-admin-token');
   });
 });
 

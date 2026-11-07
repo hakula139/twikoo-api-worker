@@ -1,5 +1,6 @@
 import type { MockInstance } from 'vitest';
 import { env } from 'cloudflare:workers';
+import { DrizzleQueryError } from 'drizzle-orm';
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { MAX_BODY_BYTES } from '@/dispatch';
@@ -111,6 +112,63 @@ describe('integration: dispatch hardening', () => {
       expect(infoSpy.mock.calls[0]?.[0]).not.toHaveProperty('uid');
     },
   );
+
+  it('redacts stored configuration and authentication values when a D1 write fails', async () => {
+    await seedAdmin({ SMTP_PASS: 'stored-mail-key' });
+    const errorSpy = vi.spyOn(logger, 'error').mockImplementation(() => undefined);
+    const prepare = env.DB.prepare.bind(env.DB);
+    vi.spyOn(env.DB, 'prepare').mockImplementation((query) => {
+      const statement = prepare(query);
+      if (query.startsWith('insert into "config"')) {
+        vi.spyOn(statement, 'bind').mockImplementationOnce(() => {
+          throw new Error('D1 write unavailable.');
+        });
+      }
+      return statement;
+    });
+
+    const { body } = await postEvent(
+      'SET_CONFIG',
+      { config: { SITE_NAME: 'New Site' } },
+      adminAuthHeader(),
+    );
+
+    expect(body).toEqual({
+      code: ResponseCode.FAIL,
+      message: 'Database request failed.',
+      err: 'Database request failed.',
+    });
+    const diagnostics = JSON.stringify(
+      [infoSpy.mock.calls, errorSpy.mock.calls, body],
+      (_key, value: unknown) => (value instanceof Error ? value.message : value),
+    );
+    expect(diagnostics).not.toContain('stored-mail-key');
+    expect(diagnostics).not.toContain(ADMIN_TOKEN);
+    expect(diagnostics).not.toContain('insert into');
+  });
+
+  it('redacts database diagnostics from the outer Worker error log', async () => {
+    const errorSpy = vi.spyOn(logger, 'error').mockImplementation(() => undefined);
+    vi.spyOn(env.DB, 'prepare').mockImplementationOnce(() => {
+      throw new DrizzleQueryError(
+        'SELECT config',
+        ['stored-mail-key'],
+        new Error('D1 unavailable.'),
+      );
+    });
+
+    const { body } = await postEvent('GET_CONFIG');
+
+    expect(body).toEqual({
+      code: ResponseCode.FAIL,
+      message: 'Internal error.',
+      err: 'Internal error.',
+    });
+    expect(errorSpy).toHaveBeenCalledExactlyOnceWith(
+      'Unhandled fetch error:',
+      new Error('Database request failed.'),
+    );
+  });
 
   it('rejects with FAIL + CORS when Content-Length exceeds the cap', async () => {
     const { body, headers } = await postRaw('{}', {

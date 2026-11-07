@@ -3,6 +3,7 @@ import type { Handler } from '@/types';
 import { requireAdmin } from '@/lib/auth';
 import { ResponseCode, TwikooError } from '@/lib/errors';
 import { configWithSecrets } from '@/lib/secret';
+import { mailShim, withMailConfig } from '@/shims/mail';
 import { emailTest as emailTestFn } from '@/twikoo';
 
 // Upstream `emailTest` swallows send failures into `{message}`; throw so the
@@ -10,9 +11,16 @@ import { emailTest as emailTestFn } from '@/twikoo';
 export const emailTest: Handler<'EMAIL_TEST'> = async (payload, ctx) => {
   requireAdmin(ctx);
 
-  const result = await emailTestFn(payload, configWithSecrets(ctx), true);
+  const config = configWithSecrets(ctx);
+  const result = await withMailConfig(config, async () => {
+    // Invalid configuration must not clear a transport used by pending replies.
+    mailShim.createTransport({}).verify();
+
+    return emailTestFn(payload, config, true);
+  });
   if (result.message) {
     throw new TwikooError(ResponseCode.FAIL, result.message);
   }
+
   return {};
 };

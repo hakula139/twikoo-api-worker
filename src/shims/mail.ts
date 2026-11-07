@@ -1,6 +1,12 @@
 // Nodemailer-shape shim. Wrangler aliases `nodemailer` away (Node-only SMTP);
 // we route through HTTP providers instead.
 
+import type { TwikooConfig } from '@/types';
+
+import { AsyncLocalStorage } from 'node:async_hooks';
+
+import { stringConfig } from '@/lib/config-read';
+
 interface MailAuth {
   user?: string;
   pass?: string;
@@ -32,6 +38,40 @@ type Service = (typeof SUPPORTED_SERVICES)[number];
 
 const isSupportedService = (s: string): s is Service =>
   (SUPPORTED_SERVICES as readonly string[]).includes(s);
+
+// Cached transports must resolve credentials in the active async context.
+const mailConfig = new AsyncLocalStorage<MailTransportConfig>();
+
+export const withMailConfig = <T>(config: TwikooConfig, operation: () => Promise<T>): Promise<T> =>
+  mailConfig.run(
+    {
+      service: stringConfig(config, 'SMTP_SERVICE'),
+      auth: {
+        user: stringConfig(config, 'SMTP_USER'),
+        pass: stringConfig(config, 'SMTP_PASS'),
+      },
+    },
+    operation,
+  );
+
+const resolveConfig = (fallback: MailTransportConfig): { service: Service; apiKey: string } => {
+  const config = mailConfig.getStore() ?? fallback;
+  const service = config.service?.toLowerCase() ?? '';
+
+  if (!isSupportedService(service)) {
+    throw new Error('Only SendGrid, MailChannels, and Resend are supported.');
+  }
+
+  if (!config.auth?.user) {
+    throw new Error('SMTP_USER must be set to any non-empty string.');
+  }
+
+  if (!config.auth.pass) {
+    throw new Error('SMTP_PASS must be set with the provider API key.');
+  }
+
+  return { service, apiKey: config.auth.pass };
+};
 
 interface MailProvider {
   url: string;
@@ -115,25 +155,16 @@ const send = async (service: Service, apiKey: string, msg: MailMessage): Promise
 export const mailShim: NodemailerShim = {
   createTransport(rawConfig) {
     const config = rawConfig as MailTransportConfig;
-    const service = config.service?.toLowerCase() ?? '';
     return {
       verify(): true {
-        if (!isSupportedService(service)) {
-          throw new Error('Only SendGrid, MailChannels, and Resend are supported.');
-        }
-        if (!config.auth?.user) {
-          throw new Error('SMTP_USER must be set to any non-empty string.');
-        }
-        if (!config.auth.pass) {
-          throw new Error('SMTP_PASS must be set with the provider API key.');
-        }
+        resolveConfig(config);
+
         return true;
       },
       async sendMail(msg) {
-        if (!isSupportedService(service)) {
-          throw new Error(`Unsupported mail service: ${config.service ?? '<unset>'}`);
-        }
-        return send(service, config.auth?.pass ?? '', msg);
+        const { service, apiKey } = resolveConfig(config);
+
+        return send(service, apiKey, msg);
       },
     };
   },
