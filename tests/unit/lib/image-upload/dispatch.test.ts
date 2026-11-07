@@ -161,7 +161,8 @@ describe('uploadImage routes IMAGE_CDN to the right provider', () => {
     expect(url).toBe('https://custom.example/api/v1/upload');
   });
 
-  it('s3 PUTs to bucket endpoint with AWS4-HMAC-SHA256 Authorization', async () => {
+  it('s3 preserves the prefix and gives same-name uploads distinct signed paths at the same time', async () => {
+    vi.spyOn(Date, 'now').mockReturnValue(1768435200000);
     const fetchSpy = vi
       .spyOn(globalThis, 'fetch')
       .mockResolvedValue(new Response('', { status: 200 }));
@@ -171,18 +172,27 @@ describe('uploadImage routes IMAGE_CDN to the right provider', () => {
       S3_ACCESS_KEY_ID: 'AKIA',
       S3_SECRET_ACCESS_KEY: 'sk',
       S3_REGION: 'us-east-1',
+      S3_PATH_PREFIX: 'uploads/images/',
     };
 
-    const result = await uploadImage(dataUrl, 'a.png', config, r2Env());
+    const results = await Promise.all([
+      uploadImage(dataUrl, 'a.png', config, r2Env()),
+      uploadImage(dataUrl, 'a.png', config, r2Env()),
+    ]);
 
-    expect(result.url).toMatch(/^https:\/\/my-bucket\.s3\.us-east-1\.amazonaws\.com\/\d+-a\.png$/);
-    const [url, init] = fetchSpy.mock.calls[0] as [string, RequestInit];
-    expect(url).toMatch(/^https:\/\/my-bucket\.s3\.us-east-1\.amazonaws\.com\/\d+-a\.png$/);
-    expect(init.method).toBe('PUT');
-    const headers = init.headers as Record<string, string>;
-    expect(headers.Authorization).toMatch(/^AWS4-HMAC-SHA256 /);
-    const sig = /Signature=([0-9a-f]+)/.exec(headers.Authorization);
-    expect(sig?.[1]).toMatch(/^[0-9a-f]{64}$/);
+    const urls = fetchSpy.mock.calls.map(([url]) => url);
+    expect(results.map(({ url }) => url).sort()).toEqual([...urls].sort());
+    expect(urls[0]).not.toBe(urls[1]);
+    for (const [url, init] of fetchSpy.mock.calls as [string, RequestInit][]) {
+      expect(url).toMatch(
+        /^https:\/\/my-bucket\.s3\.us-east-1\.amazonaws\.com\/uploads\/images\/[^/]+-a\.png$/,
+      );
+      expect(init.method).toBe('PUT');
+      const headers = init.headers as Record<string, string>;
+      expect(headers.Authorization).toMatch(/^AWS4-HMAC-SHA256 /);
+      const sig = /Signature=([0-9a-f]+)/.exec(headers.Authorization);
+      expect(sig?.[1]).toMatch(/^[0-9a-f]{64}$/);
+    }
   });
 
   it('s3 encodes URL-reserved filename characters in the signed request path', async () => {
@@ -197,16 +207,17 @@ describe('uploadImage routes IMAGE_CDN to the right provider', () => {
       S3_REGION: 'us-east-1',
     };
 
-    const result = await uploadImage(dataUrl, "Hakula's report (draft) #1?.png", config, r2Env());
+    const result = await uploadImage(dataUrl, "Reader's report (draft) #1?.png", config, r2Env());
 
     const [url] = fetchSpy.mock.calls[0] as [string, RequestInit];
-    expect(url).toMatch(/Hakula%27s%20report%20%28draft%29%20%231%3F\.png$/);
+    expect(url).toMatch(/Reader%27s%20report%20%28draft%29%20%231%3F\.png$/);
     expect(result.url).toBe(url);
   });
 
   it('s3 SigV4 produces a stable signature for fixed inputs', async () => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date('2026-01-15T00:00:00Z'));
+    vi.spyOn(crypto, 'randomUUID').mockReturnValue('00000000-0000-4000-8000-000000000000');
     try {
       const fetchSpy = vi
         .spyOn(globalThis, 'fetch')
@@ -222,7 +233,9 @@ describe('uploadImage routes IMAGE_CDN to the right provider', () => {
       await uploadImage(dataUrl, 'a.png', config, r2Env());
 
       const [url, init] = fetchSpy.mock.calls[0] as [string, RequestInit];
-      expect(url).toBe('https://my-bucket.s3.us-east-1.amazonaws.com/1768435200000-a.png');
+      expect(url).toBe(
+        'https://my-bucket.s3.us-east-1.amazonaws.com/00000000-0000-4000-8000-000000000000-a.png',
+      );
       const headers = init.headers as Record<string, string>;
       expect(headers['x-amz-date']).toBe('20260115T000000Z');
       // `iVBORw0KGgo=` decoded is the PNG magic byte sequence; SHA-256 is stable.
@@ -232,7 +245,7 @@ describe('uploadImage routes IMAGE_CDN to the right provider', () => {
       expect(headers.Authorization).toBe(
         'AWS4-HMAC-SHA256 Credential=AKIAIOSFODNN7EXAMPLE/20260115/us-east-1/s3/aws4_request, ' +
           'SignedHeaders=content-type;host;x-amz-content-sha256;x-amz-date, ' +
-          'Signature=031bfd6aa2d81e30bc47456932807c116a997c91d3e1650300c8574080aaa153',
+          'Signature=f877700e5fc3292742aede4728a4762276f0d3aa34db961056d8b5d20e146ac2',
       );
     } finally {
       vi.useRealTimers();

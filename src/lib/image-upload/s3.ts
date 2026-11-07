@@ -3,7 +3,7 @@ import type { TwikooConfig } from '@/types';
 import type { UploadResult } from './types';
 
 import { stringConfig } from '../config-read';
-import { decodePhoto, encodePath, safeBaseName, stripTrailingSlash } from './helpers';
+import { decodePhoto, encodePath, newUploadKey, stripTrailingSlash } from './helpers';
 
 const bytesToHex = (bytes: Uint8Array): string =>
   Array.from(bytes)
@@ -43,7 +43,7 @@ export const uploadS3 = async (
   const region = stringConfig(config, 'S3_REGION') ?? 'us-east-1';
   const prefixRaw = stringConfig(config, 'S3_PATH_PREFIX');
   const prefix = prefixRaw ? `${stripTrailingSlash(prefixRaw)}/` : '';
-  const key = `${prefix}${Date.now()}-${safeBaseName(fileName)}`;
+  const key = `${prefix}${newUploadKey(fileName)}`;
   const encodedKey = encodePath(key);
 
   const customEndpoint = stringConfig(config, 'S3_ENDPOINT');

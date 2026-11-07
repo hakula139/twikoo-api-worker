@@ -18,29 +18,43 @@ afterEach(async () => {
 });
 
 describe('integration: image uploads', () => {
-  it('uses the persisted R2 provider and preserves the uploaded bytes and content type', async () => {
+  it('preserves same-name uploads made at the same time in the persisted R2 provider', async () => {
     await seedConfig({
       IMAGE_CDN: 'r2',
       IMAGE_CDN_URL: 'https://retired.example.com',
       IMAGE_CDN_TOKEN: 'example-token',
     });
     const fetchSpy = vi.spyOn(globalThis, 'fetch');
+    vi.spyOn(Date, 'now').mockReturnValue(1768435200000);
+    const photos = [
+      { photo: PHOTO, bytes: PNG_BYTES },
+      { photo: 'data:image/png;base64,iVBORw0KGgoA', bytes: new Uint8Array([...PNG_BYTES, 0]) },
+    ];
 
-    const { body } = await postEvent('UPLOAD_IMAGE', { photo: PHOTO, fileName: 'sample.png' });
+    const uploads = await Promise.all(
+      photos.map(async ({ photo, bytes }) => ({
+        bytes,
+        ...(await postEvent('UPLOAD_IMAGE', { photo, fileName: 'sample.png' })),
+      })),
+    );
 
-    expect(body.code).toBe(ResponseCode.SUCCESS);
-    expect(body).not.toHaveProperty('err');
-    const { url } = body.data as { url: string };
-    const publicUrl = new URL(url);
-    expect(publicUrl.origin).toBe(env.R2_PUBLIC_URL);
-    const key = decodeURIComponent(publicUrl.pathname.slice(1));
-    expect(key).toMatch(/^\d+-sample\.png$/);
-    const stored = await env.R2.get(key);
-    if (!stored) {
-      throw new Error('Expected R2 to return the uploaded object.');
+    for (const { body, bytes } of uploads) {
+      expect(body.code).toBe(ResponseCode.SUCCESS);
+      expect(body).not.toHaveProperty('err');
+      const { url } = body.data as { url: string };
+      const publicUrl = new URL(url);
+      expect(publicUrl.origin).toBe(env.R2_PUBLIC_URL);
+      const key = decodeURIComponent(publicUrl.pathname.slice(1));
+      expect(key).toMatch(/^[^/]+-sample\.png$/);
+      const stored = await env.R2.get(key);
+      if (!stored) {
+        throw new Error('Expected R2 to return the uploaded object.');
+      }
+      expect(new Uint8Array(await stored.arrayBuffer())).toEqual(bytes);
+      expect(stored.httpMetadata?.contentType).toBe('image/png');
     }
-    expect(new Uint8Array(await stored.arrayBuffer())).toEqual(PNG_BYTES);
-    expect(stored.httpMetadata?.contentType).toBe('image/png');
+    const urls = uploads.map(({ body }) => (body.data as { url: string }).url);
+    expect(urls[0]).not.toBe(urls[1]);
     expect(fetchSpy).not.toHaveBeenCalled();
   });
 
