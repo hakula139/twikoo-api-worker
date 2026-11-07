@@ -76,6 +76,7 @@ For local dev secrets, create `.dev.vars` (gitignored) with one `KEY=value` pair
 pnpm dev          # wrangler dev on port 8787
 pnpm check        # type-check
 pnpm test         # vitest run (workerd via @cloudflare/vitest-plugin)
+pnpm test:smoke   # real Wrangler startup and upstream version
 pnpm format       # prettier --check .
 pnpm lint         # markdownlint + eslint
 pnpm spellcheck   # cspell
