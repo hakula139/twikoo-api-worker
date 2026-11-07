@@ -2,6 +2,7 @@ import type { TwikooConfig } from '@/types';
 
 import { describe, expect, it } from 'vitest';
 
+import { ResponseCode } from '@/lib/errors';
 import { corsHeaders, isOriginAllowed, jsonResponse } from '@/lib/http';
 
 describe('corsHeaders', () => {
@@ -114,10 +115,39 @@ describe('isOriginAllowed', () => {
 });
 
 describe('jsonResponse', () => {
-  it('serializes the body as JSON with the standard content type', async () => {
-    const res = jsonResponse({ code: 0, data: { message: 'Comment saved.' } });
+  it.each([
+    {
+      name: 'success',
+      body: { code: ResponseCode.SUCCESS, message: 'Comment saved.', data: { id: 'comment-1' } },
+      expected: {
+        code: ResponseCode.SUCCESS,
+        message: 'Comment saved.',
+        data: { id: 'comment-1' },
+      },
+    },
+    {
+      name: 'failure with a message',
+      body: { code: ResponseCode.FAIL, message: 'Storage is unavailable.' },
+      expected: {
+        code: ResponseCode.FAIL,
+        message: 'Storage is unavailable.',
+        err: 'Storage is unavailable.',
+      },
+    },
+    {
+      name: 'failure with an explicit client error',
+      body: { code: ResponseCode.FAIL, message: 'Upload failed.', err: 'Storage is unavailable.' },
+      expected: {
+        code: ResponseCode.FAIL,
+        message: 'Upload failed.',
+        err: 'Storage is unavailable.',
+      },
+    },
+  ])('serializes $name with the client error contract', async ({ body, expected }) => {
+    const res = jsonResponse(body);
+
     expect(res.headers.get('Content-Type')).toBe('application/json;charset=UTF-8');
-    expect(await res.json()).toEqual({ code: 0, data: { message: 'Comment saved.' } });
+    expect(await res.json()).toEqual(expected);
   });
 
   it('merges extra headers without dropping the content type', () => {

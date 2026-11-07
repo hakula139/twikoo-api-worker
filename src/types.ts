@@ -91,6 +91,7 @@ export interface RequestCtx {
 export interface TwikooResponse {
   code: ResponseCodeValue;
   message?: string;
+  err?: string;
   data?: unknown;
   version?: string;
   accessToken?: string;
