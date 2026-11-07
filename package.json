@@ -18,6 +18,7 @@
     "lint:md": "markdownlint-cli2 \"**/*.md\"",
     "spellcheck": "cspell --no-progress \"**/*\"",
     "test": "vitest run",
+    "test:bundle": "bash scripts/bundle-test.sh",
     "test:smoke": "bash scripts/smoke-test.sh",
     "test:watch": "vitest"
   },

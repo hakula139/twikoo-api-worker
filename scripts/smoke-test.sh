@@ -24,12 +24,12 @@ trap 'exit 143' TERM
 
 expected_version=$(jq -r .version node_modules/twikoo-func/package.json)
 
-./node_modules/.bin/wrangler d1 execute twikoo \
+wrangler d1 execute twikoo \
   --local \
   --persist-to "${smoke_dir}/state" \
   --file tests/fixtures/schema.sql
 
-./node_modules/.bin/wrangler dev \
+wrangler dev \
   --local \
   --persist-to "${smoke_dir}/state" \
   --port 8787 \

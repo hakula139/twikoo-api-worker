@@ -61,19 +61,7 @@ jobs:
         run: nix develop -c pnpm test:smoke
 
       - name: Bundle size check
-        run: |
-          nix develop -c pnpm wrangler deploy \
-            --dry-run \
-            --outdir dist
-
-          # Keep this aligned with the Workers Free plan's 3 MiB compressed limit.
-          THRESHOLD=$((3 * 1024 * 1024))
-          GZIPPED=$(gzip -c dist/worker.js | wc -c)
-          echo "Compressed bundle: ${GZIPPED} bytes (threshold: ${THRESHOLD})"
-          if [ "${GZIPPED}" -gt "${THRESHOLD}" ]; then
-            echo "::error::Compressed bundle ${GZIPPED}B exceeds ${THRESHOLD}B threshold"
-            exit 1
-          fi
+        run: nix develop -c pnpm test:bundle
 
       - name: Upload to Codecov
         uses: codecov/codecov-action@v7
