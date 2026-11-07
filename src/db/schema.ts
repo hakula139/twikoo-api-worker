@@ -1,6 +1,16 @@
 import type { CommentId, JsonString } from '../types';
 
-import { index, integer, sqliteTable, text } from 'drizzle-orm/sqlite-core';
+import { sql } from 'drizzle-orm';
+import {
+  check,
+  foreignKey,
+  index,
+  integer,
+  primaryKey,
+  sqliteTable,
+  text,
+  unique,
+} from 'drizzle-orm/sqlite-core';
 
 // SQLite booleans ride on INTEGER. `Bit` narrows the surface to 0/1.
 export type Bit = 0 | 1;
@@ -42,6 +52,44 @@ export const config = sqliteTable('config', {
   id: integer('id').notNull().primaryKey().default(1),
   value: text('value').notNull().default(''),
 });
+
+export const upload = sqliteTable(
+  'upload',
+  {
+    key: text('key').notNull().primaryKey(),
+    deleteAfter: integer('delete_after'),
+    deleting: integer('deleting').notNull().default(0).$type<Bit>(),
+  },
+  (t) => [
+    unique('upload_key_deleting').on(t.key, t.deleting),
+    index('idx_upload_delete_after')
+      .on(t.deleteAfter)
+      .where(sql`${t.deleteAfter} IS NOT NULL`),
+  ],
+);
+
+export const commentUpload = sqliteTable(
+  'comment_upload',
+  {
+    commentId: text('comment_id')
+      .notNull()
+      .$type<CommentId>()
+      .references(() => comment._id, { onDelete: 'cascade' }),
+    uploadKey: text('upload_key').notNull(),
+    deleting: integer('deleting').notNull().default(0).$type<Bit>(),
+  },
+  (t) => [
+    primaryKey({ columns: [t.commentId, t.uploadKey] }),
+    index('idx_comment_upload_key').on(t.uploadKey),
+    check('comment_upload_active', sql`${t.deleting} = 0`),
+    foreignKey({
+      columns: [t.uploadKey, t.deleting],
+      foreignColumns: [upload.key, upload.deleting],
+    })
+      .onUpdate('restrict')
+      .onDelete('restrict'),
+  ],
+);
 
 export const counter = sqliteTable('counter', {
   url: text('url').notNull().primaryKey(),

@@ -8,7 +8,7 @@ compatibility_flags = ["nodejs_compat", "enable_nodejs_http2_module"]
 routes = [{ pattern = "twikoo.hakula.xyz", custom_domain = true }]
 
 [triggers]
-crons = ["0 * * * *"]
+crons = ["*/15 * * * *"]
 
 [alias]
 jsdom = "./src/shims/empty.ts"

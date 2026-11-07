@@ -38,7 +38,7 @@ export const dispatch = async (
 
   try {
     const origin = request.headers.get('Origin');
-    const db = buildDb(env.DB);
+    const db = buildDb(env.DB, env.R2_PUBLIC_URL);
 
     // Requests without Content-Length rely on the Workers runtime limit.
     const contentLength = request.headers.get('Content-Length');

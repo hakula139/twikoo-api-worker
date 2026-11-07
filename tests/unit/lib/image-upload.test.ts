@@ -8,7 +8,8 @@ import { uploadImage } from '@/lib/image-upload';
 const PNG_BASE64 = 'iVBORw0KGgo=';
 const dataUrl = `data:image/png;base64,${PNG_BASE64}`;
 
-const r2Env = (): Pick<Env, 'R2' | 'R2_PUBLIC_URL'> => ({
+const r2Env = (): Pick<Env, 'DB' | 'R2' | 'R2_PUBLIC_URL'> => ({
+  DB: env.DB,
   R2: env.R2,
   R2_PUBLIC_URL: 'https://r2.example.test',
 });

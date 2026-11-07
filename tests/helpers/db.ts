@@ -29,4 +29,4 @@ export const resetTestDb = async (): Promise<void> => {
 
 export const drizzleClient = (): DrizzleD1Database => drizzle(env.DB);
 
-export const dbInstance = (): DB => buildDb(env.DB);
+export const dbInstance = (): DB => buildDb(env.DB, env.R2_PUBLIC_URL);
