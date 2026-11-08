@@ -1,3 +1,0 @@
-{
-  extends: ['github>hakula139/devkit#v1'],
-}

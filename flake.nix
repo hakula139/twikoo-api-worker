@@ -6,7 +6,6 @@
   # ----------------------------------------------------------------------------
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-26.05";
-    flake-utils.url = "github:numtide/flake-utils";
     devkit = {
       url = "github:hakula139/devkit/v1";
       inputs.nixpkgs.follows = "nixpkgs";
@@ -19,11 +18,10 @@
   outputs =
     {
       nixpkgs,
-      flake-utils,
       devkit,
       ...
     }:
-    flake-utils.lib.eachDefaultSystem (
+    devkit.lib.eachSystem devkit.lib.systems (
       system:
       let
         pkgs = nixpkgs.legacyPackages.${system};
@@ -39,6 +37,7 @@
             dprint.enable = true;
             markdownlint-cli2.enable = true;
             nixfmt.enable = true;
+            nu-check.enable = true;
             prettier.enable = true;
             shellcheck.enable = true;
             shfmt.enable = true;
@@ -62,25 +61,24 @@
           name = "twikoo-api-worker-dev";
 
           inputsFrom = [ preCommit.shell ];
-          packages = with pkgs; [
-            curl
-            jq
-            nodejs_26
-            pnpm
+          packages = [
+            dk.nushell
+            pkgs.curl
+            pkgs.gzip
+            pkgs.nodejs_26
+            pkgs.pnpm_12
           ];
         };
 
         # ----------------------------------------------------------------------
         # Checks (`nix flake check`)
         # ----------------------------------------------------------------------
-        checks = {
-          pre-commit = preCommit.check;
-        };
+        checks.pre-commit = preCommit.check;
 
         # ----------------------------------------------------------------------
         # Formatter (`nix fmt`)
         # ----------------------------------------------------------------------
-        formatter = pkgs.nixfmt;
+        formatter = pkgs.nixfmt-tree;
       }
     );
 }

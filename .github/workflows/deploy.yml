@@ -16,19 +16,14 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v7
 
-      - name: Set up pnpm and Node.js
-        uses: pnpm/setup@v2
-        with:
-          runtime: node@26
-          cache: true
-          install: false
+      - name: Setup Nix
+        uses: hakula139/devkit/.github/actions/setup-nix@v1
 
       - name: Install dependencies
-        run: pnpm install --frozen-lockfile
+        run: nix develop -c pnpm install --frozen-lockfile
 
       - name: Deploy
-        uses: cloudflare/wrangler-action@v4
-        with:
-          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          command: deploy --minify
+        run: nix develop -c pnpm deploy
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}

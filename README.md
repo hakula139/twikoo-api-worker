@@ -18,16 +18,16 @@ This from-scratch TypeScript implementation uses the upstream [`twikoo-func`][tw
 
 ## Setup
 
-[Nix][nix] (with flakes) is the recommended path:
+[Nix][nix] with flakes supplies Node.js, pnpm, Nushell, and the validation tools:
 
 ```bash
 git clone https://github.com/hakula139/twikoo-api-worker.git
 cd twikoo-api-worker
-nix develop   # auto-installs pre-commit hooks
-pnpm install
+nix develop
+pnpm install --frozen-lockfile
 ```
 
-Without Nix, install Node.js 26 and pnpm yourself.
+Enter the development shell from this repository. It installs the shared [devkit][devkit] Git hooks.
 
 ## One-time provisioning
 
@@ -61,8 +61,8 @@ Telegram notifications also require `PUSHOO_CHANNEL=telegram` in the admin confi
 
 `SET_PASSWORD` requires an existing admin identity, so seed `ADMIN_PASS_HASH` with the md5 of your plaintext password before the first deployment:
 
-```bash
-printf 'my-plain-password' | md5           # macOS: returns 32 hex chars
+```nu
+"my-plain-password" | hash md5
 pnpm wrangler secret put ADMIN_PASS_HASH   # paste the hex
 ```
 
@@ -80,8 +80,10 @@ pnpm test                    # vitest run (workerd via @cloudflare/vitest-plugin
 pnpm test:bundle             # Wrangler dry-run and compressed size limit
 pnpm test:smoke              # real Wrangler startup and upstream version
 pnpm lint                    # eslint
-pnpm db:push                 # sync schema.ts changes to remote D1
+nix flake check              # sandboxed native hooks
 ```
+
+The shared hooks check formatting and spelling alongside Nix, Nushell, workflow, and file hygiene. ESLint runs through the locked pnpm tool in development and directly in CI. The runtime smoke test creates temporary local D1 state and checks the upstream function version. The bundle check enforces the Workers Free plan's 3 MiB gzip limit.
 
 ## Deployment
 
@@ -119,6 +121,7 @@ Copyright (c) 2026 [Hakula][author]. Licensed under the [MIT License][license].
 [twikoo-func]: https://www.npmjs.com/package/twikoo-func
 [cloudflare-reference]: https://github.com/twikoojs/twikoo-cloudflare
 [nix]: https://nixos.org/download/
+[devkit]: https://github.com/hakula139/devkit
 [worker-config]: wrangler.toml
 [drizzle-config]: drizzle.config.ts
 [schema]: src/db/schema.ts

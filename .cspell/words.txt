@@ -30,6 +30,7 @@ nsuuu
 numtide
 pagefind
 piclist
+pids
 pkgs
 pnpm
 prek

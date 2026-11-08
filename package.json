@@ -14,8 +14,8 @@
     "dev": "wrangler dev",
     "lint": "eslint .",
     "test": "vitest run",
-    "test:bundle": "bash scripts/bundle-test.sh",
-    "test:smoke": "bash scripts/smoke-test.sh",
+    "test:bundle": "nu --no-config-file scripts/bundle-test.nu",
+    "test:smoke": "nu --no-config-file scripts/smoke-test.nu",
     "test:watch": "vitest"
   },
   "dependencies": {
