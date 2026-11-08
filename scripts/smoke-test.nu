@@ -1,6 +1,6 @@
 # Verify the upstream version through a temporary local Wrangler instance.
 def main [] {
-  port 8787 8787 | ignore
+  let smoke_port = port
 
   let expected_version = open "node_modules/twikoo-func/package.json" | get version
   let smoke_dir = mktemp -d
@@ -24,7 +24,7 @@ def main [] {
           ^wrangler dev
             --local
             --persist-to $state
-            --port 8787
+            --port $smoke_port
             out+err> $log
         )
       } catch {
@@ -35,7 +35,7 @@ def main [] {
 
     try {
       let response = (
-        ^curl "http://127.0.0.1:8787/"
+        ^curl $"http://127.0.0.1:($smoke_port)/"
           --retry 30
           --retry-connrefused
           --retry-delay 1

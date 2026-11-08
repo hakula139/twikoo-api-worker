@@ -1,15 +1,10 @@
 {
-  "version": "0.2",
-  "language": "en",
-  "useGitignore": true,
-  "allowCompoundWords": true,
   "dictionaryDefinitions": [
     {
       "name": "project-words",
-      "path": "./.cspell/words.txt",
-      "addWords": true
+      "path": "./.cspell/words.txt"
     }
   ],
   "dictionaries": ["project-words"],
-  "ignorePaths": ["pnpm-lock.yaml", "schema.sql", "**/LICENSE"]
+  "ignorePaths": ["pnpm-lock.yaml"]
 }
