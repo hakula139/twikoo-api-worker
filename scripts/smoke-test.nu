@@ -1,5 +1,12 @@
+#!/usr/bin/env nu
+
 # Verify the upstream version through a temporary local Wrangler instance.
+const REPO_ROOT = path self . | path dirname
+
 def main [] {
+  cd $REPO_ROOT
+  $env.PATH = ($env.PATH | prepend ($REPO_ROOT | path join "node_modules/.bin"))
+
   let smoke_port = port
 
   let expected_version = open "node_modules/twikoo-func/package.json" | get version

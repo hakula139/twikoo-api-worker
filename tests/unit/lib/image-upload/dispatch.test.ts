@@ -1,4 +1,4 @@
-// cspell:ignore AKIAIOSFODNN
+// cspell:ignore AKIA AKIAIOSFODNN
 
 import type { Env, TwikooConfig } from '@/types';
 

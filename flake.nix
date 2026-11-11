@@ -1,20 +1,25 @@
-{
-  description = "twikoo-api-worker: Cloudflare Workers backend for Twikoo (dev environment)";
+# ==================================================================================================
+# twikoo-api-worker Development Flake
+# ==================================================================================================
 
-  # ----------------------------------------------------------------------------
+{
+  description = "twikoo-api-worker development environment";
+
+  # ------------------------------------------------------------------------------------------------
   # Inputs
-  # ----------------------------------------------------------------------------
+  # ------------------------------------------------------------------------------------------------
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-26.05";
+
     devkit = {
-      url = "github:hakula139/devkit/v2";
+      url = "github:hakula139/devkit/v3";
       inputs.nixpkgs.follows = "nixpkgs";
     };
   };
 
-  # ----------------------------------------------------------------------------
+  # ------------------------------------------------------------------------------------------------
   # Outputs
-  # ----------------------------------------------------------------------------
+  # ------------------------------------------------------------------------------------------------
   outputs =
     {
       nixpkgs,
@@ -27,57 +32,40 @@
         pkgs = nixpkgs.legacyPackages.${system};
         dk = devkit.lib.mkLib pkgs;
 
+        # ------------------------------------------------------------------------------------------
+        # Pre-commit Hooks
+        # ------------------------------------------------------------------------------------------
         preCommit = dk.preCommit {
           src = ./.;
           hooks = {
-            actionlint.enable = true;
-            check-yaml.enable = true;
-            cspell.enable = true;
-            deadnix.enable = true;
-            dprint.enable = true;
-            markdownlint-cli2.enable = true;
-            nixfmt.enable = true;
+            eslint.enable = true;
             nu-check.enable = true;
             prettier.enable = true;
-            shellcheck.enable = true;
-            shfmt.enable = true;
-            sort-file-contents.enable = true;
-            statix.enable = true;
             taplo.enable = true;
-          };
-
-          devHooks.eslint = {
-            enable = true;
-            entry = "${pkgs.lib.getExe (dk.nodeTool "eslint")} --fix";
-            files = "\\.(ts|tsx|js|mjs|cjs)$";
+            tsc.enable = true;
           };
         };
       in
       {
-        # ----------------------------------------------------------------------
+        # ------------------------------------------------------------------------------------------
         # Dev Shell
-        # ----------------------------------------------------------------------
+        # ------------------------------------------------------------------------------------------
         devShells.default = pkgs.mkShell {
           name = "twikoo-api-worker-dev";
 
-          inputsFrom = [ preCommit.shell ];
           packages = [
             dk.nushell
             pkgs.curl
             pkgs.gzip
-            pkgs.nodejs_26
-            pkgs.pnpm_12
-          ];
+          ]
+          ++ builtins.attrValues dk.nodeToolchain;
+
+          inputsFrom = [ preCommit ];
         };
 
-        # ----------------------------------------------------------------------
-        # Checks (`nix flake check`)
-        # ----------------------------------------------------------------------
-        checks.pre-commit = preCommit.check;
-
-        # ----------------------------------------------------------------------
-        # Formatter (`nix fmt`)
-        # ----------------------------------------------------------------------
+        # ------------------------------------------------------------------------------------------
+        # Formatter
+        # ------------------------------------------------------------------------------------------
         formatter = pkgs.nixfmt-tree;
       }
     );

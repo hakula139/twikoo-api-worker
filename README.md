@@ -1,12 +1,12 @@
 # twikoo-api-worker
 
 [![CI](https://github.com/hakula139/twikoo-api-worker/actions/workflows/ci.yml/badge.svg)](https://github.com/hakula139/twikoo-api-worker/actions/workflows/ci.yml)
-[![codecov](https://codecov.io/gh/hakula139/twikoo-api-worker/graph/badge.svg)](https://codecov.io/gh/hakula139/twikoo-api-worker)
+[![Coverage](https://codecov.io/gh/hakula139/twikoo-api-worker/graph/badge.svg)](https://codecov.io/gh/hakula139/twikoo-api-worker)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
-A Cloudflare Workers backend for the [Twikoo][twikoo] comment system, backed by Cloudflare D1 and R2. It replaces a Vercel + MongoDB deployment with a single low-latency Worker.
+A Cloudflare Workers backend for the [Twikoo] comment system, backed by Cloudflare D1 and R2. It replaces a Vercel + MongoDB deployment with a single low-latency Worker.
 
-This from-scratch TypeScript implementation uses the upstream [`twikoo-func`][twikoo-func] npm package for business logic and draws on [`twikoojs/twikoo-cloudflare`][cloudflare-reference] (MIT) as a reference implementation.
+This from-scratch TypeScript implementation uses the upstream [`twikoo-func`] npm package for business logic and draws on [`twikoojs/twikoo-cloudflare`][cloudflare-reference] (MIT) as a reference implementation.
 
 ## Features
 
@@ -18,7 +18,7 @@ This from-scratch TypeScript implementation uses the upstream [`twikoo-func`][tw
 
 ## Setup
 
-[Nix][nix] with flakes supplies Node.js, pnpm, Nushell, and the validation tools:
+[Nix] with flakes supplies Node.js, pnpm, Nushell, and the validation tools:
 
 ```bash
 git clone https://github.com/hakula139/twikoo-api-worker.git
@@ -27,7 +27,7 @@ nix develop
 pnpm install --frozen-lockfile
 ```
 
-Enter the development shell from this repository. It installs the shared [devkit][devkit] Git hooks.
+Enter the development shell from this repository. It installs the shared [devkit] Git hooks.
 
 ## One-time provisioning
 
@@ -61,8 +61,8 @@ Telegram notifications also require `PUSHOO_CHANNEL=telegram` in the admin confi
 
 `SET_PASSWORD` requires an existing admin identity, so seed `ADMIN_PASS_HASH` with the md5 of your plaintext password before the first deployment:
 
-```nu
-"my-plain-password" | hash md5
+```bash
+nu -c '"my-plain-password" | hash md5'
 pnpm wrangler secret put ADMIN_PASS_HASH   # paste the hex
 ```
 
@@ -74,16 +74,14 @@ For local dev secrets, create `.dev.vars` (gitignored) with one `KEY=value` pair
 
 ```bash
 pnpm dev                     # wrangler dev on port 8787
-prek run --all-files          # formatting, Markdown, spelling, Nix and file checks
+prek run --all-files         # formatting, Markdown, spelling, Nix, Nushell, workflows, and file hygiene
 pnpm check                   # type-check
 pnpm test                    # vitest run (workerd via @cloudflare/vitest-plugin)
-pnpm test:bundle             # Wrangler dry-run and compressed size limit
-pnpm test:smoke              # real Wrangler startup and upstream version
-pnpm lint                    # eslint
+pnpm test:bundle             # Wrangler dry-run against the Workers Free plan's 3 MiB gzip limit
+pnpm test:smoke              # temporary local D1 state and upstream function version
+pnpm lint                    # eslint through the locked pnpm toolchain
 nix flake check              # sandboxed native hooks
 ```
-
-The shared hooks check formatting and spelling alongside Nix, Nushell, workflow, and file hygiene. ESLint runs through the locked pnpm tool in development and directly in CI. The runtime smoke test creates temporary local D1 state and checks the upstream function version. The bundle check enforces the Workers Free plan's 3 MiB gzip limit.
 
 ## Deployment
 
@@ -118,7 +116,6 @@ twikoo.init({
 Copyright (c) 2026 [Hakula][author]. Licensed under the [MIT License][license].
 
 [twikoo]: https://twikoo.js.org/en/intro.html
-[twikoo-func]: https://www.npmjs.com/package/twikoo-func
 [cloudflare-reference]: https://github.com/twikoojs/twikoo-cloudflare
 [nix]: https://nixos.org/download/
 [devkit]: https://github.com/hakula139/devkit

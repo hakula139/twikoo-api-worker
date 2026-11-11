@@ -1,10 +1,16 @@
 {
+  "version": "0.2",
+  "language": "en",
+  "enableGlobDot": true,
+  "useGitignore": true,
+  "gitignoreRoot": ".",
   "dictionaryDefinitions": [
     {
       "name": "project-words",
-      "path": "./.cspell/words.txt"
+      "path": "./.cspell/words.txt",
+      "addWords": true
     }
   ],
   "dictionaries": ["project-words"],
-  "ignorePaths": ["pnpm-lock.yaml"]
+  "ignorePaths": ["flake.lock", "pnpm-lock.yaml"]
 }
