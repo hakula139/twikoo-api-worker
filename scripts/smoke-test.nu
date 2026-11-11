@@ -1,8 +1,8 @@
 #!/usr/bin/env nu
 
-# Verify the upstream version through a temporary local Wrangler instance.
-const REPO_ROOT = path self . | path dirname
+const REPO_ROOT = path self "." | path dirname
 
+# Verify the upstream version through a temporary local Wrangler instance.
 def main [] {
   cd $REPO_ROOT
   $env.PATH = ($env.PATH | prepend ($REPO_ROOT | path join "node_modules/.bin"))

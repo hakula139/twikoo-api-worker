@@ -80,7 +80,7 @@ pnpm test                    # vitest run (workerd via @cloudflare/vitest-plugin
 pnpm test:bundle             # Wrangler dry-run against the Workers Free plan's 3 MiB gzip limit
 pnpm test:smoke              # temporary local D1 state and upstream function version
 pnpm lint                    # eslint through the locked pnpm toolchain
-nix flake check              # sandboxed native hooks
+nix flake check              # flake output evaluation
 ```
 
 ## Deployment

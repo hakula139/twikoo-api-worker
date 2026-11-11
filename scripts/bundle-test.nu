@@ -1,8 +1,8 @@
 #!/usr/bin/env nu
 
-# Check the compressed Worker bundle against the Workers Free plan limit.
-const REPO_ROOT = path self . | path dirname
+const REPO_ROOT = path self "." | path dirname
 
+# Check the compressed Worker bundle against the Workers Free plan limit.
 def main [] {
   cd $REPO_ROOT
   $env.PATH = ($env.PATH | prepend ($REPO_ROOT | path join "node_modules/.bin"))
