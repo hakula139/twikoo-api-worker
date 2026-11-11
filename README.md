@@ -6,7 +6,7 @@
 
 A Cloudflare Workers backend for the [Twikoo] comment system, backed by Cloudflare D1 and R2. It replaces a Vercel + MongoDB deployment with a single low-latency Worker.
 
-This from-scratch TypeScript implementation uses the upstream [`twikoo-func`] npm package for business logic and draws on [`twikoojs/twikoo-cloudflare`][cloudflare-reference] (MIT) as a reference implementation.
+This from-scratch TypeScript implementation uses the upstream [`twikoo-func`][twikoo-func] npm package for business logic and draws on [`twikoojs/twikoo-cloudflare`][cloudflare-reference] (MIT) as a reference implementation.
 
 ## Features
 
@@ -116,6 +116,7 @@ twikoo.init({
 Copyright (c) 2026 [Hakula][author]. Licensed under the [MIT License][license].
 
 [twikoo]: https://twikoo.js.org/en/intro.html
+[twikoo-func]: https://www.npmjs.com/package/twikoo-func
 [cloudflare-reference]: https://github.com/twikoojs/twikoo-cloudflare
 [nix]: https://nixos.org/download/
 [devkit]: https://github.com/hakula139/devkit
