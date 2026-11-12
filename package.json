@@ -5,21 +5,16 @@
   "private": true,
   "type": "module",
   "main": "src/worker.ts",
-  "packageManager": "pnpm@12.16.1",
   "scripts": {
     "check": "tsc --noEmit",
     "db:fixture": "drizzle-kit export > tests/fixtures/schema.sql",
     "db:push": "drizzle-kit push",
     "deploy": "wrangler deploy --minify",
     "dev": "wrangler dev",
-    "format": "prettier --check .",
-    "lint": "pnpm lint:md && pnpm lint:js",
-    "lint:js": "eslint .",
-    "lint:md": "markdownlint-cli2 \"**/*.md\"",
-    "spellcheck": "cspell --no-progress \"**/*\"",
+    "lint": "eslint .",
     "test": "vitest run",
-    "test:bundle": "bash scripts/bundle-test.sh",
-    "test:smoke": "bash scripts/smoke-test.sh",
+    "test:bundle": "./scripts/bundle-test.nu",
+    "test:smoke": "./scripts/smoke-test.nu",
     "test:watch": "vitest"
   },
   "dependencies": {
@@ -34,14 +29,18 @@
     "@cloudflare/workers-types": "^5.20261031.1",
     "@types/node": "^26.6.6",
     "@vitest/coverage-istanbul": "^5.0.5",
-    "cspell": "^10.4.0",
     "drizzle-kit": "^0.31.11",
     "eslint": "^10.14.0",
-    "markdownlint-cli2": "^0.24.0",
-    "prettier": "^3.9.10",
     "typescript": "^6.0.3",
     "typescript-eslint": "^8.72.1",
     "vitest": "^5.0.5",
     "wrangler": "^4.156.0"
+  },
+  "devEngines": {
+    "packageManager": {
+      "name": "pnpm",
+      "version": "^12.0.0",
+      "onFail": "error"
+    }
   }
 }

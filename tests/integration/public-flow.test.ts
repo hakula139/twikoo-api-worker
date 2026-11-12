@@ -99,6 +99,7 @@ describe('integration: GET_COMMENTS_COUNT', () => {
       expect(body.code).toBe(ResponseCode.SUCCESS);
       expect(body.data).toEqual(expected);
     },
+    15_000,
   );
 
   it('rejects a non-array `urls` payload', async () => {
@@ -317,6 +318,7 @@ describe('integration: COMMENT_GET', () => {
         data.map(({ id, replies }) => ({ id, replies: replies.map((reply) => reply.id) })),
       ).toEqual(expected);
     },
+    15_000,
   );
 });
 

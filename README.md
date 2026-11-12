@@ -1,10 +1,10 @@
 # twikoo-api-worker
 
 [![CI](https://github.com/hakula139/twikoo-api-worker/actions/workflows/ci.yml/badge.svg)](https://github.com/hakula139/twikoo-api-worker/actions/workflows/ci.yml)
-[![codecov](https://codecov.io/gh/hakula139/twikoo-api-worker/graph/badge.svg)](https://codecov.io/gh/hakula139/twikoo-api-worker)
+[![Coverage](https://codecov.io/gh/hakula139/twikoo-api-worker/graph/badge.svg)](https://codecov.io/gh/hakula139/twikoo-api-worker)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
-A Cloudflare Workers backend for the [Twikoo][twikoo] comment system, backed by Cloudflare D1 and R2. It replaces a Vercel + MongoDB deployment with a single low-latency Worker.
+A Cloudflare Workers backend for the [Twikoo] comment system, backed by Cloudflare D1 and R2. It replaces a Vercel + MongoDB deployment with a single low-latency Worker.
 
 This from-scratch TypeScript implementation uses the upstream [`twikoo-func`][twikoo-func] npm package for business logic and draws on [`twikoojs/twikoo-cloudflare`][cloudflare-reference] (MIT) as a reference implementation.
 
@@ -18,16 +18,16 @@ This from-scratch TypeScript implementation uses the upstream [`twikoo-func`][tw
 
 ## Setup
 
-[Nix][nix] (with flakes) is the recommended path:
+[Nix] with flakes supplies Node.js, pnpm, Nushell, and the validation tools:
 
 ```bash
 git clone https://github.com/hakula139/twikoo-api-worker.git
 cd twikoo-api-worker
-nix develop   # auto-installs pre-commit hooks
-pnpm install
+nix develop
+pnpm install --frozen-lockfile
 ```
 
-Without Nix, install Node.js 26 and pnpm yourself.
+Enter the development shell from this repository. It installs the shared [devkit] Git hooks.
 
 ## One-time provisioning
 
@@ -62,7 +62,7 @@ Telegram notifications also require `PUSHOO_CHANNEL=telegram` in the admin confi
 `SET_PASSWORD` requires an existing admin identity, so seed `ADMIN_PASS_HASH` with the md5 of your plaintext password before the first deployment:
 
 ```bash
-printf 'my-plain-password' | md5           # macOS: returns 32 hex chars
+nu -c '"my-plain-password" | hash md5'
 pnpm wrangler secret put ADMIN_PASS_HASH   # paste the hex
 ```
 
@@ -73,15 +73,14 @@ For local dev secrets, create `.dev.vars` (gitignored) with one `KEY=value` pair
 ## Development
 
 ```bash
-pnpm dev           # wrangler dev on port 8787
-pnpm check         # type-check
-pnpm test          # vitest run (workerd via @cloudflare/vitest-plugin)
-pnpm test:bundle   # Wrangler dry-run and compressed size limit
-pnpm test:smoke    # real Wrangler startup and upstream version
-pnpm format        # prettier --check .
-pnpm lint          # markdownlint + eslint
-pnpm spellcheck    # cspell
-pnpm db:push       # sync schema.ts changes to remote D1
+pnpm dev                     # wrangler dev on port 8787
+prek run --all-files         # formatting, Markdown, spelling, Nix, Nushell, workflows, and file hygiene
+pnpm check                   # type-check
+pnpm test                    # vitest run (workerd via @cloudflare/vitest-plugin)
+pnpm test:bundle             # Wrangler dry-run against the Workers Free plan's 3 MiB gzip limit
+pnpm test:smoke              # temporary local D1 state and upstream function version
+pnpm lint                    # eslint through the locked pnpm toolchain
+nix flake check              # flake output evaluation
 ```
 
 ## Deployment
@@ -120,6 +119,7 @@ Copyright (c) 2026 [Hakula][author]. Licensed under the [MIT License][license].
 [twikoo-func]: https://www.npmjs.com/package/twikoo-func
 [cloudflare-reference]: https://github.com/twikoojs/twikoo-cloudflare
 [nix]: https://nixos.org/download/
+[devkit]: https://github.com/hakula139/devkit
 [worker-config]: wrangler.toml
 [drizzle-config]: drizzle.config.ts
 [schema]: src/db/schema.ts

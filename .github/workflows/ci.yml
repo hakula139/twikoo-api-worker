@@ -9,53 +9,40 @@ on:
 permissions:
   contents: read
 
+concurrency:
+  group: ci-${{ github.event.pull_request.number || github.run_id }}
+  cancel-in-progress: true
+
 jobs:
-  flake-check:
-    name: Nix Flake Check
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v7
+  nix:
+    uses: hakula139/devkit/.github/workflows/nix.yml@v3
+    with:
+      macos: false
+    secrets:
+      CACHIX_AUTH_TOKEN: ${{ secrets.CACHIX_AUTH_TOKEN }}
 
-      - name: Setup Nix
-        uses: ./.github/actions/setup-nix
-        with:
-          cachix_name: hakula
-          cachix_skip_push: 'true'
+  node:
+    permissions:
+      contents: read
+      id-token: write
+    uses: hakula139/devkit/.github/workflows/node.yml@v3
+    secrets:
+      CACHIX_AUTH_TOKEN: ${{ secrets.CACHIX_AUTH_TOKEN }}
 
-      - name: Run flake check
-        run: nix flake check
-
-  check:
+  worker:
     name: Worker Check
     runs-on: ubuntu-latest
+    timeout-minutes: 30
+
     steps:
       - name: Checkout
         uses: actions/checkout@v7
 
-      - name: Setup Nix
-        uses: ./.github/actions/setup-nix
-        with:
-          cachix_name: hakula
-          cachix_skip_push: 'true'
+      - name: Set up Nix
+        uses: hakula139/devkit/.github/actions/setup-nix@v3
 
       - name: Install dependencies
         run: nix develop -c pnpm install --frozen-lockfile
-
-      - name: Type check
-        run: nix develop -c pnpm check
-
-      - name: Format
-        run: nix develop -c pnpm format
-
-      - name: Lint
-        run: nix develop -c pnpm lint
-
-      - name: Spell check
-        run: nix develop -c pnpm spellcheck
-
-      - name: Test
-        run: nix develop -c pnpm test --coverage
 
       - name: Runtime smoke test
         run: nix develop -c pnpm test:smoke
@@ -63,8 +50,16 @@ jobs:
       - name: Bundle size check
         run: nix develop -c pnpm test:bundle
 
-      - name: Upload to Codecov
-        uses: codecov/codecov-action@v7
-        with:
-          token: ${{ secrets.CODECOV_TOKEN }}
-          files: coverage/lcov.info
+  result:
+    name: CI Result
+    # A skipped required check passes, so the gate must run after failures too.
+    if: ${{ !cancelled() }}
+    needs: [nix, node, worker]
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      actions: read
+
+    steps:
+      - name: Check results
+        uses: hakula139/devkit/.github/actions/ci-result@v3
