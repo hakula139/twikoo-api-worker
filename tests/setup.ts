@@ -83,11 +83,6 @@ vi.mock('@/twikoo', () => ({
   preCheckSpam: vi.fn(() => false),
   sendNotice: vi.fn<() => Promise<void>>().mockResolvedValue(undefined),
   sha256: (s: string) => `sha256(${s})`,
-  stripCode: <T extends { code?: number }>(o: T): Omit<T, 'code'> => {
-    const { code: _code, ...rest } = o;
-
-    return rest;
-  },
   validate: (event: Record<string, unknown>, requiredFields: readonly string[]) => {
     for (const field of requiredFields) {
       if (!event[field]) {

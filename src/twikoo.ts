@@ -42,12 +42,6 @@ export const htmlToText = getHtmlToText();
 export const md5 = getMd5();
 export const sha256 = getSha256();
 
-export const stripCode = <T extends { code: number }>(result: T): Omit<T, 'code'> => {
-  const { code: _code, ...rest } = result;
-
-  return rest;
-};
-
 export {
   addQQMailSuffix,
   commentImportArtalk,

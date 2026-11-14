@@ -1,11 +1,11 @@
 import type { Handler } from '@/types';
 
 import { isAdmin, requireAdmin } from '@/lib/auth';
+import { stripCode } from '@/lib/twikoo-response';
 import {
   VERSION,
   getConfigForAdmin as getConfigForAdminFn,
   getConfig as getConfigFn,
-  stripCode,
   validate,
 } from '@/twikoo';
 
