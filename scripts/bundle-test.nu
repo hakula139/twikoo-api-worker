@@ -10,7 +10,7 @@ def main [] {
 
   try {
     (
-      ^pnpm deploy
+      ^pnpm run deploy
         --dry-run
         --outdir $bundle_dir
     )

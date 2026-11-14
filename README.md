@@ -95,7 +95,7 @@ Pushes to `main` auto-deploy via [`.github/workflows/deploy.yml`][deploy-workflo
 Manual deploy:
 
 ```bash
-pnpm deploy
+pnpm run deploy
 ```
 
 New uploads expire after one hour unless a stored comment references them. Pending and hidden comments preserve their images. Removing the last reference starts another one-hour grace period. Cleanup runs every 15 minutes and retries failed work. Existing unregistered images remain untouched. Submit drafts within one hour or upload their images again.
