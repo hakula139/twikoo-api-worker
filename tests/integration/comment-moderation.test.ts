@@ -79,7 +79,8 @@ describe('integration: comment moderation', () => {
       isSpam: 0,
     },
   ])('honors $name', async ({ config, env, isSpam }) => {
-    const ctx = buildCtx({ config, env: env as RequestCtx['env'] });
+    const ctx = buildCtx({ config });
+    Object.assign(ctx.env, env);
 
     const row = await buildComment(payload('Reader'), ctx);
 
