@@ -37,7 +37,7 @@ pnpm wrangler d1 create twikoo
 pnpm wrangler r2 bucket create twikoo
 ```
 
-After creating D1, copy the printed `database_id` into [`wrangler.toml`][worker-config] and [`drizzle.config.ts`][drizzle-config]. Connect a public custom domain to the R2 bucket in the Cloudflare dashboard and set `R2_PUBLIC_URL` in `wrangler.toml`. After deployment, set `IMAGE_CDN` to `r2` in the Twikoo admin configuration so new uploads use this bucket, and keep all other settings unchanged if you are updating an existing deployment.
+After creating D1, copy the printed `database_id` into [`wrangler.toml`][worker-config]. Connect a public custom domain to the R2 bucket in the Cloudflare dashboard and set `R2_PUBLIC_URL` in `wrangler.toml`. After deployment, set `IMAGE_CDN` to `r2` in the Twikoo admin configuration so new uploads use this bucket, and keep all other settings unchanged if you are updating an existing deployment.
 
 Then sync [`src/db/schema.ts`][schema] to the remote D1 database. This requires `CLOUDFLARE_ACCOUNT_ID` and a `CLOUDFLARE_API_TOKEN` with D1 Edit permission, and it applies the schema delta directly without keeping migration files in the repository.
 
@@ -57,6 +57,8 @@ pnpm wrangler secret put SMTP_USER
 pnpm wrangler secret put TURNSTILE_SECRET_KEY
 ```
 
+For HTTP mail, set `SMTP_SERVICE` to `sendgrid`, `mailchannels`, or `resend` in the admin configuration. Set `SMTP_PASS` to the provider API key, `SMTP_USER` to any non-empty string, and `SENDER_EMAIL` to a sender address verified with the provider.
+
 Telegram notifications also require `PUSHOO_CHANNEL=telegram` in the admin configuration, with `PUSHOO_TOKEN` formatted as `<bot-token>#<chat-id>`.
 
 `SET_PASSWORD` requires an existing admin identity, so seed `ADMIN_PASS_HASH` with the md5 of your plaintext password before the first deployment:
@@ -74,12 +76,10 @@ For local dev secrets, create `.dev.vars` (gitignored) with one `KEY=value` pair
 
 ```bash
 pnpm dev                     # wrangler dev on port 8787
-prek run --all-files         # formatting, Markdown, spelling, Nix, Nushell, workflows, and file hygiene
-pnpm check                   # type-check
+run-hooks                    # formatting, lint, spelling, type-check, and file hygiene
 pnpm test                    # vitest run (workerd via @cloudflare/vitest-plugin)
 pnpm test:bundle             # Wrangler dry-run against the Workers Free plan's 3 MiB gzip limit
 pnpm test:smoke              # temporary local D1 state and upstream function version
-pnpm lint                    # eslint through the locked pnpm toolchain
 nix flake check              # flake output evaluation
 ```
 
@@ -121,7 +121,6 @@ Copyright (c) 2026 [Hakula][author]. Licensed under the [MIT License][license].
 [nix]: https://nixos.org/download/
 [devkit]: https://github.com/hakula139/devkit
 [worker-config]: wrangler.toml
-[drizzle-config]: drizzle.config.ts
 [schema]: src/db/schema.ts
 [deploy-workflow]: .github/workflows/deploy.yml
 [twikoo-client]: https://github.com/twikoojs/twikoo
