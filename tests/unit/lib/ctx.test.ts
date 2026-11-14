@@ -7,7 +7,7 @@ import { loadConfig } from '@/lib/ctx';
 
 const buildDb = (raw: string): DB =>
   ({
-    config: { read: vi.fn(async () => raw) },
+    config: { read: vi.fn<() => Promise<string>>().mockResolvedValue(raw) },
   }) as unknown as DB;
 
 describe('loadConfig', () => {

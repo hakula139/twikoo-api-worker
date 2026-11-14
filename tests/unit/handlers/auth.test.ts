@@ -10,7 +10,7 @@ import { mkUid } from '@/types';
 import { buildCtx } from '@tests/helpers/ctx';
 
 const buildAuthCtx = (uid: string, config: TwikooConfig) => {
-  const writePatch = vi.fn(async () => undefined);
+  const writePatch = vi.fn<() => Promise<void>>().mockResolvedValue(undefined);
   const ctx = buildCtx({
     uid: mkUid(uid),
     config,
@@ -49,28 +49,28 @@ describe('setPassword', () => {
 });
 
 describe('login', () => {
-  it('returns an empty envelope when the password matches', async () => {
+  it('returns an empty envelope when the password matches', () => {
     const ctx = buildCtx({ config: { ADMIN_PASS: md5('correct') } });
 
-    const result = await login({ password: 'correct' }, ctx);
+    const result = login({ password: 'correct' }, ctx);
 
     expect(result).toEqual({});
   });
 
-  it('rejects when no admin password is configured', async () => {
+  it('rejects when no admin password is configured', () => {
     const ctx = buildCtx({ config: {} });
 
-    await expect(login({ password: 'anything' }, ctx)).rejects.toMatchObject({
-      code: ResponseCode.PASS_NOT_EXIST,
-    });
+    expect(() => login({ password: 'anything' }, ctx)).toThrow(
+      expect.objectContaining({ code: ResponseCode.PASS_NOT_EXIST }),
+    );
   });
 
-  it('rejects when the supplied password does not match the stored hash', async () => {
+  it('rejects when the supplied password does not match the stored hash', () => {
     const ctx = buildCtx({ config: { ADMIN_PASS: md5('correct') } });
 
-    await expect(login({ password: 'wrong' }, ctx)).rejects.toMatchObject({
-      code: ResponseCode.PASS_NOT_MATCH,
-    });
+    expect(() => login({ password: 'wrong' }, ctx)).toThrow(
+      expect.objectContaining({ code: ResponseCode.PASS_NOT_MATCH }),
+    );
   });
 });
 

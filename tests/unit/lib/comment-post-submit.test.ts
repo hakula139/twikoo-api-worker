@@ -33,7 +33,7 @@ const buildPostCtx = (
     config,
     db: {
       comment: {
-        byId: vi.fn(async (id: string) => db.byIdRows.get(id)),
+        byId: vi.fn((id: string) => Promise.resolve(db.byIdRows.get(id))),
         updateSpam: db.updateSpam,
       },
     } as unknown as RequestCtx['db'],
@@ -51,7 +51,7 @@ const baseSaved = (overrides: Partial<Comment> = {}): Comment =>
 describe('postSubmit', () => {
   it('flags isSpam=1 and writes back when Akismet says spam', async () => {
     vi.spyOn(globalThis, 'fetch').mockResolvedValue(new Response('true', { status: 200 }));
-    const updateSpam = vi.fn(async () => undefined);
+    const updateSpam = vi.fn<() => Promise<void>>().mockResolvedValue(undefined);
     const ctx = buildPostCtx({ byIdRows: new Map(), updateSpam }, { AKISMET_KEY: 'ak-key' });
     const saved = baseSaved();
 
@@ -67,7 +67,7 @@ describe('postSubmit', () => {
 
   it('leaves isSpam=0 and skips updateSpam when Akismet says clean', async () => {
     vi.spyOn(globalThis, 'fetch').mockResolvedValue(new Response('false', { status: 200 }));
-    const updateSpam = vi.fn(async () => undefined);
+    const updateSpam = vi.fn<() => Promise<void>>().mockResolvedValue(undefined);
     const ctx = buildPostCtx({ byIdRows: new Map(), updateSpam }, { AKISMET_KEY: 'ak-key' });
     const saved = baseSaved();
 
@@ -79,7 +79,7 @@ describe('postSubmit', () => {
 
   it.each([undefined, 'MANUAL_REVIEW'])('skips Akismet for key %s', async (apiKey) => {
     const fetchSpy = vi.spyOn(globalThis, 'fetch');
-    const updateSpam = vi.fn(async () => undefined);
+    const updateSpam = vi.fn<() => Promise<void>>().mockResolvedValue(undefined);
     const ctx = buildPostCtx({ byIdRows: new Map(), updateSpam }, { AKISMET_KEY: apiKey });
 
     await postSubmit(baseSaved(), ctx);
@@ -90,7 +90,7 @@ describe('postSubmit', () => {
 
   it('swallows Akismet errors so sendNotice still runs', async () => {
     vi.spyOn(globalThis, 'fetch').mockRejectedValueOnce(new Error('akismet down'));
-    const updateSpam = vi.fn(async () => undefined);
+    const updateSpam = vi.fn<() => Promise<void>>().mockResolvedValue(undefined);
     const ctx = buildPostCtx({ byIdRows: new Map(), updateSpam }, { AKISMET_KEY: 'ak-key' });
 
     await expect(postSubmit(baseSaved(), ctx)).resolves.toBeUndefined();
@@ -100,7 +100,7 @@ describe('postSubmit', () => {
 
   it('swallows sendNotice errors so postSubmit always resolves', async () => {
     vi.mocked(twikoo.sendNotice).mockRejectedValueOnce(new Error('mailer down'));
-    const updateSpam = vi.fn(async () => undefined);
+    const updateSpam = vi.fn<() => Promise<void>>().mockResolvedValue(undefined);
     const ctx = buildPostCtx({ byIdRows: new Map(), updateSpam });
 
     await expect(postSubmit(baseSaved(), ctx)).resolves.toBeUndefined();
@@ -115,7 +115,7 @@ describe('postSubmit', () => {
 
       expect(undef).toBeUndefined();
     });
-    const updateSpam = vi.fn(async () => undefined);
+    const updateSpam = vi.fn<() => Promise<void>>().mockResolvedValue(undefined);
     const ctx = buildPostCtx({ byIdRows: new Map([['parent-1', parent]]), updateSpam });
 
     await postSubmit(baseSaved(), ctx);
@@ -131,7 +131,7 @@ describe('postSubmit', () => {
       expect(current).toEqual(expect.objectContaining({ _id: 'saved-1', id: 'saved-1' }));
       capturedParent = await getParent(current);
     });
-    const updateSpam = vi.fn(async () => undefined);
+    const updateSpam = vi.fn<() => Promise<void>>().mockResolvedValue(undefined);
     const ctx = buildPostCtx(
       { byIdRows: new Map([['parent-1', parent]]), updateSpam },
       { PUSHOO_TOKEN: '123456:bot_token#-100123456' },
@@ -156,7 +156,7 @@ describe('postSubmit', () => {
 
   it('sends clean comments to Telegram without opting into master emails', async () => {
     const fetchMock = vi.spyOn(globalThis, 'fetch').mockResolvedValue(Response.json({ ok: true }));
-    const updateSpam = vi.fn(async () => undefined);
+    const updateSpam = vi.fn<() => Promise<void>>().mockResolvedValue(undefined);
     const ctx = buildPostCtx(
       { byIdRows: new Map(), updateSpam },
       {},
@@ -177,7 +177,7 @@ describe('postSubmit', () => {
 
   it('does not notify the blogger about their own comment', async () => {
     const fetchMock = vi.spyOn(globalThis, 'fetch');
-    const updateSpam = vi.fn(async () => undefined);
+    const updateSpam = vi.fn<() => Promise<void>>().mockResolvedValue(undefined);
     const ctx = buildPostCtx(
       { byIdRows: new Map(), updateSpam },
       {},
@@ -195,7 +195,7 @@ describe('postSubmit', () => {
   });
 
   it('uses upstream notices when Telegram has no token', async () => {
-    const updateSpam = vi.fn(async () => undefined);
+    const updateSpam = vi.fn<() => Promise<void>>().mockResolvedValue(undefined);
     const ctx = buildPostCtx(
       { byIdRows: new Map(), updateSpam },
       {},
@@ -211,7 +211,7 @@ describe('postSubmit', () => {
 
   it('skips unsupported push adapters while retaining reply emails', async () => {
     const warnSpy = vi.spyOn(twikoo.logger, 'warn').mockImplementation(() => undefined);
-    const updateSpam = vi.fn(async () => undefined);
+    const updateSpam = vi.fn<() => Promise<void>>().mockResolvedValue(undefined);
     const parent = baseSaved({ _id: mkCommentId('parent-1') });
     const ctx = buildPostCtx(
       { byIdRows: new Map([['parent-1', parent]]), updateSpam },
@@ -235,7 +235,7 @@ describe('postSubmit', () => {
     const fetchMock = vi
       .spyOn(globalThis, 'fetch')
       .mockResolvedValueOnce(new Response('true', { status: 200 }));
-    const updateSpam = vi.fn(async () => undefined);
+    const updateSpam = vi.fn<() => Promise<void>>().mockResolvedValue(undefined);
     const ctx = buildPostCtx(
       { byIdRows: new Map(), updateSpam },
       { AKISMET_KEY: 'ak-key' },
@@ -266,7 +266,7 @@ describe('postSubmit', () => {
       });
     });
     const errorSpy = vi.spyOn(twikoo.logger, 'error').mockImplementation(() => undefined);
-    const updateSpam = vi.fn(async () => undefined);
+    const updateSpam = vi.fn<() => Promise<void>>().mockResolvedValue(undefined);
     const ctx = buildPostCtx(
       { byIdRows: new Map(), updateSpam },
       {},

@@ -64,7 +64,9 @@ const notification = (config: TwikooConfig = {}, env: Partial<RequestCtx['env']>
       ...config,
     },
     db: {
-      comment: { byId: vi.fn(async (id: string) => (id === parent._id ? parent : undefined)) },
+      comment: {
+        byId: vi.fn((id: string) => Promise.resolve(id === parent._id ? parent : undefined)),
+      },
     } as unknown as RequestCtx['db'],
   });
 

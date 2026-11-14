@@ -2,5 +2,5 @@ import type { Handler } from '@/types';
 
 import { VERSION, getFuncVersion as getFuncVersionFn, stripCode } from '@/twikoo';
 
-export const getFuncVersion: Handler<'GET_FUNC_VERSION'> = async () =>
+export const getFuncVersion: Handler<'GET_FUNC_VERSION'> = () =>
   stripCode(getFuncVersionFn(VERSION));

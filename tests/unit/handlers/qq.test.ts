@@ -54,17 +54,18 @@ describe('getQqNick', () => {
   });
 
   it.each([
-    { name: 'non-2xx HTTP status', response: () => new Response('boom', { status: 500 }) },
-    { name: 'non-success API code', response: () => jsonResponse({ code: 401 }) },
-    { name: 'missing nick', response: () => jsonResponse({ code: 200, data: {} }) },
-    {
-      name: 'network failure',
-      response: () => {
-        throw new Error('fetch failed');
-      },
-    },
-  ])('returns null for $name', async ({ response }) => {
-    vi.spyOn(globalThis, 'fetch').mockImplementationOnce(async () => response());
+    { name: 'non-2xx HTTP status', response: new Response('boom', { status: 500 }) },
+    { name: 'non-success API code', response: jsonResponse({ code: 401 }) },
+    { name: 'missing nick', response: jsonResponse({ code: 200, data: {} }) },
+    { name: 'network failure', error: new Error('fetch failed') },
+  ])('returns null for $name', async (scenario) => {
+    const fetchSpy = vi.spyOn(globalThis, 'fetch');
+
+    if ('error' in scenario) {
+      fetchSpy.mockRejectedValueOnce(scenario.error);
+    } else {
+      fetchSpy.mockResolvedValueOnce(scenario.response);
+    }
 
     const result = await getQqNick({ qq: '1' }, buildCtx());
 

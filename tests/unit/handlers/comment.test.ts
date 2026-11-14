@@ -33,13 +33,15 @@ interface FakeDb {
 const buildSubmitCtx = (config: TwikooConfig, fake: FakeDb): RequestCtx => {
   const db = {
     comment: {
-      save: vi.fn(async (c: NewComment) => {
+      save: vi.fn((c: NewComment) => {
         fake.saved.push(c);
+
+        return Promise.resolve();
       }),
-      countSinceByIp: vi.fn(async () => fake.perIp),
-      countSince: vi.fn(async () => fake.global),
-      byId: vi.fn(async () => undefined as Comment | undefined),
-      updateSpam: vi.fn(async () => undefined),
+      countSinceByIp: vi.fn<() => Promise<number>>().mockResolvedValue(fake.perIp),
+      countSince: vi.fn<() => Promise<number>>().mockResolvedValue(fake.global),
+      byId: vi.fn<() => Promise<Comment | undefined>>().mockResolvedValue(undefined),
+      updateSpam: vi.fn<() => Promise<void>>().mockResolvedValue(undefined),
     },
   };
 
@@ -73,9 +75,9 @@ const buildGetCtx = (
     .mockResolvedValue([]);
   const db = {
     comment: {
-      count: vi.fn(async () => rows.length),
+      count: vi.fn<() => Promise<number>>().mockResolvedValue(rows.length),
       list,
-      replies: vi.fn(async () => [] as Comment[]),
+      replies: vi.fn<() => Promise<Comment[]>>().mockResolvedValue([]),
     },
   };
 
@@ -168,7 +170,7 @@ describe('getCommentsCount > urls validation', () => {
   const buildCountCtx = (): RequestCtx => {
     const db = {
       comment: {
-        countByUrls: vi.fn(async () => new Map<string, number>()),
+        countByUrls: vi.fn<() => Promise<Map<string, number>>>().mockResolvedValue(new Map()),
       },
     };
 
@@ -198,7 +200,7 @@ describe('getCommentsCount > urls validation', () => {
 
 describe('getRecentComments > urls validation', () => {
   const buildRecentCtx = (): { ctx: RequestCtx; recent: ReturnType<typeof vi.fn> } => {
-    const recent = vi.fn(async () => [] as Comment[]);
+    const recent = vi.fn<() => Promise<Comment[]>>().mockResolvedValue([]);
     const db = {
       comment: {
         recent,
@@ -239,7 +241,7 @@ describe('getRecentComments > urls validation', () => {
 
 describe('commentLike', () => {
   const buildLikeCtx = (matched: boolean) => {
-    const toggleVote = vi.fn(async () => matched);
+    const toggleVote = vi.fn<() => Promise<boolean>>().mockResolvedValue(matched);
     const ctx = buildCtx({
       uid: mkUid('voter-uid'),
       db: { comment: { toggleVote } } as unknown as RequestCtx['db'],
@@ -499,7 +501,7 @@ describe('commentDeleteForAdmin', () => {
   const ADMIN = 'admin-uid';
 
   const buildDelCtx = (uid: string) => {
-    const del = vi.fn(async () => undefined);
+    const del = vi.fn<() => Promise<void>>().mockResolvedValue(undefined);
     const ctx = buildCtx({
       uid: mkUid(uid),
       config: { ADMIN_PASS: md5(ADMIN) },
@@ -529,8 +531,8 @@ describe('commentDeleteForAdmin', () => {
 
 describe('commentDeleteForUser', () => {
   const buildOwnerCtx = (uid: string, row?: Comment) => {
-    const byId = vi.fn(async () => row);
-    const del = vi.fn(async () => undefined);
+    const byId = vi.fn<() => Promise<Comment | undefined>>().mockResolvedValue(row);
+    const del = vi.fn<() => Promise<void>>().mockResolvedValue(undefined);
     const ctx = buildCtx({
       uid: mkUid(uid),
       db: { comment: { byId, delete: del } } as unknown as RequestCtx['db'],
@@ -581,9 +583,15 @@ describe('commentExportForAdmin', () => {
   const ADMIN = 'admin-uid';
 
   const buildExportCtx = (uid: string) => {
-    const commentExport = vi.fn(async () => [{ kind: 'comment' }]);
-    const counterExport = vi.fn(async () => [{ kind: 'counter' }]);
-    const configExport = vi.fn(async () => [{ kind: 'config' }]);
+    const commentExport = vi
+      .fn<() => Promise<{ kind: string }[]>>()
+      .mockResolvedValue([{ kind: 'comment' }]);
+    const counterExport = vi
+      .fn<() => Promise<{ kind: string }[]>>()
+      .mockResolvedValue([{ kind: 'counter' }]);
+    const configExport = vi
+      .fn<() => Promise<{ kind: string }[]>>()
+      .mockResolvedValue([{ kind: 'config' }]);
     const ctx = buildCtx({
       uid: mkUid(uid),
       config: { ADMIN_PASS: md5(ADMIN) },

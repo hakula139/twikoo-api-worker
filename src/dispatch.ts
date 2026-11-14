@@ -1,7 +1,7 @@
 import type { ExecutionContext } from '@cloudflare/workers-types';
 
 import type { ResponseCodeValue } from './lib/errors';
-import type { Env, EventName, EventPayloads, RequestCtx, TwikooResponse } from './types';
+import type { Env, EventName, Handler, RequestCtx, TwikooResponse } from './types';
 
 import { buildDb } from './db';
 import { handlers, isEventName } from './handlers';
@@ -129,10 +129,7 @@ export const dispatch = async (
       );
     }
 
-    const handler = handlers[event] as (
-      payload: EventPayloads[EventName],
-      ctx: RequestCtx,
-    ) => Promise<Partial<TwikooResponse>>;
+    const handler = handlers[event] as Handler<EventName>;
 
     let result: Partial<TwikooResponse>;
 

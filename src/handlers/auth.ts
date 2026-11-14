@@ -25,7 +25,7 @@ export const setPassword: Handler<'SET_PASSWORD'> = async (payload, ctx) => {
 
 // Don't return `ticket`. It routes the widget through tcb signIn (crashes on URL envId). isAdmin
 // recovers the role from later accessToken headers.
-export const login: Handler<'LOGIN'> = async (payload, ctx) => {
+export const login: Handler<'LOGIN'> = (payload, ctx) => {
   validate(payload, ['password']);
 
   if (!ctx.config.ADMIN_PASS) {

@@ -82,7 +82,7 @@ describe('getConfigForAdmin', () => {
 
 describe('setConfig', () => {
   const buildSetCtx = (uid: string, adminUid = 'admin-uid') => {
-    const writePatch = vi.fn(async () => undefined);
+    const writePatch = vi.fn<() => Promise<void>>().mockResolvedValue(undefined);
     const ctx = buildCtx({
       config: { ADMIN_PASS: md5(adminUid) },
       uid: mkUid(uid),

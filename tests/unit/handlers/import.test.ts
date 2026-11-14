@@ -176,13 +176,12 @@ describe('commentImportForAdmin', () => {
 
   it('captures JSON parse failures into the log and surfaces them as FAIL', async () => {
     const { ctx, saveMany } = buildImportCtx(ADMIN);
-    const err = await commentImportForAdmin({ source: 'twikoo', file: '{not-json' }, ctx).catch(
-      (e: unknown) => e,
-    );
 
-    expect(err).toBeInstanceOf(TwikooError);
-    expect((err as TwikooError).code).toBe(ResponseCode.FAIL);
-    expect((err as TwikooError).message).toContain('解析失败');
+    const result = commentImportForAdmin({ source: 'twikoo', file: '{not-json' }, ctx);
+
+    await expect(result).rejects.toBeInstanceOf(TwikooError);
+    await expect(result).rejects.toMatchObject({ code: ResponseCode.FAIL });
+    await expect(result).rejects.toThrow('解析失败');
     expect(saveMany).not.toHaveBeenCalled();
   });
 

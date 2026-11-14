@@ -19,8 +19,8 @@ afterEach(() => {
 const buildRateCtx = (config: TwikooConfig, counts: Counts, ip = '192.0.2.1'): RequestCtx => {
   const db = {
     comment: {
-      countSinceByIp: vi.fn(async () => counts.perIp),
-      countSince: vi.fn(async () => counts.global),
+      countSinceByIp: vi.fn<() => Promise<number>>().mockResolvedValue(counts.perIp),
+      countSince: vi.fn<() => Promise<number>>().mockResolvedValue(counts.global),
     },
   };
 
