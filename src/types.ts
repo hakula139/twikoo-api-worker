@@ -141,6 +141,6 @@ export type EventName = keyof EventPayloads;
 export type Handler<E extends EventName> = (
   payload: EventPayloads[E],
   ctx: RequestCtx,
-) => Promise<Partial<TwikooResponse>>;
+) => Partial<TwikooResponse> | Promise<Partial<TwikooResponse>>;
 
 export type Handlers = { [E in EventName]: Handler<E> };

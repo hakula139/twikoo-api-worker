@@ -48,9 +48,6 @@ export default defineConfig({
       provider: 'istanbul',
       reporter: ['text', 'lcov'],
       include: ['src/**'],
-      // `twikoo.ts` is third-party `twikoo-func` glue. `db/schema.ts` is pure Drizzle table
-      // declarations. Type-only files emit no instrumentation.
-      exclude: ['src/twikoo.ts', 'src/db/schema.ts'],
     },
   },
 });

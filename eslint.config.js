@@ -27,9 +27,8 @@ export default defineConfig([
       '@typescript-eslint/no-non-null-assertion': 'error',
       '@typescript-eslint/no-unused-vars': [
         'error',
-        { argsIgnorePattern: '^_', varsIgnorePattern: '^_' },
+        { argsIgnorePattern: '^_', ignoreRestSiblings: true },
       ],
-      '@typescript-eslint/require-await': 'off',
       '@typescript-eslint/switch-exhaustiveness-check': 'error',
     },
   },

@@ -11,8 +11,8 @@ afterEach(() => {
 
 describe('counterGet', () => {
   const buildCounterCtx = (timeValue: number) => {
-    const incr = vi.fn(async () => undefined);
-    const time = vi.fn(async () => timeValue);
+    const incr = vi.fn<() => Promise<void>>().mockResolvedValue(undefined);
+    const time = vi.fn<() => Promise<number>>().mockResolvedValue(timeValue);
     const ctx = buildCtx({
       db: { counter: { incr, time } } as unknown as RequestCtx['db'],
     });
