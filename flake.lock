@@ -9,11 +9,11 @@
         "nixpkgs-unstable": "nixpkgs-unstable"
       },
       "locked": {
-        "lastModified": 1794389047,
-        "narHash": "sha256-jCNBwFvUQR55Q/fFa7ZxHG6cPZ3kEgWdyeQ/45PYZbc=",
+        "lastModified": 1794484827,
+        "narHash": "sha256-15GbflneXF9BZkigED6OELip679wev31hilQbkpq0lY=",
         "owner": "hakula139",
         "repo": "devkit",
-        "rev": "208b993e3814bd214f3e4facccee0ade3ffe19e6",
+        "rev": "733c20a1b280137d103eb66cab4cccfa89c9bb43",
         "type": "github"
       },
       "original": {
