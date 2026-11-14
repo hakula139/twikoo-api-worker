@@ -6,6 +6,7 @@ import { ResponseCode, TwikooError } from '@/lib/errors';
 import { newCommentId } from '@/lib/id';
 import { EMPTY_STRING_ARRAY_JSON } from '@/lib/json-string';
 import { sanitizeHtml } from '@/lib/sanitize';
+import { configWithSecrets } from '@/lib/secret';
 import {
   addQQMailSuffix,
   equalsMail,
@@ -52,6 +53,7 @@ export const buildComment = async (
     throw new TwikooError(ResponseCode.NEED_LOGIN, '请先登录管理面板，再使用博主身份发送评论');
   }
 
+  const nick = payload.nick || '匿名';
   const timestamp = Date.now();
   const hashMail = (mail: string): string => {
     const normalized = normalizeMail(mail);
@@ -70,7 +72,7 @@ export const buildComment = async (
   return {
     _id: newCommentId(),
     uid: ctx.uid,
-    nick: payload.nick || '匿名',
+    nick,
     mail,
     mailMd5: mail ? hashMail(mail) : '',
     link: payload.link ?? '',
@@ -83,7 +85,7 @@ export const buildComment = async (
     comment: sanitizeHtml(payload.comment),
     pid: payload.pid || (payload.rid ?? ''),
     rid: payload.rid ?? '',
-    isSpam: !isAdminUser && preCheckSpam(payload, ctx.config) ? 1 : 0,
+    isSpam: !isAdminUser && preCheckSpam({ ...payload, nick }, configWithSecrets(ctx)) ? 1 : 0,
     created: timestamp,
     updated: timestamp,
     ups: EMPTY_STRING_ARRAY_JSON,

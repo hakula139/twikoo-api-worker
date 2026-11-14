@@ -2,22 +2,14 @@ import type { TwikooConfig } from '@/types';
 
 import type { DecodedPhoto } from './types';
 
+import { parseImage } from 'twikoo-func/utils/image';
+
 import { logger } from '@/twikoo';
 import { stringConfig } from '../config-read';
 
 export const decodePhoto = (dataUrl: string): DecodedPhoto => {
-  const [meta, base64] = dataUrl.split(';base64,');
-
-  if (!base64) {
-    throw new Error('photo must be a base64 data URL');
-  }
-
-  const mimeType = meta.replace(/^data:/, '') || 'application/octet-stream';
-  const binary = atob(base64);
-  const bytes = new Uint8Array(binary.length);
-  for (let i = 0; i < binary.length; i++) {
-    bytes[i] = binary.charCodeAt(i);
-  }
+  const { body, mimeType } = parseImage(dataUrl);
+  const bytes = new Uint8Array(body);
 
   return { blob: new Blob([bytes], { type: mimeType }), bytes, mimeType };
 };

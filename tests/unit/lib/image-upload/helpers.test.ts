@@ -10,10 +10,7 @@ import {
   safeBaseName,
   stripTrailingSlash,
 } from '@/lib/image-upload/helpers';
-
-const PNG_BASE64 = 'iVBORw0KGgo=';
-const dataUrl = `data:image/png;base64,${PNG_BASE64}`;
-const PNG_BYTES = new Uint8Array([137, 80, 78, 71, 13, 10, 26, 10]);
+import { IMAGE_PHOTOS, PNG_PHOTO as dataUrl } from '@tests/helpers/image-fixture';
 
 const okResponse = (body: unknown, init: ResponseInit = { status: 200 }): Response =>
   new Response(JSON.stringify(body), {
@@ -26,28 +23,33 @@ afterEach(() => {
 });
 
 describe('decodePhoto', () => {
-  it('decodes a valid data URL into blob, bytes, and mimeType', async () => {
-    const result = decodePhoto(dataUrl);
+  it.each(IMAGE_PHOTOS)(
+    'decodes $mimeType into matching blob and bytes',
+    async ({ mimeType, photo }) => {
+      const base64 = photo.split(',')[1];
+      const bytes = Uint8Array.from(atob(base64), (char) => char.charCodeAt(0));
 
-    expect(result.mimeType).toBe('image/png');
-    expect(result.bytes).toEqual(PNG_BYTES);
-    expect(result.blob).toBeInstanceOf(Blob);
-    expect(result.blob.type).toBe('image/png');
-    expect(new Uint8Array(await result.blob.arrayBuffer())).toEqual(PNG_BYTES);
-  });
+      const result = decodePhoto(photo);
 
-  it('preserves the supplied MIME type', () => {
-    const jpeg = `data:image/jpeg;base64,${PNG_BASE64}`;
+      expect(result.mimeType).toBe(mimeType);
+      expect(result.bytes).toEqual(bytes);
+      expect(result.blob).toBeInstanceOf(Blob);
+      expect(result.blob.type).toBe(mimeType);
+      expect(new Uint8Array(await result.blob.arrayBuffer())).toEqual(bytes);
+    },
+  );
 
-    expect(decodePhoto(jpeg).mimeType).toBe('image/jpeg');
-  });
-
-  it('defaults to application/octet-stream when the data: prefix omits a MIME type', () => {
-    expect(decodePhoto(`data:;base64,${PNG_BASE64}`).mimeType).toBe('application/octet-stream');
-  });
-
-  it('throws when the input is not a base64 data URL', () => {
-    expect(() => decodePhoto('not a data url')).toThrow('photo must be a base64 data URL');
+  it.each([
+    { name: 'missing data URL header', photo: 'not a data url' },
+    { name: 'missing MIME type', photo: dataUrl.replace('image/png', '') },
+    {
+      name: 'non-image MIME type',
+      photo: `data:text/html;base64,${btoa('<script>alert(1)</script>')}`,
+    },
+    { name: 'mismatched MIME type', photo: dataUrl.replace('image/png', 'image/jpeg') },
+    { name: 'malformed base64', photo: 'data:image/png;base64,%%%%' },
+  ])('rejects $name', ({ photo }) => {
+    expect(() => decodePhoto(photo)).toThrow();
   });
 });
 

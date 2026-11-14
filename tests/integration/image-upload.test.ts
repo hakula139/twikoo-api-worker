@@ -3,10 +3,8 @@ import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
 
 import { ResponseCode } from '@/lib/errors';
 import { applyTestSchema, resetTestDb } from '@tests/helpers/db';
+import { PNG_BYTES, PNG_PHOTO as PHOTO } from '@tests/helpers/image-fixture';
 import { postEvent, seedConfig } from './helpers';
-
-const PHOTO = 'data:image/png;base64,iVBORw0KGgo=';
-const PNG_BYTES = new Uint8Array([137, 80, 78, 71, 13, 10, 26, 10]);
 
 beforeAll(applyTestSchema);
 
@@ -28,7 +26,10 @@ describe('integration: image uploads', () => {
     vi.spyOn(Date, 'now').mockReturnValue(1768435200000);
     const photos = [
       { photo: PHOTO, bytes: PNG_BYTES },
-      { photo: 'data:image/png;base64,iVBORw0KGgoA', bytes: new Uint8Array([...PNG_BYTES, 0]) },
+      {
+        photo: `data:image/png;base64,${btoa(String.fromCharCode(...PNG_BYTES, 0))}`,
+        bytes: new Uint8Array([...PNG_BYTES, 0]),
+      },
     ];
 
     const uploads = await Promise.all(
@@ -67,6 +68,22 @@ describe('integration: image uploads', () => {
     expect(body.code).toBe(ResponseCode.FAIL);
     expect(body.message).toBe('参数"photo"不合法');
     expect(body.err).toBe('参数"photo"不合法');
+  });
+
+  it.each([
+    { name: 'HTML content', photo: `data:text/html;base64,${btoa('<script>alert(1)</script>')}` },
+    { name: 'mismatched MIME type', photo: PHOTO.replace('image/png', 'image/jpeg') },
+    { name: 'malformed base64', photo: 'data:image/png;base64,%%%%' },
+  ])('rejects $name before storing an R2 object', async ({ photo }) => {
+    await seedConfig({ IMAGE_CDN: 'r2' });
+    const putSpy = vi.spyOn(env.R2, 'put');
+
+    const { body } = await postEvent('UPLOAD_IMAGE', { photo, fileName: 'sample.png' });
+
+    expect(body.code).toBe(ResponseCode.UPLOAD_FAILED);
+    expect(body.err).toBe(body.message);
+    expect(putSpy).not.toHaveBeenCalled();
+    expect((await env.R2.list()).objects).toEqual([]);
   });
 
   it('returns R2 failures in the upload client error field', async () => {

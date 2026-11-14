@@ -1,4 +1,4 @@
-import type { Comment, NewComment } from '@/db';
+import type { Comment } from '@/db';
 import type { RequestCtx, TwikooConfig } from '@/types';
 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -6,6 +6,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { postSubmit } from '@/lib/comment-post-submit';
 import * as twikoo from '@/twikoo';
 import { mkCommentId } from '@/types';
+import { newComment } from '@tests/helpers/comment-fixture';
 import { buildCtx } from '@tests/helpers/ctx';
 
 beforeEach(() => {
@@ -38,35 +39,14 @@ const buildPostCtx = (
     } as unknown as RequestCtx['db'],
   });
 
-const baseSaved = (overrides: Partial<NewComment> = {}): Comment => {
-  const row: NewComment = {
+const baseSaved = (overrides: Partial<Comment> = {}): Comment =>
+  newComment({
     _id: mkCommentId('saved-1'),
-    uid: 'reader-1',
-    nick: 'Reader',
     mail: 'reader@example.com',
-    mailMd5: '',
-    link: '',
-    ua: 'Mozilla/5.0',
-    ip: '192.0.2.1',
-    ipRegion: '',
-    master: 0,
-    url: '/about-me/',
-    href: 'https://example.com/about-me/',
-    comment: '感谢分享。',
-    pid: '',
-    rid: '',
-    isSpam: 0,
     created: 1,
     updated: 1,
-    ups: '[]' as Comment['ups'],
-    downs: '[]' as Comment['downs'],
-    top: 0,
-    avatar: '',
     ...overrides,
-  };
-
-  return row as Comment;
-};
+  });
 
 describe('postSubmit', () => {
   it('flags isSpam=1 and writes back when Akismet says spam', async () => {
