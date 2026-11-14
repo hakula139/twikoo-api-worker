@@ -14,11 +14,11 @@ import { collectUploadReferences } from '@/lib/image-upload/references';
 import worker from '@/worker';
 import { newComment, resetCommentCounter } from '@tests/helpers/comment-fixture';
 import { applyTestSchema, drizzleClient, resetTestDb } from '@tests/helpers/db';
+import { PNG_PHOTO as PHOTO } from '@tests/helpers/image-fixture';
 
 const NOW = 1_800_000_000_000;
 const HOUR = 3_600_000;
 const PUBLIC_URL = 'https://images.example.com/assets';
-const PHOTO = 'data:image/png;base64,iVBORw0KGgo=';
 const bindings: Env = { DB: env.DB, R2: env.R2, R2_PUBLIC_URL: PUBLIC_URL };
 const comments = () => buildDb(env.DB, PUBLIC_URL).comment;
 const uploads = () => createUploadDb(drizzleClient());

@@ -7,9 +7,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { ResponseCode } from '@/lib/errors';
 import { uploadImage } from '@/lib/image-upload';
-
-const PNG_BASE64 = 'iVBORw0KGgo=';
-const dataUrl = `data:image/png;base64,${PNG_BASE64}`;
+import { PNG_PHOTO as dataUrl } from '@tests/helpers/image-fixture';
 
 const r2Env = (): Pick<Env, 'DB' | 'R2' | 'R2_PUBLIC_URL'> => ({
   DB: env.DB,
@@ -366,12 +364,12 @@ describe('uploadImage > providers', () => {
 
       expect(headers['x-amz-date']).toBe('20260115T000000Z');
       expect(headers['x-amz-content-sha256']).toBe(
-        '4c4b6a3be1314ab86138bef4314dde022e600960d8689a2c8f8631802d20dab6',
+        '2c08b9f1a3f20efabea4c43603536d8c8d559df00727ddc1fba39ec9d6e47cf9',
       );
       expect(headers.Authorization).toBe(
         'AWS4-HMAC-SHA256 Credential=AKIAIOSFODNN7EXAMPLE/20260115/us-east-1/s3/aws4_request, ' +
           'SignedHeaders=content-type;host;x-amz-content-sha256;x-amz-date, ' +
-          'Signature=f877700e5fc3292742aede4728a4762276f0d3aa34db961056d8b5d20e146ac2',
+          'Signature=26e30fc7436b0b42a4582e4f12ef72ebfef645339bd73732d728d640ce100590',
       );
     } finally {
       vi.useRealTimers();

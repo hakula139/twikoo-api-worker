@@ -7,6 +7,7 @@ import { MAX_BODY_BYTES } from '@/dispatch';
 import { ResponseCode } from '@/lib/errors';
 import { logger } from '@/twikoo';
 import { applyTestSchema, resetTestDb } from '@tests/helpers/db';
+import { PNG_PHOTO } from '@tests/helpers/image-fixture';
 import {
   ADMIN_TOKEN,
   adminAuthHeader,
@@ -73,7 +74,7 @@ describe('integration: dispatch hardening', () => {
     });
 
     const { body } = await postEvent('UPLOAD_IMAGE', {
-      photo: 'data:image/png;base64,iVBORw0KGgo=',
+      photo: PNG_PHOTO,
       fileName: 'sample.png',
     });
 

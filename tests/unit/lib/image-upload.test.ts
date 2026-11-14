@@ -5,9 +5,7 @@ import { afterEach, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 
 import { uploadImage } from '@/lib/image-upload';
 import { applyTestSchema, resetTestDb } from '@tests/helpers/db';
-
-const PNG_BASE64 = 'iVBORw0KGgo=';
-const dataUrl = `data:image/png;base64,${PNG_BASE64}`;
+import { PNG_PHOTO as dataUrl } from '@tests/helpers/image-fixture';
 
 const r2Env = (): Pick<Env, 'DB' | 'R2' | 'R2_PUBLIC_URL'> => ({
   DB: env.DB,
