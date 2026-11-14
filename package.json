@@ -6,12 +6,10 @@
   "type": "module",
   "main": "src/worker.ts",
   "scripts": {
-    "check": "tsc --noEmit",
     "db:fixture": "drizzle-kit export > tests/fixtures/schema.sql",
     "db:push": "drizzle-kit push",
     "deploy": "wrangler deploy --minify",
     "dev": "wrangler dev",
-    "lint": "eslint .",
     "test": "vitest run",
     "test:bundle": "./scripts/bundle-test.nu",
     "test:smoke": "./scripts/smoke-test.nu",

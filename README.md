@@ -4,9 +4,9 @@
 [![Coverage](https://codecov.io/gh/hakula139/twikoo-api-worker/graph/badge.svg)](https://codecov.io/gh/hakula139/twikoo-api-worker)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
-A Cloudflare Workers backend for the [Twikoo] comment system, backed by Cloudflare D1 and R2. It replaces a Vercel + MongoDB deployment with a single low-latency Worker.
+A Cloudflare Workers backend for the [Twikoo](https://twikoo.js.org/en/intro.html) comment system, backed by Cloudflare D1 and R2. It replaces a Vercel + MongoDB deployment with a single low-latency Worker.
 
-This from-scratch TypeScript implementation uses the upstream [`twikoo-func`][twikoo-func] npm package for business logic and draws on [`twikoojs/twikoo-cloudflare`][cloudflare-reference] (MIT) as a reference implementation.
+This from-scratch TypeScript implementation uses the upstream [`twikoo-func`](https://www.npmjs.com/package/twikoo-func) npm package for business logic and draws on [`twikoojs/twikoo-cloudflare`](https://github.com/twikoojs/twikoo-cloudflare) (MIT) as a reference implementation.
 
 ## Features
 
@@ -18,7 +18,7 @@ This from-scratch TypeScript implementation uses the upstream [`twikoo-func`][tw
 
 ## Setup
 
-[Nix] with flakes supplies Node.js, pnpm, Nushell, and the validation tools:
+[Nix](https://nixos.org/download/) with flakes supplies Node.js, pnpm, Nushell, and the validation tools:
 
 ```bash
 git clone https://github.com/hakula139/twikoo-api-worker.git
@@ -27,7 +27,7 @@ nix develop
 pnpm install --frozen-lockfile
 ```
 
-Enter the development shell from this repository. It installs the shared [devkit] Git hooks.
+Enter the development shell from this repository. It installs the shared [devkit](https://github.com/hakula139/devkit) Git hooks.
 
 ## One-time provisioning
 
@@ -37,9 +37,9 @@ pnpm wrangler d1 create twikoo
 pnpm wrangler r2 bucket create twikoo
 ```
 
-After creating D1, copy the printed `database_id` into [`wrangler.toml`][worker-config] and [`drizzle.config.ts`][drizzle-config]. Connect a public custom domain to the R2 bucket in the Cloudflare dashboard and set `R2_PUBLIC_URL` in `wrangler.toml`. After deployment, set `IMAGE_CDN` to `r2` in the Twikoo admin configuration so new uploads use this bucket, and keep all other settings unchanged if you are updating an existing deployment.
+After creating D1, copy the printed `database_id` into [`wrangler.toml`](wrangler.toml). Connect a public custom domain to the R2 bucket in the Cloudflare dashboard and set `R2_PUBLIC_URL` in `wrangler.toml`. After deployment, set `IMAGE_CDN` to `r2` in the Twikoo admin configuration so new uploads use this bucket, and keep all other settings unchanged if you are updating an existing deployment.
 
-Then sync [`src/db/schema.ts`][schema] to the remote D1 database. This requires `CLOUDFLARE_ACCOUNT_ID` and a `CLOUDFLARE_API_TOKEN` with D1 Edit permission, and it applies the schema delta directly without keeping migration files in the repository.
+Then sync [`src/db/schema.ts`](src/db/schema.ts) to the remote D1 database. This requires `CLOUDFLARE_ACCOUNT_ID` and a `CLOUDFLARE_API_TOKEN` with D1 Edit permission, and it applies the schema delta directly without keeping migration files in the repository.
 
 ```bash
 pnpm db:push
@@ -56,6 +56,8 @@ pnpm wrangler secret put SMTP_PASS
 pnpm wrangler secret put SMTP_USER
 pnpm wrangler secret put TURNSTILE_SECRET_KEY
 ```
+
+For HTTP mail, set `SMTP_SERVICE` to `sendgrid`, `mailchannels`, or `resend` in the admin configuration. Set `SMTP_PASS` to the provider API key, `SMTP_USER` to any non-empty string, and `SENDER_EMAIL` to a sender address verified with the provider.
 
 Telegram notifications also require `PUSHOO_CHANNEL=telegram` in the admin configuration, with `PUSHOO_TOKEN` formatted as `<bot-token>#<chat-id>`.
 
@@ -74,18 +76,16 @@ For local dev secrets, create `.dev.vars` (gitignored) with one `KEY=value` pair
 
 ```bash
 pnpm dev                     # wrangler dev on port 8787
-prek run --all-files         # formatting, Markdown, spelling, Nix, Nushell, workflows, and file hygiene
-pnpm check                   # type-check
+run-hooks                    # formatting, lint, spelling, type-check, and file hygiene
 pnpm test                    # vitest run (workerd via @cloudflare/vitest-plugin)
 pnpm test:bundle             # Wrangler dry-run against the Workers Free plan's 3 MiB gzip limit
 pnpm test:smoke              # temporary local D1 state and upstream function version
-pnpm lint                    # eslint through the locked pnpm toolchain
 nix flake check              # flake output evaluation
 ```
 
 ## Deployment
 
-Pushes to `main` auto-deploy via [`.github/workflows/deploy.yml`][deploy-workflow]. Required repository secrets:
+Pushes to `main` auto-deploy via [`.github/workflows/deploy.yml`](.github/workflows/deploy.yml). Required repository secrets:
 
 - `CLOUDFLARE_API_TOKEN` with both permissions:
   - Account → Workers Scripts: Edit
@@ -95,14 +95,14 @@ Pushes to `main` auto-deploy via [`.github/workflows/deploy.yml`][deploy-workflo
 Manual deploy:
 
 ```bash
-pnpm deploy
+pnpm run deploy
 ```
 
 New uploads expire after one hour unless a stored comment references them. Pending and hidden comments preserve their images. Removing the last reference starts another one-hour grace period. Cleanup runs every 15 minutes and retries failed work. Existing unregistered images remain untouched. Submit drafts within one hour or upload their images again.
 
 ## Frontend integration
 
-In [`twikoo-js`][twikoo-client]:
+In [`twikoo-js`](https://github.com/twikoojs/twikoo):
 
 ```js
 twikoo.init({
@@ -113,17 +113,4 @@ twikoo.init({
 
 ## License
 
-Copyright (c) 2026 [Hakula][author]. Licensed under the [MIT License][license].
-
-[twikoo]: https://twikoo.js.org/en/intro.html
-[twikoo-func]: https://www.npmjs.com/package/twikoo-func
-[cloudflare-reference]: https://github.com/twikoojs/twikoo-cloudflare
-[nix]: https://nixos.org/download/
-[devkit]: https://github.com/hakula139/devkit
-[worker-config]: wrangler.toml
-[drizzle-config]: drizzle.config.ts
-[schema]: src/db/schema.ts
-[deploy-workflow]: .github/workflows/deploy.yml
-[twikoo-client]: https://github.com/twikoojs/twikoo
-[author]: https://hakula.xyz
-[license]: LICENSE
+Copyright (c) 2026 [Hakula](https://hakula.xyz). Licensed under the [MIT License](LICENSE).

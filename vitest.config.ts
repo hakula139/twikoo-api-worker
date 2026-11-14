@@ -23,11 +23,8 @@ export default defineConfig({
     }),
   ],
   resolve: {
-    alias: {
-      ...aliases,
-      '@': path.resolve(import.meta.dirname, 'src'),
-      '@tests': path.resolve(import.meta.dirname, 'tests'),
-    },
+    alias: aliases,
+    tsconfigPaths: true,
   },
   test: {
     setupFiles: ['./tests/setup.ts'],

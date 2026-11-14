@@ -5,13 +5,12 @@ const REPO_ROOT = path self "." | path dirname
 # Check the compressed Worker bundle against the Workers Free plan limit.
 def main [] {
   cd $REPO_ROOT
-  $env.PATH = ($env.PATH | prepend ($REPO_ROOT | path join "node_modules/.bin"))
 
   let bundle_dir = mktemp -d
 
   try {
     (
-      ^wrangler deploy
+      ^pnpm run deploy
         --dry-run
         --outdir $bundle_dir
     )
