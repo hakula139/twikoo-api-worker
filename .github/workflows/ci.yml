@@ -15,7 +15,7 @@ concurrency:
 
 jobs:
   nix:
-    uses: hakula139/devkit/.github/workflows/nix.yml@v3
+    uses: hakulab/devkit/.github/workflows/nix.yml@v3
     with:
       macos: false
     secrets:
@@ -25,7 +25,7 @@ jobs:
     permissions:
       contents: read
       id-token: write
-    uses: hakula139/devkit/.github/workflows/node.yml@v3
+    uses: hakulab/devkit/.github/workflows/node.yml@v3
     secrets:
       CACHIX_AUTH_TOKEN: ${{ secrets.CACHIX_AUTH_TOKEN }}
 
@@ -39,7 +39,7 @@ jobs:
         uses: actions/checkout@v7
 
       - name: Set up Nix
-        uses: hakula139/devkit/.github/actions/setup-nix@v3
+        uses: hakulab/devkit/.github/actions/setup-nix@v3
 
       - name: Install dependencies
         run: nix develop -c pnpm install --frozen-lockfile
@@ -62,4 +62,4 @@ jobs:
 
     steps:
       - name: Check results
-        uses: hakula139/devkit/.github/actions/ci-result@v3
+        uses: hakulab/devkit/.github/actions/ci-result@v3
