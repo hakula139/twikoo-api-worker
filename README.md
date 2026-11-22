@@ -27,7 +27,7 @@ nix develop
 pnpm install --frozen-lockfile
 ```
 
-Enter the development shell from this repository. It installs the shared [devkit](https://github.com/hakula139/devkit) Git hooks.
+Enter the development shell from this repository. It installs the shared [devkit](https://github.com/hakulab/devkit) Git hooks.
 
 ## One-time provisioning
 
