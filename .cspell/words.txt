@@ -13,6 +13,7 @@ disqus
 easyimage
 esbuild
 hakula
+hakulab
 hentai
 ifnull
 jsdom
