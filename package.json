@@ -19,7 +19,7 @@
     "drizzle-orm": "^0.45.4",
     "entities": "^9.0.0",
     "fast-xml-parser": "^5.11.2",
-    "twikoo-func": "1.7.24",
+    "twikoo-func": "2.0.17",
     "xss": "^1.0.17"
   },
   "devDependencies": {
