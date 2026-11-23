@@ -1,3 +1,12 @@
 {
-  "extends": ["github>hakulab/devkit#v3"]
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": ["github>hakulab/devkit#v3"],
+  "packageRules": [
+    {
+      "description": "Hold twikoo-func on 1.x until the Twikoo 2.x migration (#70).",
+      "matchDatasources": ["npm"],
+      "matchPackageNames": ["twikoo-func"],
+      "allowedVersions": "<2.0.0"
+    }
+  ]
 }
