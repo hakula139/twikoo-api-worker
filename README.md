@@ -1,7 +1,7 @@
 # twikoo-api-worker
 
-[![CI](https://github.com/hakula139/twikoo-api-worker/actions/workflows/ci.yml/badge.svg)](https://github.com/hakula139/twikoo-api-worker/actions/workflows/ci.yml)
-[![Coverage](https://codecov.io/gh/hakula139/twikoo-api-worker/graph/badge.svg)](https://codecov.io/gh/hakula139/twikoo-api-worker)
+[![CI](https://github.com/hakulab/twikoo-api-worker/actions/workflows/ci.yml/badge.svg)](https://github.com/hakulab/twikoo-api-worker/actions/workflows/ci.yml)
+[![Coverage](https://codecov.io/gh/hakulab/twikoo-api-worker/graph/badge.svg)](https://codecov.io/gh/hakulab/twikoo-api-worker)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
 A Cloudflare Workers backend for the [Twikoo](https://twikoo.js.org/en/intro.html) comment system, backed by Cloudflare D1 and R2. It replaces a Vercel + MongoDB deployment with a single low-latency Worker.
@@ -21,7 +21,7 @@ This from-scratch TypeScript implementation uses the upstream [`twikoo-func`](ht
 [Nix](https://nixos.org/download/) with flakes supplies Node.js, pnpm, Nushell, and the validation tools:
 
 ```bash
-git clone https://github.com/hakula139/twikoo-api-worker.git
+git clone https://github.com/hakulab/twikoo-api-worker.git
 cd twikoo-api-worker
 nix develop
 pnpm install --frozen-lockfile
