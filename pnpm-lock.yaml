@@ -215,7 +215,7 @@ importers:
         specifier: ^5.0.5
         version: 5.1.1(@types/node@26.6.6)(@vitest/coverage-istanbul@5.1.1)(jsdom@22.1.0(supports-color@10.2.2))(vite@8.3.5(@types/node@26.6.6)(esbuild@0.28.2)(tsx@4.23.15)(yaml@2.9.1))
       wrangler:
-        specifier: ^4.156.0
+        specifier: ^4.165.0
         version: 4.165.0(@cloudflare/workers-types@5.20261120.1)(@types/node@26.6.6)(vitest@5.1.1)
 
 packages:
