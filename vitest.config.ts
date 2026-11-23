@@ -1,5 +1,3 @@
-import type { Unstable_Config } from 'wrangler';
-
 import { isBuiltin } from 'node:module';
 import path from 'node:path';
 
@@ -7,9 +5,8 @@ import { cloudflareTest } from '@cloudflare/vitest-plugin';
 import { defineConfig } from 'vitest/config';
 import { unstable_readConfig } from 'wrangler';
 
-const wranglerConfigPath = './wrangler.toml';
-const wranglerConfig: unknown = unstable_readConfig({ config: wranglerConfigPath });
-const { alias } = wranglerConfig as Unstable_Config;
+const wranglerConfig = './wrangler.toml';
+const { alias } = unstable_readConfig({ config: wranglerConfig });
 const aliases = Object.fromEntries(
   Object.entries(alias ?? {}).map(([name, target]) => [
     name,
@@ -20,7 +17,7 @@ const aliases = Object.fromEntries(
 export default defineConfig({
   plugins: [
     cloudflareTest({
-      wrangler: { configPath: wranglerConfigPath },
+      wrangler: { configPath: wranglerConfig },
     }),
   ],
   resolve: {

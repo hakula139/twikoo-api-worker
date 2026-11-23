@@ -1,10 +1,7 @@
-import type { Unstable_Config } from 'wrangler';
-
 import { defineConfig } from 'drizzle-kit';
 import { unstable_readConfig } from 'wrangler';
 
-const wranglerConfig: unknown = unstable_readConfig({ config: './wrangler.toml' });
-const { d1_databases } = wranglerConfig as Unstable_Config;
+const { d1_databases } = unstable_readConfig({ config: './wrangler.toml' });
 const databaseId = d1_databases.find(({ binding }) => binding === 'DB')?.database_id;
 
 if (!databaseId) {
