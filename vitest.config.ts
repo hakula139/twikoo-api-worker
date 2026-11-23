@@ -7,8 +7,9 @@ import { cloudflareTest } from '@cloudflare/vitest-plugin';
 import { defineConfig } from 'vitest/config';
 import { unstable_readConfig } from 'wrangler';
 
-const wranglerConfig = './wrangler.toml';
-const { alias } = unstable_readConfig({ config: wranglerConfig }) as Unstable_Config;
+const wranglerConfigPath = './wrangler.toml';
+const wranglerConfig: unknown = unstable_readConfig({ config: wranglerConfigPath });
+const { alias } = wranglerConfig as Unstable_Config;
 const aliases = Object.fromEntries(
   Object.entries(alias ?? {}).map(([name, target]) => [
     name,
@@ -19,7 +20,7 @@ const aliases = Object.fromEntries(
 export default defineConfig({
   plugins: [
     cloudflareTest({
-      wrangler: { configPath: wranglerConfig },
+      wrangler: { configPath: wranglerConfigPath },
     }),
   ],
   resolve: {
