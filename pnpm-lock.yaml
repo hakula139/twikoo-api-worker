@@ -175,8 +175,8 @@ importers:
         specifier: ^0.45.4
         version: 0.45.4(@cloudflare/workers-types@5.20261120.1)
       entities:
-        specifier: ^8.1.0
-        version: 8.1.0
+        specifier: ^9.0.0
+        version: 9.0.0
       fast-xml-parser:
         specifier: ^5.11.2
         version: 5.12.1
@@ -1659,8 +1659,8 @@ packages:
     resolution: {integrity: sha512-aN97NXWF6AWBTahfVOIrB/NShkzi5H7F9r1s9mD3cDj4Ko5f2qhhVoYMibXF7GlLveb/D2ioWay8lxI97Ven3g==}
     engines: {node: '>=0.12'}
 
-  entities@8.1.0:
-    resolution: {integrity: sha512-kxL7msIffSuh9aaFAMD7rxAIuTRMAHMeBtgHW2yUdWw732ZNh4MehkF2gdjvtdmikkaIP9bFDDJOPlsvm7avrA==}
+  entities@9.0.0:
+    resolution: {integrity: sha512-oJFNDJg3kTPwAD1cNn2+WmUq4wFoo09npc3Ydf1D7ED4smRiWrsKnaLxykrTWgyGEcusc87P5dxlAleol9kpkg==}
     engines: {node: '>=20.19.0'}
 
   error-stack-parser-es@1.0.5:
@@ -3855,7 +3855,7 @@ snapshots:
 
   entities@6.0.1: {}
 
-  entities@8.1.0: {}
+  entities@9.0.0: {}
 
   error-stack-parser-es@1.0.5: {}
 
