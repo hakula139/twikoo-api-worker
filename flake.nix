@@ -39,6 +39,7 @@
           src = ./.;
           hooks = {
             eslint.enable = true;
+            markdownlint-cli2.settings.configPath = ".markdownlint-cli2.jsonc";
             nu-check.enable = true;
             prettier.enable = true;
             taplo.enable = true;
